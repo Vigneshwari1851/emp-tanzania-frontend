@@ -1,0 +1,567 @@
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router";
+import {
+  ArrowLeft,
+  Edit,
+  Trash2,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  Briefcase,
+  DollarSign,
+  FileText,
+  User,
+  Building2,
+  Loader2,
+  Info
+} from "lucide-react";
+import { Button } from '@/shared/components/ui/button';
+import { getEmployee, deleteEmployee, type Employee } from '@/features/employees/services/employees';
+import { toast } from "sonner";
+import { RoleGate } from '@/features/auth/components/RoleGate';
+import { Permission } from '@/shared/types/rbac';
+import { formatDisplayRole } from '@/shared/utils/stringUtils';
+import { getProfilePictureUrl } from '@/shared/utils/fileUtils';
+import { DocumentThumbnail } from '@/shared/components/common/DocumentThumbnail';
+import { ConfirmationDialog } from '@/shared/components/ui/ConfirmationDialog';
+
+
+
+export function ViewEmployee() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  // console.log("user", Crnt_user.role);
+
+
+  useEffect(() => {
+    const fetchEmployee = async () => {
+      if (!id) return;
+      try {
+        setIsLoading(true);
+        const data = await getEmployee(parseInt(id, 10));
+        console.log("Employee API Response:", data);
+        setEmployee(data);
+      } catch (error) {
+        console.error("Failed to fetch employee", error);
+        toast.error("Failed to load employee details");
+        navigate("/employee-management");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchEmployee();
+  }, [id, navigate]);
+
+  const handleDelete = () => {
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!id) return;
+    try {
+      await deleteEmployee(parseInt(id, 10));
+      toast.success("User deleted successfully");
+      navigate("/employee-management");
+    } catch (error) {
+      toast.error("Failed to delete user");
+    }
+  };
+
+
+  const formatDate = (dateString?: string | Date) => {
+    if (!dateString) return " ";
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch (e) {
+      return dateString.toString();
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!employee) return null;
+
+  const details = employee.details;
+
+  return (
+    <RoleGate permissions={[Permission.VIEW_ALL_EMPLOYEES, Permission.VIEW_TEAM_EMPLOYEES, Permission.VIEW_OWN_PROFILE]}>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <button
+              onClick={() => navigate("/employee-management")}
+              className="p-2 hover:bg-primary/95 rounded-sm transition-colors group"
+            >
+              <ArrowLeft className="w-5 h-5 text-gray-600 group-hover:text-white" />
+            </button>
+            <div className="flex items-center gap-3 min-w-0">
+              {details?.profile_picture ? (
+                <img
+                  src={getProfilePictureUrl(details.profile_picture) || ""}
+                  alt={`${details.first_name} ${details.last_name}`}
+                  className="w-14 h-14 rounded-full object-cover shadow-sm border border-border"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${details.first_name}+${details.last_name}&background=6366f1&color=fff&size=128`;
+                  }}
+                />
+              ) : (
+                <div className="w-14 h-14 bg-primary rounded-full flex items-center justify-center text-white font-medium text-lg shadow-sm">
+                  {details?.first_name?.[0]}{details?.last_name?.[0]}
+                </div>
+              )}
+              <div className="min-w-0">
+                <div className="flex items-center gap-3">
+                  <h1 className="text-[20px] font-semibold leading-7 text-foreground leading-tight truncate">
+                    {details?.first_name} {details?.middle_name || ""} {details?.last_name}
+                  </h1>
+                  {details?.sub_status && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                      {details.sub_status}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground truncate">{formatDisplayRole(details?.role?.role_name || "No Role Assigned")} • {details?.department?.department_name || "No Department"}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 sm:ml-auto">
+            <RoleGate permissions={[Permission.EDIT_EMPLOYEE]}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 h-10"
+                onClick={() => navigate(`/employee-management/edit-employee/${employee.id}`)}
+              >
+                <Edit className="w-3.5 h-3.5" />
+                Edit
+              </Button>
+            </RoleGate>
+            {/* Only show delete button for inactive employees */}
+            {!employee.status && (
+              <RoleGate permissions={[Permission.DELETE_EMPLOYEE]}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 h-10 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200"
+                  onClick={handleDelete}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete
+                </Button>
+              </RoleGate>
+            )}
+          </div>
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          {/* Left Sidebar Card - Quick Info Summary */}
+          <div className="lg:col-span-3 lg:sticky lg:top-6">
+            <div className="bg-card rounded-lg shadow-sm border border-border p-5 overflow-hidden">
+              <div className="flex items-center gap-3 pb-3">
+                <Info className="w-5 h-5 text-blue-500" />
+                <h3 className="text-base font-semibold text-foreground">Quick Info</h3>
+              </div>
+              <div className="border-t border-gray-150 -mx-6 mb-3" />
+
+              <div className="space-y-1">
+                <div className="flex justify-end mt-1 mb-2">
+                  <span className={`px-3 py-0.5 rounded-full text-[10px] font-normal border ${employee?.status ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-red-50 text-red-600 border-red-100'}`}>
+                    {employee?.status ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <div className="mt-4 space-y-4">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Department</p>
+                    <p className="text-sm font-medium text-foreground">{details?.department?.department_name || "Engineering"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Reporting Manager</p>
+                    <p className="text-sm font-medium text-foreground">{details?.reporting_manager?.details ? `${details.reporting_manager.details.first_name} ${details.reporting_manager.details.last_name}` : "Direct"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Join Date</p>
+                    <p className="text-sm font-medium text-foreground leading-tight">{formatDate(details?.start_date)}</p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Personal Info Card (below profile) */}
+            <div className="bg-card rounded-lg shadow-sm border border-border p-5 overflow-hidden mt-6">
+              <div className="flex items-center gap-3 pb-3">
+                <User className="w-5 h-5 text-purple-500" />
+                <h3 className="text-base font-semibold text-foreground">Personal Info</h3>
+              </div>
+              <div className="border-t border-gray-150 -mx-6 mb-6" />
+              
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-blue-500 shrink-0">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground font-medium">Gender</p>
+                    <p className="text-sm font-medium text-foreground">{details?.gender || "Female"}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-purple-500 shrink-0">
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground font-medium">Date of Birth</p>
+                    <p className="text-sm font-medium text-foreground">{formatDate(details?.date_of_birth)}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-emerald-500 shrink-0">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <div className="overflow-hidden min-w-0">
+                    <p className="text-[10px] text-muted-foreground font-medium">Email Address</p>
+                    <p className="text-sm font-medium text-foreground truncate">{employee.email}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-orange-500 shrink-0">
+                    <Phone className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground font-medium">Phone Number</p>
+                    <p className="text-sm font-medium text-foreground">{details?.phone || "—"}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 shrink-0">
+                    <MapPin className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground font-medium">Address</p>
+                    <p className="text-sm font-medium text-foreground leading-tight">
+                      {details?.address || "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {[details?.city, details?.state].filter(Boolean).join(", ")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Main Content */}
+          <div className="lg:col-span-9 space-y-6">
+            
+            {/* Employment Details */}
+            <div className="bg-card rounded-lg shadow-sm border border-border p-5">
+              <div className="flex items-center gap-3 pb-3">
+                <Briefcase className="w-5 h-5 text-primary-500" />
+                <h3 className="text-base font-semibold text-foreground">Employment Details</h3>
+              </div>
+               <div className="border-t border-gray-150 -mx-6 mb-6" />
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-12">
+                {[
+                  { label: "Employment ID", value: details?.employee_id || "Engineering" },
+                  { label: "Position", value: formatDisplayRole(details?.role?.role_name || "Staff") },
+                  { label: "Location", value: details?.work_location || "Remote" },
+                  { label: "Start Date", value: formatDate(details?.start_date) },
+                  { label: "Employment Type", value: details?.employment_type || "Full-time" },
+                  { label: "Sub Status", value: details?.sub_status || "—" },
+                  { label: "Work Schedule", value: details?.work_schedule || "Mon - Fri, 9:00 AM - 6:00 PM" },
+                ].map((item, idx) => (
+                  <div key={idx}>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">{item.label}</p>
+                    <p className="text-sm font-medium text-foreground">{item.value || "—"}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Contact Information */}
+            <div className="bg-card rounded-lg shadow-sm border border-border p-5">
+              <div className="flex items-center gap-3 pb-3">
+                <Mail className="w-5 h-5 text-emerald-500" />
+                <h3 className="text-base font-semibold text-foreground">Contact Information</h3>
+              </div>
+              <div className="border-t border-gray-150 -mx-6 mb-6" />
+              
+              <div className="space-y-4">
+                {/* Primary Contact */}
+                <div>
+                  <h4 className="text-[12px] font-medium text-foreground mb-4 flex items-center gap-2">
+                    Primary Contact
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-12">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Email</p>
+                      <p className="text-sm font-medium text-foreground">{employee.email}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Phone</p>
+                      <p className="text-sm font-medium text-foreground">{details?.phone || "—"}</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Address</p>
+                      <p className="text-sm font-medium text-foreground">{details?.address || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">City</p>
+                      <p className="text-sm font-medium text-foreground">{details?.city || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">State</p>
+                      <p className="text-sm font-medium text-foreground">{details?.state || "—"}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="border-t border-gray-150 -mx-2" />
+                {/* Emergency Contact */}
+                <div className="border-t border-gray-50">
+                  <h4 className="text-[12px] font-medium text-red-600 mb-4 flex items-center gap-2">
+                    Emergency Contact
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-12">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Name</p>
+                      <p className="text-sm font-medium text-foreground">{details?.emergency_contact || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Relationship</p>
+                      <p className="text-sm font-medium text-foreground">{details?.emergency_relationship || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Phone</p>
+                      <p className="text-sm font-medium text-foreground">{details?.emergency_phone || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Email</p>
+                      <p className="text-sm font-medium text-foreground">{details?.emergency_email || "—"}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Compensation & Bank Info Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Compensation Card */}
+              <div className="bg-card rounded-lg shadow-sm border border-border p-5">
+                <div className="flex items-center gap-3 pb-3">
+                  <DollarSign className="w-5 h-5 text-green-600" />
+                  <h3 className="text-base font-semibold text-foreground">Compensation</h3>
+                </div>
+                <div className="border-t border-gray-150 -mx-6 mb-6" />
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Base Salary</p>
+                    <p className="text-lg font-medium text-foreground">
+                      {details?.currency || "₹"} &nbsp;{details?.base_salary ? parseFloat(details.base_salary).toLocaleString() : "0"} {details?.currency || "INR"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Pay Frequency</p>
+                    <p className="text-sm font-medium text-foreground">{details?.salary_frequency || "Monthly"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bank Details Card */}
+              <div className="bg-card rounded-lg shadow-sm border border-border p-5">
+                <div className="flex items-center gap-3 pb-3">
+                  <Building2 className="w-5 h-5 text-orange-500" />
+                  <h3 className="text-base font-semibold text-foreground">Bank Details</h3>
+                </div>
+                <div className="border-t border-gray-150 -mx-6 mb-6" />
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Bank Name</p>
+                    <p className="text-sm font-medium text-foreground">{details?.bank_name || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Account Number</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {details?.account_number ? `**** ${details.account_number.slice(-4)}` : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Account Type</p>
+                    <p className="text-sm font-medium text-foreground">Checking</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Identification Details Card */}
+              <div className="bg-card rounded-lg shadow-sm border border-border p-5">
+                <div className="flex items-center gap-3 pb-3">
+                  <FileText className="w-5 h-5 text-primary-500" />
+                  <h3 className="text-[14px] font-normal text-foreground">Identification Details</h3>
+                </div>
+                <div className="border-t border-gray-150 -mx-6 mb-6" />
+                <div className="space-y-0">
+                  {[
+                    [
+                      { label: "Passport Number", value: details?.passport_number },
+                      { label: "Passport Expiry", value: formatDate(details?.passport_expiry_date) }
+                    ],
+                    [
+                      { label: "Driving License", value: details?.driving_license_number },
+                      { label: "License Expiry", value: formatDate(details?.license_expiry_date) }
+                    ],
+                    [
+                      { label: "Aadhaar Number", value: details?.aadhaar_number },
+                      { label: "PAN Number", value: details?.pan_number }
+                    ]
+                  ].map((row, rowIdx) => (
+                    <div key={rowIdx}>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
+                        {row.map((item, idx) => (
+                          <div key={idx}>
+                            <p className="text-xs font-medium text-muted-foreground mb-1">{item.label}</p>
+                            <p className="text-sm font-medium text-foreground">{item.value || "—"}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {rowIdx < 2 && <div className="border-t border-gray-150 -mx-1 my-2" />}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Uploaded Documents Card */}
+              <div className="bg-card rounded-lg shadow-sm border border-border p-5">
+                <div className="flex items-center gap-3 pb-3">
+                  <FileText className="w-5 h-5 text-sky-500" />
+                  <h3 className="text-[14px] font-normal text-foreground">Uploaded Documents</h3>
+                </div>
+                <div className="border-t border-gray-150 -mx-6 mb-6" />
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 sm:gap-8 lg:gap-10">
+                  <DocumentThumbnail
+                    label="Resume / CV"
+                    filePath={details?.resume}
+                  />
+                  {Array.isArray(details?.certificate_files) && details.certificate_files.map((file: string, i: number) => (
+                    <DocumentThumbnail
+                      key={`cert-${i}`}
+                      label={`Certification ${i + 1}`}
+                      filePath={file}
+                    />
+                  ))}
+                  {Array.isArray(details?.documents) && details.documents.map((file: string, i: number) => (
+                    <DocumentThumbnail
+                      key={`doc-${i}`}
+                      label={`Document ${i + 1}`}
+                      filePath={file}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Educational & Employment History Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Educational History */}
+              <div className="bg-card rounded-lg shadow-sm border border-border p-5">
+                <div className="flex items-center gap-3 pb-3">
+                  <Briefcase className="w-5 h-5 text-purple-500" />
+                  <h3 className="text-base font-semibold text-foreground">Educational History</h3>
+                </div>
+                <div className="border-t border-gray-150 -mx-6 mb-6" />
+                <div className="space-y-4">
+                  {Array.isArray(details?.education) && details.education.length > 0 ? (
+                    details.education.map((edu: any, i: number) => (
+                      <div key={i} className="flex justify-between items-start pb-4 border-b border-gray-50 last:border-0 last:pb-0">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-purple-50 rounded-lg">
+                            <Briefcase className="w-4 h-4 text-purple-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{edu.degree || edu.qualification}</p>
+                            <p className="text-xs text-muted-foreground">{edu.institution || edu.school}</p>
+                          </div>
+                        </div>
+                        <p className="text-[10px] font-medium text-muted-foreground">{edu.year || edu.passing_year}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground ">No records found</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Employment History */}
+              <div className="bg-card rounded-lg shadow-sm border border-border p-5">
+                <div className="flex items-center gap-3 pb-3">
+                  <Briefcase className="w-5 h-5 text-blue-500" />
+                  <h3 className="text-base font-semibold text-foreground">Employment History</h3>
+                </div>
+                <div className="border-t border-gray-150 -mx-6 mb-6" />
+                <div className="space-y-4">
+                  {Array.isArray(details?.employment_history) && details.employment_history.length > 0 ? (
+                    details.employment_history.map((exp: any, i: number) => (
+                      <div key={i} className="flex justify-between items-start pb-4 border-b border-gray-50 last:border-0 last:pb-0">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-blue-50 rounded-lg">
+                            <Building2 className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{exp.designation || exp.job_title}</p>
+                            <p className="text-xs text-muted-foreground">{exp.company}</p>
+                          </div>
+                        </div>
+                        <p className="text-[10px] font-medium text-muted-foreground">{formatDate(exp.start_date)} - {formatDate(exp.end_date) || "Present"}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground ">No employment records found</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <ConfirmationDialog
+          isOpen={isDeleteDialogOpen}
+          onClose={() => setIsDeleteDialogOpen(false)}
+          onConfirm={confirmDelete}
+          title="Delete Employee?"
+          description={<>Are you sure you want to delete <b className="text-foreground font-medium">{details?.first_name} {details?.last_name}</b>? This action cannot be undone.</>}
+          confirmText="Delete"
+          cancelText="Cancel"
+          variant="danger"
+        />
+      </div>
+    </RoleGate>
+  );
+}
+

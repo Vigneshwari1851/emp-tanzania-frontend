@@ -1,0 +1,576 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --background: 210 40% 98%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 239 84% 67%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 173.4 80.4% 40%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 6px;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --background: 215 28% 17%;
+    --foreground: 210 40% 98%;
+    --card: 217 24% 20%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 239 84% 67%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 173.4 80.4% 40%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 24%;
+    --input: 217.2 32.6% 24%;
+    --ring: 224.3 76.3% 48%;
+  }
+}
+
+.disable-transitions *,
+.disable-transitions *::before,
+.disable-transitions *::after {
+  transition: none !important;
+}
+
+::view-transition-image-pair(root) {
+  isolation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+*:not(.survey-viewport-content):not(.survey-viewport-content *):not(code) {
+  font-family: 'Inter', sans-serif !important;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+}
+
+html,
+body,
+#root,
+input,
+button,
+textarea,
+select {
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1 { font-size: 22px !important; font-weight: 700 !important; letter-spacing: -0.01em; line-height: 32px !important; }
+h2 { font-size: 18px !important; font-weight: 600 !important; letter-spacing: -0.01em; line-height: 26px !important; }
+h3 { font-size: 16px !important; font-weight: 600 !important; line-height: 24px !important; }
+h4 { font-size: 12px !important; font-weight: 500 !important; line-height: 18px !important; }
+h5 { font-size: 13px !important; font-weight: 600 !important; line-height: 18px !important; }
+
+label, input, select, textarea, button {
+  font-size: 13px !important;
+  font-weight: 400 !important;
+}
+
+
+
+label {
+  text-transform: capitalize !important;
+}
+
+body {
+  height: 100%;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+textarea:-webkit-autofill:active,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus,
+select:-webkit-autofill:active {
+  -webkit-text-fill-color: #111827 !important;
+  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark input:-webkit-autofill:active,
+.dark textarea:-webkit-autofill,
+.dark textarea:-webkit-autofill:hover,
+.dark textarea:-webkit-autofill:focus,
+.dark textarea:-webkit-autofill:active,
+.dark select:-webkit-autofill,
+.dark select:-webkit-autofill:hover,
+.dark select:-webkit-autofill:focus,
+.dark select:-webkit-autofill:active {
+  -webkit-text-fill-color: #e2e8f0 !important;
+  -webkit-box-shadow: 0 0 0px 1000px hsl(217 24% 20%) inset !important;
+}
+
+.dark input[type="date"],
+.dark input[type="time"],
+.dark input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+/* style the date input internal elements for dark mode */
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="time"]::-webkit-calendar-picker-indicator,
+.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.85);
+  cursor: pointer;
+}
+
+.dark input[type="date"]::-webkit-datetime-edit,
+.dark input[type="time"]::-webkit-datetime-edit,
+.dark input[type="datetime-local"]::-webkit-datetime-edit {
+  color: #e2e8f0;
+}
+
+.dark input[type="date"]::-webkit-datetime-edit-text,
+.dark input[type="time"]::-webkit-datetime-edit-text,
+.dark input[type="datetime-local"]::-webkit-datetime-edit-text {
+  color: #64748b;
+}
+
+.dark input[type="date"]::-webkit-datetime-edit-month-field,
+.dark input[type="date"]::-webkit-datetime-edit-day-field,
+.dark input[type="date"]::-webkit-datetime-edit-year-field,
+.dark input[type="time"]::-webkit-datetime-edit-month-field,
+.dark input[type="time"]::-webkit-datetime-edit-day-field,
+.dark input[type="time"]::-webkit-datetime-edit-year-field,
+.dark input[type="datetime-local"]::-webkit-datetime-edit-month-field,
+.dark input[type="datetime-local"]::-webkit-datetime-edit-day-field,
+.dark input[type="datetime-local"]::-webkit-datetime-edit-year-field {
+  color: #e2e8f0;
+  background: transparent;
+  border-radius: 4px;
+  padding: 0 2px;
+}
+
+.dark input[type="date"]::-webkit-datetime-edit-month-field:focus,
+.dark input[type="date"]::-webkit-datetime-edit-day-field:focus,
+.dark input[type="date"]::-webkit-datetime-edit-year-field:focus,
+.dark input[type="time"]::-webkit-datetime-edit-month-field:focus,
+.dark input[type="time"]::-webkit-datetime-edit-day-field:focus,
+.dark input[type="time"]::-webkit-datetime-edit-year-field:focus,
+.dark input[type="datetime-local"]::-webkit-datetime-edit-month-field:focus,
+.dark input[type="datetime-local"]::-webkit-datetime-edit-day-field:focus,
+.dark input[type="datetime-local"]::-webkit-datetime-edit-year-field:focus {
+  background: rgba(99, 102, 241, 0.25);
+  outline: none;
+}
+
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { background: transparent; border-radius: 10px; }
+  .custom-scrollbar:hover::-webkit-scrollbar-thumb { background: #e2e8f0; }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+@media (max-width: 1023px) {
+  .overflow-x-auto, table { -webkit-overflow-scrolling: touch; }
+  .card-table-wrapper { overflow-x: auto; }
+}
+
+@media (max-width: 639px) {
+  .page-header-row { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+  h1 { font-size: 18px !important; }
+  h2 { font-size: 16px !important; }
+  .mobile-full-btn { width: 100%; }
+}
+
+@media (max-width: 767px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .table-col-hide-mobile { display: none; }
+  th, td { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
+  .dashboard-banner { padding: 1.25rem !important; }
+  .dashboard-banner-text { font-size: 1rem !important; }
+  .tab-bar { overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; display: flex; flex-wrap: nowrap; }
+  .tab-bar > * { flex-shrink: 0; }
+}
+
+@media (max-width: 479px) {
+  .stats-grid { grid-template-columns: 1fr !important; }
+  .notification-dropdown { width: calc(100vw - 2rem) !important; right: -1rem !important; }
+}
+
+@media (max-width: 639px) {
+  .filter-row { flex-wrap: wrap; gap: 0.5rem; }
+  .filter-row > * { flex: 1 1 auto; min-width: 120px; }
+  .form-container-mobile { padding: 1rem !important; }
+  .company-structure-grid { grid-template-columns: 1fr !important; }
+  .modal-panel { max-width: 100% !important; margin: 0 !important; border-radius: 0 !important; height: 100dvh !important; max-height: 100dvh !important; }
+}
+
+input[type="checkbox"]:not(.sr-only):not([class*="hidden"]),
+input[type="radio"]:not(.sr-only):not([class*="hidden"]),
+input[type="range"] {
+  accent-color: #6366F1 !important;
+}
+
+.dark input[type="checkbox"]:not(.sr-only):not([class*="hidden"]),
+.dark input[type="radio"]:not(.sr-only):not([class*="hidden"]),
+.dark input[type="range"] {
+  accent-color: #818CF8 !important;
+}
+
+select option {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+select optgroup {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+select option:checked,
+select option:hover {
+  background: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+select::-webkit-listbox {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+input:focus, select:focus, textarea:focus, div[role="combobox"]:focus {
+  outline: none !important;
+  border-color: hsl(var(--primary)) !important;
+  box-shadow: 0 0 0 2px hsla(var(--primary), 0.15) !important;
+}
+
+/* Circular back/icon button with grey background, turns blue on hover */
+.icon-circle-btn {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 9999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background-color: #f3f4f6 !important; /* Circle grey bg */
+  border: none !important;
+  transition: all 0.2s ease-in-out !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+}
+.dark .icon-circle-btn {
+  background-color: #374151 !important;
+}
+
+.icon-circle-btn:hover {
+  background-color: #dbeafe !important; /* Light blue bg on hover */
+  transform: scale(1.05);
+}
+.dark .icon-circle-btn:hover {
+  background-color: #1e3a8a !important;
+}
+
+.icon-circle-btn svg {
+  color: #64748b !important; /* Neutral grey initially */
+  width: 18px !important;
+  height: 18px !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.icon-circle-btn:hover svg {
+  color: #2563eb !important; /* Bold blue on hover */
+}
+.dark .icon-circle-btn:hover svg {
+  color: #60a5fa !important;
+}
+
+/* Circular Mini Icon Buttons (for edit, delete, eye, undo, chevrons, etc.) */
+.mini-icon-btn {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 8px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background-color: #f3f4f6 !important; /* Circle grey bg */
+  color: #64748b !important; /* Neutral grey icon color */
+  transition: all 0.2s ease-in-out !important;
+  cursor: pointer !important;
+  border: none !important;
+  padding: 0 !important;
+}
+.dark .mini-icon-btn {
+  background-color: #374151 !important;
+  color: #9ca3af !important;
+}
+.mini-icon-btn:hover {
+  background-color: hsl(var(--primary) / 0.15) !important; /* Primary light shade on hover */
+  color: hsl(var(--primary)) !important; /* Primary theme icon color on hover */
+}
+.dark .mini-icon-btn:hover {
+  background-color: hsl(var(--primary) / 0.25) !important;
+  color: hsl(var(--primary)) !important;
+}
+.mini-icon-btn svg {
+  width: 16px !important;
+  height: 16px !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+/* Toolbar Filter Icon Button (matches search box height 40px) */
+.toolbar-filter-btn {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 8px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background-color: var(--card, #ffffff) !important;
+  color: hsl(var(--primary)) !important;
+  transition: all 0.2s ease-in-out !important;
+  cursor: pointer !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
+}
+.dark .toolbar-filter-btn {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--primary)) !important;
+}
+.toolbar-filter-btn:hover {
+  background-color: hsl(var(--primary) / 0.15) !important;
+  color: hsl(var(--primary)) !important;
+}
+.dark .toolbar-filter-btn:hover {
+  background-color: hsl(var(--primary) / 0.25) !important;
+  color: hsl(var(--primary)) !important;
+}
+.toolbar-filter-btn svg {
+  width: 18px !important;
+  height: 18px !important;
+  transition: all 0.2s ease-in-out !important;
+  color: hsl(var(--primary)) !important;
+}
+
+/* Toolbar Filter Icon Button with text label */
+.toolbar-filter-btn-with-text {
+  height: 40px !important;
+  border-radius: 8px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background-color: var(--card, #ffffff) !important;
+  color: hsl(var(--primary)) !important;
+  transition: all 0.2s ease-in-out !important;
+  cursor: pointer !important;
+  border: none !important;
+  padding: 0 14px !important;
+  gap: 6.5px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
+}
+.dark .toolbar-filter-btn-with-text {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--primary)) !important;
+}
+.toolbar-filter-btn-with-text:hover {
+  background-color: hsl(var(--primary) / 0.15) !important;
+  color: hsl(var(--primary)) !important;
+}
+.dark .toolbar-filter-btn-with-text:hover {
+  background-color: hsl(var(--primary) / 0.25) !important;
+  color: hsl(var(--primary)) !important;
+}
+.toolbar-filter-btn-with-text svg {
+  width: 15px !important;
+  height: 15px !important;
+  transition: all 0.2s ease-in-out !important;
+  color: hsl(var(--primary)) !important;
+}
+
+/* Accept/Approve hover turns green */
+.mini-icon-btn-accept {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 9999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background-color: #f3f4f6 !important;
+  color: #64748b !important;
+  transition: all 0.2s ease-in-out !important;
+  cursor: pointer !important;
+  border: none !important;
+  padding: 0 !important;
+}
+.dark .mini-icon-btn-accept {
+  background-color: #374151 !important;
+  color: #9ca3af !important;
+}
+.mini-icon-btn-accept:hover {
+  background-color: #d1fae5 !important; /* Light green bg on hover */
+  color: #10b981 !important; /* Green icon color on hover */
+}
+.dark .mini-icon-btn-accept:hover {
+  background-color: #064e3b !important;
+  color: #34d399 !important;
+}
+.mini-icon-btn-accept svg {
+  width: 16px !important;
+  height: 16px !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+/* Reject hover turns red */
+.mini-icon-btn-reject {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 9999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background-color: #f3f4f6 !important;
+  color: #64748b !important;
+  transition: all 0.2s ease-in-out !important;
+  cursor: pointer !important;
+  border: none !important;
+  padding: 0 !important;
+}
+.dark .mini-icon-btn-reject {
+  background-color: #374151 !important;
+  color: #9ca3af !important;
+}
+.mini-icon-btn-reject:hover {
+  background-color: #fee2e2 !important; /* Light red bg on hover */
+  color: #ef4444 !important; /* Red icon color on hover */
+}
+.dark .mini-icon-btn-reject:hover {
+  background-color: #7f1d1d !important;
+  color: #f87171 !important;
+}
+.mini-icon-btn-reject svg {
+  width: 16px !important;
+  height: 16px !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+/* Explicit global overrides for rounded classes */
+.rounded-lg,
+[class*="rounded-lg"] {
+  border-radius: 6px !important;
+}
+
+.rounded-xl,
+[class*="rounded-xl"] {
+  border-radius: 6px !important;
+}
+
+.rounded-2xl,
+[class*="rounded-2xl"] {
+  border-radius: 6px !important;
+}
+
+.rounded-3xl,
+[class*="rounded-3xl"] {
+  border-radius: 6px !important;
+}
+
+.rounded-md,
+[class*="rounded-md"] {
+  border-radius: 6px !important;
+}
+
+.rounded-sm,
+[class*="rounded-sm"],
+.rounded-xs,
+[class*="rounded-xs"] {
+  border-radius: 4px !important;
+}
+
+.rounded,
+[class="rounded"] {
+  border-radius: 4px !important;
+}
+
+.hierarchy-canvas-container,
+.hierarchy-canvas-container .react-transform-wrapper {
+  overflow: auto !important;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+.hierarchy-canvas-container::-webkit-scrollbar,
+.hierarchy-canvas-container .react-transform-wrapper::-webkit-scrollbar {
+  display: none !important;
+}
+
+.hierarchy-canvas-container,
+.hierarchy-canvas-container .react-transform-wrapper {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+.hierarchy-tree-content {
+  padding: 40px !important;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.hierarchy-svg-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* Allows mouse clicks to pass through to cards */
+  z-index: 1; /* Render above background, below node cards */
+}
+
+/* Style Download (export) and Upload (import) icons inside outline buttons and toolbar filter buttons */
+button.border .lucide-download,
+button.border .lucide-upload,
+button[class*="border"] .lucide-download,
+button[class*="border"] .lucide-upload,
+.toolbar-filter-btn .lucide-download,
+.toolbar-filter-btn .lucide-upload,
+.toolbar-filter-btn-with-text .lucide-download,
+.toolbar-filter-btn-with-text .lucide-upload {
+  color: hsl(var(--primary)) !important;
+}

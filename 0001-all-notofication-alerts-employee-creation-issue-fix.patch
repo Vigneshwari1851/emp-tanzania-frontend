@@ -1,0 +1,1550 @@
+From 2201cb653542b39c75e86a75b4920592d75896f7 Mon Sep 17 00:00:00 2001
+From: socedge <socedge.test@gmail.com>
+Date: Mon, 27 Jul 2026 13:37:42 +0530
+Subject: [PATCH] all notofication , alerts employee creation issue fix
+
+---
+ .../attendance/pages/TimeAttendance.tsx       |   2 +-
+ .../documents/pages/DocumentUpload.tsx        |   5 +
+ src/features/documents/services/documents.ts  |   3 +
+ .../components/CompensationSection.tsx        |  35 +-
+ .../employees/components/DocumentSection.tsx  |  12 +-
+ .../employees/components/EducationSection.tsx |  23 +-
+ .../components/EmploymentSection.tsx          |  23 +-
+ src/features/employees/pages/AddEmployee.tsx  | 590 ++++++++++++------
+ src/features/employees/services/employees.ts  |  49 +-
+ .../pages/LoansAdvancesSetup.tsx              |  10 +-
+ .../notifications/pages/Notifications.tsx     |  47 +-
+ src/features/payroll/services/payroll.ts      |  28 +
+ src/routes/routes.tsx                         |   2 +
+ src/shared/components/layout/Sidebar.tsx      |  24 +-
+ 14 files changed, 590 insertions(+), 263 deletions(-)
+
+diff --git a/src/features/attendance/pages/TimeAttendance.tsx b/src/features/attendance/pages/TimeAttendance.tsx
+index 4a5ab77..c86e111 100644
+--- a/src/features/attendance/pages/TimeAttendance.tsx
++++ b/src/features/attendance/pages/TimeAttendance.tsx
+@@ -10,7 +10,7 @@ import { Button } from '@/shared/components/ui/button';
+ import { Input } from '@/shared/components/ui/Input';
+ import { ModernDatePicker } from '@/shared/components/ui/ModernDatePicker';
+ import Select from '@/shared/components/ui/Select';
+-import { Badge } from '@/shared/components/ui/badge';
++import { Badge } from '@/shared/components/ui/Badge';
+ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table';
+ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/Tabs';
+ import { toast } from 'sonner';
+diff --git a/src/features/documents/pages/DocumentUpload.tsx b/src/features/documents/pages/DocumentUpload.tsx
+index 98f9c07..6ceddec 100644
+--- a/src/features/documents/pages/DocumentUpload.tsx
++++ b/src/features/documents/pages/DocumentUpload.tsx
+@@ -193,6 +193,10 @@ export const DocumentUpload: React.FC = () => {
+         file_size = uploadResult.file_size;
+       }
+ 
++      const target_department = selectedDepts.length === 0 || selectedDepts.includes('All') || selectedDepts.length === departmentsList.length
++        ? 'All Departments'
++        : selectedDepts.join(', ');
++
+       const payload = {
+         title: docName,
+         description: description || 'New document uploaded.',
+@@ -204,6 +208,7 @@ export const DocumentUpload: React.FC = () => {
+         is_restricted: accessLevel === 'Restricted',
+         tags: tags.length > 0 ? tags : undefined,
+         version: version,
++        target_department,
+       };
+ 
+       if (editId) {
+diff --git a/src/features/documents/services/documents.ts b/src/features/documents/services/documents.ts
+index 8964ba2..2f4cd54 100644
+--- a/src/features/documents/services/documents.ts
++++ b/src/features/documents/services/documents.ts
+@@ -25,6 +25,7 @@ export interface Document {
+   created_at?: string;
+   updated_at?: string;
+   tags?: string[];
++  target_department?: string;
+ }
+ 
+ interface ApiResponse<T> {
+@@ -59,6 +60,7 @@ export const createDocument = async (data: {
+   is_restricted?: boolean;
+   tags?: string[];
+   version?: string;
++  target_department?: string;
+ }): Promise<Document> => {
+   const response = await axiosInstance.post<ApiResponse<Document>>('/documents', data);
+   return response.data.data;
+@@ -72,6 +74,7 @@ export const updateDocument = async (id: number, data: Partial<{
+   is_restricted: boolean;
+   tags: string[];
+   version: string;
++  target_department: string;
+ }>): Promise<Document> => {
+   const response = await axiosInstance.put<ApiResponse<Document>>(`/documents/${id}`, data);
+   return response.data.data;
+diff --git a/src/features/employees/components/CompensationSection.tsx b/src/features/employees/components/CompensationSection.tsx
+index 1ec214e..4a78eb3 100644
+--- a/src/features/employees/components/CompensationSection.tsx
++++ b/src/features/employees/components/CompensationSection.tsx
+@@ -1,4 +1,4 @@
+-import { useMemo } from 'react';
++import { useMemo, useEffect } from 'react';
+ import { TrendingUp, TrendingDown } from "lucide-react";
+ import type { CompensationSplit } from '../pages/AddEmployee';
+ import Select from "@/shared/components/ui/Select";
+@@ -28,7 +28,7 @@ const CompensationSection: React.FC<CompensationSectionProps> = ({
+   compensationSplits,
+   setCompensationSplits,
+   payrollGroups = [],
+-  canManagePayroll = false }) => {
++  canManagePayroll = true }) => {
+   const totalCompensationBreakdown = useMemo(() => {
+     return compensationSplits.reduce((sum, split) => {
+       const amount = parseFloat(split.amount) || 0;
+@@ -54,6 +54,8 @@ const CompensationSection: React.FC<CompensationSectionProps> = ({
+       }
+     }
+   };
++
++
+   return (
+     <div id="compensation" className={`animate-in fade-in slide-in-from-left-2 duration-300 space-y-6 scroll-mt-24`}>
+       <div className="flex items-center justify-between border-b border-border pb-2">
+@@ -183,8 +185,7 @@ const CompensationSection: React.FC<CompensationSectionProps> = ({
+                   name="baseSalary"
+                   value={formData.baseSalary}
+                   onChange={handleInputChange}
+-                  readOnly={!canManagePayroll}
+-                  className={`w-full pl-8 pr-4 py-2.5 border rounded focus:outline-none focus:ring-4 focus:ring-blue-100 transition-all font-bold ${formErrors.baseSalary ? 'border-red-400' : 'border-border active:border-blue-400'} ${!canManagePayroll ? 'bg-slate-50/50 text-slate-500 cursor-not-allowed' : ''}`}
++                  className={`w-full pl-8 pr-4 py-2.5 bg-card border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold transition-all ${formErrors.baseSalary ? 'border-red-400' : 'border-border'}`}
+                   placeholder="Enter CTC"
+                 />
+               </div>
+@@ -196,7 +197,6 @@ const CompensationSection: React.FC<CompensationSectionProps> = ({
+                 value={formData.currency}
+                 onChange={(val) => handleInputChange({ target: { name: 'currency', value: val } } as any)}
+                 label="Currency"
+-                disabled={!canManagePayroll}
+                 options={[
+                   { value: "INR", label: "INR (₹) - India" },
+                   { value: "USD", label: "USD ($) - USA" },
+@@ -216,7 +216,6 @@ const CompensationSection: React.FC<CompensationSectionProps> = ({
+                 value={formData.payFrequency}
+                 onChange={(val) => handleInputChange({ target: { name: 'payFrequency', value: val } } as any)}
+                 label="Pay Frequency"
+-                disabled={!canManagePayroll}
+                 options={[
+                   { value: "Monthly", label: "Monthly" },
+                   { value: "Yearly", label: "Yearly" },
+@@ -245,21 +244,19 @@ const CompensationSection: React.FC<CompensationSectionProps> = ({
+                           <input
+                             type="text"
+                             value={split.componentType}
+-                            onChange={(e) => updateCompensationSplit(originalIndex, "componentType", e.target.value)}
+                             readOnly
+                             className="w-full bg-transparent border-none focus:ring-0 text-[13px] font-bold text-foreground cursor-default"
+                             placeholder="Component Name"
+                           />
+-                          <p className="text-[10px] text-emerald-600/70 font-medium px-0.5">Salary Earning</p>
++                          <p className="text-[10px] text-emerald-600/70 font-medium px-0.5 mt-0.5">Salary Earning</p>
+                         </div>
+-                        <div className="w-40 relative">
+-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 text-xs font-bold">{currentSymbol}</span>
++                        <div className="w-44 relative">
++                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-500 text-xs font-bold">{currentSymbol}</span>
+                           <input
+                             type="number"
+                             value={split.amount}
+-                            onChange={(e) => updateCompensationSplit(originalIndex, "amount", e.target.value)}
+                             readOnly
+-                            className="w-full pl-7 pr-3 py-2 bg-card/50 border border-emerald-100/50 rounded text-sm text-right font-black text-emerald-700 cursor-default"
++                            className="w-full pl-7 pr-3 py-2 bg-emerald-50/50 border border-emerald-100/60 rounded text-sm text-right font-black text-emerald-700 cursor-default"
+                             placeholder="0"
+                           />
+                         </div>
+@@ -287,21 +284,19 @@ const CompensationSection: React.FC<CompensationSectionProps> = ({
+                           <input
+                             type="text"
+                             value={split.componentType}
+-                            onChange={(e) => updateCompensationSplit(originalIndex, "componentType", e.target.value)}
+                             readOnly
+                             className="w-full bg-transparent border-none focus:ring-0 text-[13px] font-bold text-foreground cursor-default"
+                             placeholder="Component Name"
+                           />
+-                          <p className="text-[10px] text-rose-600/70 font-medium px-0.5">Monthly Deduction</p>
++                          <p className="text-[10px] text-rose-600/70 font-medium px-0.5 mt-0.5">Monthly Deduction</p>
+                         </div>
+-                        <div className="w-40 relative">
+-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-400 text-xs font-bold">{currentSymbol}</span>
++                        <div className="w-44 relative">
++                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500 text-xs font-bold">{currentSymbol}</span>
+                           <input
+                             type="number"
+                             value={split.amount}
+-                            onChange={(e) => updateCompensationSplit(originalIndex, "amount", e.target.value)}
+                             readOnly
+-                            className="w-full pl-7 pr-3 py-2 bg-card/50 border border-rose-100/50 rounded text-sm text-right font-black text-rose-700 cursor-default"
++                            className="w-full pl-7 pr-3 py-2 bg-rose-50/50 border border-rose-100/60 rounded text-sm text-right font-black text-rose-700 cursor-default"
+                             placeholder="0"
+                           />
+                         </div>
+@@ -315,14 +310,14 @@ const CompensationSection: React.FC<CompensationSectionProps> = ({
+             </div>
+           </div>
+ 
+-          <div className="mt-8 p-6 bg-primary rounded shadow-sm shadow-primary-100 flex items-center justify-between text-white overflow-hidden relative">
++          <div className="mt-8 p-6 bg-primary rounded shadow-sm shadow-primary-100 flex flex-col sm:flex-row items-center justify-between text-white overflow-hidden relative gap-4">
+             <div className="absolute right-0 top-0 translate-x-1/4 -translate-y-1/4 opacity-10">
+               <TrendingUp className="size-48" />
+             </div>
+             <div className="relative z-10">
+               <p className="text-[11px] font-bold text-primary-100 uppercase tracking-widest mb-1">Total CTC Summary</p>
+               <div className="flex items-baseline gap-2">
+-                <span className="text-3xl font-black">{formData.currency} {parseFloat(formData.baseSalary).toLocaleString()}</span>
++                <span className="text-3xl font-black">{formData.currency} {parseFloat(formData.baseSalary || "0").toLocaleString()}</span>
+               </div>
+             </div>
+             <div className="relative z-10 text-right">
+diff --git a/src/features/employees/components/DocumentSection.tsx b/src/features/employees/components/DocumentSection.tsx
+index 3882ec7..f209ce1 100644
+--- a/src/features/employees/components/DocumentSection.tsx
++++ b/src/features/employees/components/DocumentSection.tsx
+@@ -331,9 +331,11 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
+                       name="drivingLicense" 
+                       value={formData.drivingLicense} 
+                       onChange={handleInputChange} 
+-                      className="w-full h-10 px-3 bg-card border border-gray-300 rounded text-[12px] focus:outline-none focus:ring-2 focus:ring-blue-500"
++                      onBlur={handleInputChange}
++                      className={`w-full h-10 px-3 bg-card border rounded text-[12px] focus:outline-none focus:ring-2 transition-all ${formErrors.drivingLicense ? 'border-red-500 focus:ring-red-400/20' : 'border-gray-300 focus:ring-blue-500'}`}
+                       placeholder="Enter License Number"
+                     />
++                    {formErrors.drivingLicense && <p className="text-xs text-red-500 mt-1">{formErrors.drivingLicense}</p>}
+                   </div>
+                   <div>
+                     <label className="block text-sm font-medium text-foreground mb-2">Expiry Date <span className="text-red-500">*</span></label>
+@@ -377,9 +379,11 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
+                       name="panNumber" 
+                       value={formData.panNumber} 
+                       onChange={handleInputChange} 
+-                      className="w-full h-10 px-3 bg-card border border-gray-300 rounded text-[12px] focus:outline-none focus:ring-2 focus:ring-blue-500"
++                      onBlur={handleInputChange}
++                      className={`w-full h-10 px-3 bg-card border rounded text-[12px] focus:outline-none focus:ring-2 transition-all ${formErrors.panNumber ? 'border-red-500 focus:ring-red-400/20' : 'border-gray-300 focus:ring-blue-500'}`}
+                       placeholder={taxPlaceholder}
+                     />
++                    {formErrors.panNumber && <p className="text-xs text-red-500 mt-1">{formErrors.panNumber}</p>}
+                   </div>
+                   <div className="col-span-full">
+                     <FileUpload
+@@ -403,9 +407,11 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
+                       name="aadhaarNumber" 
+                       value={formData.aadhaarNumber} 
+                       onChange={handleInputChange} 
+-                      className="w-full h-10 px-3 bg-card border border-gray-300 rounded text-[12px] focus:outline-none focus:ring-2 focus:ring-blue-500"
++                      onBlur={handleInputChange}
++                      className={`w-full h-10 px-3 bg-card border rounded text-[12px] focus:outline-none focus:ring-2 transition-all ${formErrors.aadhaarNumber ? 'border-red-500 focus:ring-red-400/20' : 'border-gray-300 focus:ring-blue-500'}`}
+                       placeholder="Enter Aadhaar Number"
+                     />
++                    {formErrors.aadhaarNumber && <p className="text-xs text-red-500 mt-1">{formErrors.aadhaarNumber}</p>}
+                   </div>
+                   <div className="col-span-full">
+                     <FileUpload
+diff --git a/src/features/employees/components/EducationSection.tsx b/src/features/employees/components/EducationSection.tsx
+index a641670..aee50eb 100644
+--- a/src/features/employees/components/EducationSection.tsx
++++ b/src/features/employees/components/EducationSection.tsx
+@@ -67,12 +67,29 @@ const EducationSection: React.FC<EducationSectionProps> = ({
+     return "";
+   };
+ 
++  const handleSelectEdu = (index: number) => {
++    setEditingEduIndex(index);
++    setIsAddingEdu(false);
++    setTimeout(() => {
++      const formElement = document.getElementById('education-edit-form');
++      if (formElement) {
++        formElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
++      }
++    }, 100);
++  };
++
+   const addEducation = () => {
+     setIsAddingEdu(true);
+     setEditingEduIndex(null);
+     setPendingEduRecord({
+       level: "", institution: "", degree: "", fieldOfStudy: "", board: "", startDate: "", endDate: "", grade: "", currentlyStudying: false
+     });
++    setTimeout(() => {
++      const formElement = document.getElementById('education-edit-form');
++      if (formElement) {
++        formElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
++      }
++    }, 100);
+   };
+ 
+   const commitEducation = () => {
+@@ -177,7 +194,7 @@ const EducationSection: React.FC<EducationSectionProps> = ({
+           <div 
+             key={index} 
+             className={`group relative p-2 rounded bg-card border-2 transition-all duration-300 shadow-sm hover:shadow-sm cursor-pointer overflow-hidden ${editingEduIndex === index ? 'border-blue-500 ring-4 ring-blue-50' : 'border-border hover:border-blue-200'}`}
+-            onClick={() => setEditingEduIndex(index)}
++            onClick={() => handleSelectEdu(index)}
+           >
+             <div className="flex flex-col h-full pl-3 mt-1">
+               {/* Header */}
+@@ -226,7 +243,7 @@ const EducationSection: React.FC<EducationSectionProps> = ({
+                   type="button"
+                   onClick={(e) => {
+                     e.stopPropagation();
+-                    setEditingEduIndex(index);
++                    handleSelectEdu(index);
+                   }}
+                   className="p-1.5 text-muted-foreground hover:text-primaryhover:bg-blue-50 rounded transition-all"
+                 >
+@@ -261,7 +278,7 @@ const EducationSection: React.FC<EducationSectionProps> = ({
+             const isSchooling = ["10th Standard / SSLC", "12th Standard / HSC"].includes(currentEdu.level);
+ 
+             return (
+-              <div className="p-6 bg-card rounded border border-border shadow-sm">
++              <div id="education-edit-form" className="p-6 bg-card rounded border border-border shadow-sm scroll-mt-24">
+                 <div className="flex items-center justify-between mb-6">
+                   <div className="flex items-center gap-3">
+                     <div className="w-10 h-10 bg-blue-50 rounded flex items-center justify-center text-blue-600">
+diff --git a/src/features/employees/components/EmploymentSection.tsx b/src/features/employees/components/EmploymentSection.tsx
+index 75f31c9..d046813 100644
+--- a/src/features/employees/components/EmploymentSection.tsx
++++ b/src/features/employees/components/EmploymentSection.tsx
+@@ -54,12 +54,29 @@ const EmploymentSection: React.FC<EmploymentSectionProps> = ({
+     return "";
+   };
+ 
++  const handleSelectEmp = (index: number) => {
++    setEditingEmpIndex(index);
++    setIsAddingEmp(false);
++    setTimeout(() => {
++      const formElement = document.getElementById('employment-edit-form');
++      if (formElement) {
++        formElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
++      }
++    }, 100);
++  };
++
+   const addEmployment = () => {
+     setIsAddingEmp(true);
+     setEditingEmpIndex(null);
+     setPendingEmpRecord({
+       company: "", position: "", startDate: "", endDate: "", currentlyWorking: false, responsibilities: "", reasonForLeaving: ""
+     });
++    setTimeout(() => {
++      const formElement = document.getElementById('employment-edit-form');
++      if (formElement) {
++        formElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
++      }
++    }, 100);
+   };
+ 
+   const commitEmployment = () => {
+@@ -140,7 +157,7 @@ const EmploymentSection: React.FC<EmploymentSectionProps> = ({
+           <div 
+             key={index} 
+             className="group relative p-2 rounded bg-card border-2 border-blue-500 shadow-sm ring-1 ring-blue-50 cursor-pointer overflow-hidden transition-all duration-300"
+-            onClick={() => setEditingEmpIndex(index)}
++            onClick={() => handleSelectEmp(index)}
+           >
+             <div className="flex flex-col h-full pl-3 mt-1">
+               {/* Header */}
+@@ -183,7 +200,7 @@ const EmploymentSection: React.FC<EmploymentSectionProps> = ({
+                   type="button"
+                   onClick={(e) => {
+                     e.stopPropagation();
+-                    setEditingEmpIndex(index);
++                    handleSelectEmp(index);
+                   }}
+                   className={`p-2 transition-all duration-300 ${
+                     editingEmpIndex === index 
+@@ -224,7 +241,7 @@ const EmploymentSection: React.FC<EmploymentSectionProps> = ({
+             const prefix = isEditMode ? `emp_${currentIndex}` : "emp_new";
+ 
+             return (
+-              <div className="p-4 bg-muted rounded border border-border">
++              <div id="employment-edit-form" className="p-4 bg-muted rounded border border-border scroll-mt-24">
+                 <div className="flex items-center justify-between mb-3">
+                   <div className="flex items-center gap-2">
+                     <Briefcase className="w-5 h-5 text-muted-foreground" />
+diff --git a/src/features/employees/pages/AddEmployee.tsx b/src/features/employees/pages/AddEmployee.tsx
+index 0c56fd7..3a76f7e 100644
+--- a/src/features/employees/pages/AddEmployee.tsx
++++ b/src/features/employees/pages/AddEmployee.tsx
+@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
+ import { useOrgNavigate } from '@/shared/hooks/useOrgNavigate';
+ import { useParams } from "react-router-dom";
+ import { capitalizeFirstLetter, toTitleCase } from '@/shared/utils/stringUtils';
+-import { ArrowLeft, Trash2, PlusCircle, Loader2, Check, Upload, User as UserIcon, Briefcase, GraduationCap, Award, Clock, FileText, Banknote, ShieldAlert, Phone } from "lucide-react";
++import { ArrowLeft, Trash2, PlusCircle, Loader2, Check, Upload, User as UserIcon, Briefcase, GraduationCap, Award, Clock, FileText, Banknote, ShieldAlert, Phone, AlertCircle } from "lucide-react";
+ import { Button } from '@/shared/components/ui/button';
+ import { getDepartments, getDepartmentManager } from '@/features/organization/services/departments';
+ import { getDesignations } from '@/features/organization/services/designations';
+@@ -101,7 +101,7 @@ export interface Education {
+   startDate: string;
+   endDate: string;
+   currentlyStudying?: boolean;
+-  grade: string;
++  grade?: string;
+   file?: File;
+   fileUrl?: string; // For existing records
+ }
+@@ -154,10 +154,12 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+   const location = useLocation();
+   const { id: paramId } = useParams();
+   const id = drawerId || paramId;
++  const [createdEmployeeId, setCreatedEmployeeId] = useState<number | null>(null);
++  const activeEmployeeId = id ? Number(id) : createdEmployeeId;
+   const { user } = useAuth();
+   const isSuperAdmin = user?.role === UserRole.SUPER_ADMIN;
+   const isEmployee = user?.role === UserRole.EMPLOYEE || (typeof user?.role === 'string' && user.role.toLowerCase() === 'employee');
+-  const isEdit = !!id;
++  const isEdit = !!activeEmployeeId;
+   const { can } = usePermissions();
+   const canManagePayroll = can(Permission.MANAGE_PAYROLL);
+   const [isSavingDraft, setIsSavingDraft] = useState(false);
+@@ -260,7 +262,11 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+   const [banksList, setBanksList] = useState<Bank[]>([]);
+ 
+   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+-  const [educationHistory, setEducationHistory] = useState<Education[]>([]);
++  const [educationHistory, setEducationHistory] = useState<Education[]>([
++    { level: "10th", institution: "", degree: "10th (Secondary)", fieldOfStudy: "General", startDate: "", endDate: "" },
++    { level: "12th", institution: "", degree: "12th / Diploma", fieldOfStudy: "", startDate: "", endDate: "" },
++    { level: "Undergraduate (UG)", institution: "", degree: "Bachelor's Degree", fieldOfStudy: "", startDate: "", endDate: "" }
++  ]);
+   const [employmentHistory, setEmploymentHistory] = useState<Employment[]>([]);
+   const [compensationSplits, setCompensationSplits] = useState<CompensationSplit[]>([
+     { componentType: "Basic Pay", amount: "", frequency: "Monthly" },
+@@ -384,20 +390,20 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+       case "job":
+         return !!(formData.department && formData.teamId && formData.employeeType && formData.startDate && (formData.location || formData.branchId) && formData.role && formData.designationId);
+       case "personal":
+-        const isBasicValid = !!(formData.firstName && formData.lastName && formData.dateOfBirth && formData.gender && formData.nationality);
++        const isBasicValid = !!(formData.firstName && formData.lastName && formData.dateOfBirth && formData.gender);
+         const isContactValid = !!(formData.primaryEmail && formData.primaryPhone && formData.primaryAddress && formData.primaryCity && formData.primaryState && formData.primaryZip && formData.primaryCountry) && !duplicateFlags.email && !duplicateFlags.phone;
+         const isEmergencyValid = !!(formData.emergencyContactName && formData.emergencyContactRelationship && formData.emergencyContactPhone);
+         return isBasicValid && isContactValid && isEmergencyValid;
+       case "compensation":
+-        const isCompValid = !!(formData.baseSalary && compensationSplits.length > 0 && !isCompensationMismatch);
++        const isCompValid = !!(formData.baseSalary && compensationSplits.length > 0);
+         const isBankValid = !!(formData.bankName && formData.branchName && formData.accountHolderName && formData.accountNumber && formData.ifscCode);
+         return isCompValid && isBankValid;
+       case "family":
+         // Family is optional, but if any entry is present, it should be valid
+         return familyMembers.every(m => !!(m.name && m.relationship && m.phone && m.dateOfBirth));
+       case "education":
+-        // Required minimum 1 education entry
+-        if (educationHistory.length < 1) return false;
++        // Required minimum 3 education entries (10th, 12th/Diploma, and 1st Degree)
++        if (educationHistory.length < 3) return false;
+         return educationHistory.every(edu => {
+           const isHigherEd = ["Diploma", "Undergraduate (UG)", "Postgraduate (PG)", "Doctorate (PhD)"].includes(edu.level);
+           const basicValid = !!(edu.level && edu.institution && edu.startDate && (edu.currentlyStudying || edu.endDate));
+@@ -409,9 +415,15 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+       case "employment":
+         // Optional history, but if present must be valid
+         return employmentHistory.every(emp => !!(emp.company && emp.position && emp.startDate && (emp.currentlyWorking || (emp.endDate && emp.reasonForLeaving)) && (emp.file || emp.fileUrl)));
+-      case "documents":
+-        // Identity & Legal Documents: Temporarily enabled Next button
+-        return true;
++      case "documents": {
++        const isIndia = formData?.primaryCountry === 'India';
++        const hasPassport = !!(formData.passportNumber && formData.passportExpiry && passportFile);
++        const hasLicense = !!(formData.drivingLicense && formData.licenseExpiry && dlFile);
++        const hasTaxId = !!(formData.panNumber && panFile);
++        const hasAadhaar = isIndia ? !!(formData.aadhaarNumber && aadhaarFile) : true;
++        const hasResume = !!resumeFile;
++        return hasPassport && hasLicense && hasTaxId && hasAadhaar && hasResume;
++      }
+       default:
+         return true;
+     }
+@@ -932,7 +944,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+ 
+       case "personal": {
+         const personalFields = [
+-          "firstName", "lastName", "middleName", "dateOfBirth", "gender", "nationality"
++          "firstName", "lastName", "middleName", "dateOfBirth", "gender"
+         ];
+         personalFields.forEach(field => {
+           const err = validateField(field, (formData as any)[field], true, true);
+@@ -994,8 +1006,8 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+         break;
+ 
+       case "education": {
+-        if (educationHistory.length < 1) {
+-          errors.education = "Please add at least 1 education detail";
++        if (educationHistory.length < 3) {
++          errors.education = "Minimum 3 education records are required (10th, 12th/Diploma, and 1st Degree).";
+         }
+         educationHistory.forEach((edu, index) => {
+           const isHigherEd = ["Diploma", "Undergraduate (UG)", "Postgraduate (PG)", "Doctorate (PhD)"].includes(edu.level);
+@@ -1023,9 +1035,25 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+         break;
+       }
+ 
+-      case "documents":
+-        // Temporarily allowing next step without validation
++      case "documents": {
++        const isIndia = formData?.primaryCountry === 'India';
++        if (!formData.passportNumber) errors.passportNumber = "Passport Number is required";
++        if (!formData.passportExpiry) errors.passportExpiry = "Passport Expiry Date is required";
++        if (!formData.drivingLicense) errors.drivingLicense = "License Number is required";
++        if (!formData.licenseExpiry) errors.licenseExpiry = "License Expiry Date is required";
++        if (!formData.panNumber) errors.panNumber = `${isIndia ? 'PAN' : 'Tax ID'} Number is required`;
++        if (isIndia && !formData.aadhaarNumber) errors.aadhaarNumber = "Aadhaar Number is required";
++
++        const docFields = ["passportNumber", "passportExpiry", "drivingLicense", "licenseExpiry", "panNumber", "aadhaarNumber"];
++        docFields.forEach(field => {
++          const val = (formData as any)[field];
++          if (val) {
++            const err = validateField(field, val, true, true);
++            if (err) errors[field] = err;
++          }
++        });
+         break;
++      }
+ 
+       default:
+         break;
+@@ -1099,9 +1127,140 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+     }
+   };
+ 
++  const currentMissingFields = useMemo(() => {
++    const missing: string[] = [];
++
++    switch (activeSection) {
++      case "personal":
++        if (!formData.firstName) missing.push("First Name");
++        if (!formData.lastName) missing.push("Last Name");
++        if (!formData.dateOfBirth) missing.push("Date of Birth");
++        if (!formData.gender) missing.push("Gender");
++        if (!formData.primaryEmail) missing.push("Primary Email");
++        if (!formData.primaryPhone) missing.push("Primary Phone");
++        if (!formData.primaryAddress) missing.push("Street Address");
++        if (!formData.primaryCity) missing.push("City");
++        if (!formData.primaryState) missing.push("State");
++        if (!formData.primaryZip) missing.push("ZIP Code");
++        if (!formData.primaryCountry) missing.push("Country");
++        if (!formData.emergencyContactName) missing.push("Emergency Contact Name");
++        if (!formData.emergencyContactRelationship) missing.push("Emergency Contact Relationship");
++        if (!formData.emergencyContactPhone) missing.push("Emergency Contact Phone");
++        if (duplicateFlags.email) missing.push("Email (already in use)");
++        if (duplicateFlags.phone) missing.push("Phone (already in use)");
++        break;
++
++      case "job":
++        if (!formData.department) missing.push("Department");
++        if (!formData.employeeType) missing.push("Employment Type");
++        if (!formData.startDate) missing.push("Start Date");
++        if (!formData.location && !formData.branchId) missing.push("Work Location");
++        if (!formData.role) missing.push("Role");
++        if (!formData.designationId) missing.push("Designation");
++        break;
++
++      case "education":
++        if (educationHistory.length < 3) {
++          missing.push(`3 Education Records required (currently ${educationHistory.length}/3: 10th, 12th/Diploma, and 1st Degree)`);
++        }
++        educationHistory.forEach((edu, index) => {
++          const levelName = edu.level || `Record #${index + 1}`;
++          if (!edu.institution) missing.push(`Institution (${levelName})`);
++          if (!edu.startDate) missing.push(`Start Date (${levelName})`);
++          const isHigherEd = ["Diploma", "Undergraduate (UG)", "Postgraduate (PG)", "Doctorate (PhD)"].includes(edu.level);
++          if (isHigherEd) {
++            if (!edu.degree) missing.push(`Degree (${levelName})`);
++            if (!edu.fieldOfStudy) missing.push(`Field of Study (${levelName})`);
++          }
++          if (!edu.currentlyStudying && !edu.endDate) missing.push(`End Date (${levelName})`);
++        });
++        break;
++
++      case "employment":
++        employmentHistory.forEach((emp, index) => {
++          const numStr = employmentHistory.length > 1 ? ` #${index + 1}` : "";
++          if (!emp.company) missing.push(`Company${numStr}`);
++          if (!emp.position) missing.push(`Position${numStr}`);
++          if (!emp.startDate) missing.push(`Start Date${numStr}`);
++          if (!emp.currentlyWorking && !emp.endDate) missing.push(`End Date${numStr}`);
++        });
++        break;
++
++      case "documents": {
++        const isIndia = formData?.primaryCountry === 'India';
++        const taxLabel = isIndia ? "PAN Number" : "Tax ID / SSN Number";
++
++        if (!formData.passportNumber) missing.push("Passport Number");
++        if (!formData.passportExpiry) missing.push("Passport Expiry Date");
++        if (!passportFile) missing.push("Passport Copy Document");
++
++        if (!formData.drivingLicense) missing.push("Driving License Number");
++        if (!formData.licenseExpiry) missing.push("Driving License Expiry Date");
++        if (!dlFile) missing.push("Driving License Copy Document");
++
++        if (!formData.panNumber) missing.push(taxLabel);
++        if (!panFile) missing.push(`${taxLabel} Document`);
++
++        if (isIndia) {
++          if (!formData.aadhaarNumber) missing.push("Aadhaar Number");
++          if (!aadhaarFile) missing.push("Aadhaar Card Document");
++        }
++
++        if (!resumeFile) missing.push("Resume Document");
++
++        const docChecks: { field: string; label: string }[] = [
++          { field: "passportNumber", label: "Passport Number" },
++          { field: "drivingLicense", label: "Driving License Number" },
++          { field: "panNumber", label: taxLabel },
++          { field: "aadhaarNumber", label: "Aadhaar Number" },
++        ];
++        docChecks.forEach(({ field, label }) => {
++          const val = (formData as any)[field];
++          if (val) {
++            const err = validateField(field, val, true, true);
++            if (err) missing.push(`${label} (${err})`);
++          }
++        });
++        break;
++      }
++
++      case "compensation":
++        if (!formData.baseSalary) missing.push("Base Salary");
++        if (compensationSplits.length === 0) missing.push("Salary Components");
++        if (!formData.bankName) missing.push("Bank Name");
++        if (!formData.branchName) missing.push("Bank Branch Name");
++        if (!formData.accountHolderName) missing.push("Account Holder Name");
++        if (!formData.accountNumber) missing.push("Account Number");
++        if (!formData.ifscCode) missing.push("IFSC Code");
++        break;
++
++      default:
++        break;
++    }
++
++    return missing;
++  }, [
++    activeSection,
++    formData,
++    familyMembers,
++    educationHistory,
++    employmentHistory,
++    compensationSplits,
++    isCompensationMismatch,
++    duplicateFlags
++  ]);
++
++  const isCurrentSectionValid = currentMissingFields.length === 0;
++
+   const handleNext = async (e?: React.MouseEvent) => {
+     if (e) e.preventDefault();
+ 
++    if (!isCurrentSectionValid) {
++      validateSection(activeSection);
++      toast.error(`Please fill required fields: ${currentMissingFields.join(", ")}`);
++      return;
++    }
++
+     const nextStep = sections[currentStepIndex + 1];
+     if (nextStep) {
+       setActiveSection(nextStep.id);
+@@ -1119,7 +1278,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+   };
+ 
+ 
+-  const validateField = (name: string, value: any, isBlur: boolean = false, hasError: boolean = false): string => {
++  function validateField(name: string, value: any, isBlur: boolean = false, hasError: boolean = false): string {
+     let fieldCategory = name;
+     if (name.startsWith("family_")) {
+       fieldCategory = `family_${name.split("_")[2]}`; // family_name
+@@ -1131,7 +1290,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+ 
+     // Basic required validation based on asterisk fields in UI
+     const requiredFields = [
+-      "firstName", "lastName", "dateOfBirth", "gender", "nationality",
++      "firstName", "lastName", "dateOfBirth", "gender",
+       "primaryEmail", "primaryPhone", "primaryAddress", "primaryCity", "primaryState",
+       "primaryZip", "primaryCountry", "emergencyContactName",
+       "emergencyContactRelationship", "emergencyContactPhone", "department",
+@@ -1171,7 +1330,6 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+           if (name === "firstName") return "Please enter first name";
+           if (name === "lastName") return "Please enter last name";
+           if (name === "dateOfBirth") return "Please select date of birth";
+-          if (name === "nationality") return "Please select nationality";
+           if (name === "primaryEmail") return "Please enter email address";
+           if (name === "primaryPhone") return "Please enter phone number";
+           if (name === "primaryAddress") return "Please enter street address";
+@@ -1221,7 +1379,9 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+       if (!/^[A-Za-z\s]+$/.test(value)) return "Invalid nationality format";
+     }
+     if ((name === "primaryPhone" || name === "secondaryPhone" || name === "emergencyContactPhone" || fieldCategory === "family_phone") && value) {
+-      if (!/^\d+$/.test(value)) return (name === "primaryPhone" || name === "emergencyContactPhone" || fieldCategory === "family_phone") ? "Enter valid 10-digit phone number" : "Enter valid phone number";
++      const cleanVal = String(value).trim();
++      const digits = cleanVal.replace(/\D/g, "");
++      if (!/^\+?[\d\s\-()]+$/.test(cleanVal) || digits.length < 7 || digits.length > 15) return "Enter valid phone number (7–15 digits)";
+     }
+     if ((name === "primaryZip" || name === "secondaryZip") && value) {
+       if (!/^\d+$/.test(value)) return "Must be 5â€“6 digits";
+@@ -1311,23 +1471,13 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+         if (!emailPattern.test(value)) return name === "primaryEmail" ? "Enter a valid email address" : "Enter valid email address";
+       }
+ 
+-      if (name === "primaryPhone" && value) {
+-        const digits = value.replace(/\D/g, "");
+-        if (digits.length !== 10) return "Enter valid 10-digit phone number";
+-      }
+-
+-      if (name === "secondaryPhone" && value) {
+-        const digits = value.replace(/\D/g, "");
+-        if (digits.length < 10) return "Enter valid phone number";
++      if ((name === "primaryPhone" || name === "secondaryPhone" || name === "emergencyContactPhone" || fieldCategory === "family_phone") && value) {
++        const digits = String(value).replace(/\D/g, "");
++        if (digits.length < 7 || digits.length > 15) return "Enter valid phone number (7–15 digits)";
+       }
+ 
+       if ((name === "primaryZip" || name === "secondaryZip") && value) {
+-        if (value.length < 5 || value.length > 6) return "Must be 5â€“6 digits";
+-      }
+-
+-      if ((name === "emergencyContactPhone" || fieldCategory === "family_phone") && value) {
+-        const digits = value.replace(/\D/g, "");
+-        if (digits.length !== 10) return "Enter valid 10-digit phone number";
++        if (value.length < 5 || value.length > 6) return "Must be 5–6 digits";
+       }
+ 
+       if (name === "accountNumber" && value) {
+@@ -1497,7 +1647,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+       blood_group: formData.bloodGroup || null,
+       
+       email: formData.primaryEmail,
+-      status: formData.status === undefined ? true : formData.status,
++      status: !isDraftValue,
+       is_draft: isDraftValue,
+       
+       // Contact
+@@ -1696,14 +1846,15 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+     setIsSavingDraft(true);
+     try {
+       const payload = buildPayloadFormData(true);
+-      if (id) {
+-        await updateEmployee(Number(id), payload as any);
++      if (activeEmployeeId) {
++        await updateEmployee(activeEmployeeId, payload as any);
+         toast.success("Draft updated successfully");
+       } else {
+         const response = await createEmployee(payload as any);
+         toast.success("Draft saved successfully");
+         if (response?.id) {
+-          navigate(`/employee-management/edit-employee/${response.id}`);
++          setCreatedEmployeeId(response.id);
++          navigate(`/employee-management/edit-employee/${response.id}`, { replace: true });
+         }
+       }
+       if (redirect) {
+@@ -1712,7 +1863,12 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+       }
+       return true;
+     } catch (err: any) {
+-      toast.error(err.message || "Failed to save draft");
++      const msg = err?.message || "Failed to save draft";
++      if (typeof msg === "string" && msg.includes("\n")) {
++        msg.split("\n").filter(Boolean).forEach((m: string) => toast.error(m));
++      } else {
++        toast.error(msg);
++      }
+       return false;
+     } finally {
+       setIsSavingDraft(false);
+@@ -1733,8 +1889,8 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+     setIsSubmitting(true);
+     try {
+       const payload = buildPayloadFormData(false);
+-      if (id) {
+-        await updateEmployee(Number(id), payload as any);
++      if (activeEmployeeId) {
++        await updateEmployee(activeEmployeeId, payload as any);
+         toast.success("Employee updated successfully");
+       } else {
+         await createEmployee(payload as any);
+@@ -1743,7 +1899,12 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+       setOriginalData(null);
+       closeEditor();
+     } catch (err: any) {
+-      toast.error(err.message || "Failed to save employee");
++      const msg = err?.message || "Failed to save employee";
++      if (typeof msg === "string" && msg.includes("\n")) {
++        msg.split("\n").filter(Boolean).forEach((m: string) => toast.error(m));
++      } else {
++        toast.error(msg);
++      }
+     } finally {
+       setIsSubmitting(false);
+     }
+@@ -1802,6 +1963,38 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+ 
+               {/* Main Content Area */}
+               <div className="flex-1 p-6 sm:p-8 lg:p-10">
++                {!isCurrentSectionValid && (
++                  <div className="mb-6 p-4 rounded-xl bg-amber-50/90 border border-amber-200 shadow-sm flex items-start gap-3.5 animate-in fade-in slide-in-from-top-2 duration-200">
++                    <div className="p-2 rounded-lg bg-amber-100/80 text-amber-700 flex-shrink-0 mt-0.5">
++                      <AlertCircle className="w-5 h-5 text-amber-700" />
++                    </div>
++                    <div className="flex-1">
++                      <div className="flex items-center justify-between">
++                        <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider">
++                          Required Fields Missing in {activeSectionMeta.label}
++                        </h4>
++                        <span className="text-[11px] font-semibold text-amber-700 bg-amber-200/60 px-2 py-0.5 rounded-full">
++                          {currentMissingFields.length} {currentMissingFields.length === 1 ? 'field' : 'fields'} remaining
++                        </span>
++                      </div>
++                      <p className="text-xs text-amber-800 mt-1 leading-relaxed">
++                        Please fill out the following mandatory fields to proceed:
++                      </p>
++                      <div className="mt-2.5 flex flex-wrap gap-1.5">
++                        {currentMissingFields.map((fieldName, idx) => (
++                          <span
++                            key={idx}
++                            className="inline-flex items-center gap-1.5 text-xs font-medium bg-white text-amber-900 border border-amber-300/70 px-2.5 py-1 rounded-md shadow-2xs"
++                          >
++                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
++                            {fieldName}
++                          </span>
++                        ))}
++                      </div>
++                    </div>
++                  </div>
++                )}
++
+                 {(activeSection === "personal") && (
+                   <div id="personal" className="animate-in fade-in slide-in-from-left-2 duration-300 space-y-8 scroll-mt-24">
+ 
+@@ -1945,22 +2138,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+                           ]}
+                         />
+                       </div>
+-                      <div>
+-                        <label className="block text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+-                          Nationality <span className="text-red-500">*</span>
+-                        </label>
+-                        <input
+-                          type="text"
+-                          name="nationality"
+-                          value={formData.nationality}
+-                          onChange={handleInputChange}
+-                          onBlur={handleInputChange}
+-                          disabled={isFieldRestricted || shouldRestrictFields}
+-                          className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${(isFieldRestricted || shouldRestrictFields) ? 'bg-muted border-border text-muted-foreground cursor-not-allowed appearance-none' : (formErrors.nationality ? 'border-red-500' : 'border-border')}`}
+-                          placeholder="Enter Nationality"
+-                        />
+-                        {formErrors.nationality && <p className="text-xs text-red-500 mt-1">{formErrors.nationality}</p>}
+-                      </div>
++
+                       <div>
+                         <Select
+                           value={formData.maritalStatus}
+@@ -2084,6 +2262,57 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+                           />
+                           {formErrors.primaryAddress && <p className="text-xs text-red-500 mt-1">{formErrors.primaryAddress}</p>}
+                         </div>
++                        <div>
++                          {formData.primaryCountry === 'India' ? (
++                            <Select
++                              value={formData.primaryState}
++                              onChange={(val: string) => {
++                                updateField("primaryState", val);
++                                updateField("primaryCity", ""); // Reset city on state change
++                              }}
++                              label="State"
++                              required
++                              error={formErrors.primaryState}
++                              placeholder="Select State"
++                              disabled={isFieldRestricted || shouldRestrictFields}
++                              options={indianStates.map(state => ({ value: state, label: state }))}
++                            />
++                          ) : formData.primaryCountry === 'United States' || formData.primaryCountry === 'USA' ? (
++                            <Select
++                              value={formData.primaryState}
++                              onChange={(val: string) => {
++                                updateField("primaryState", val);
++                                updateField("primaryCity", ""); // Reset city on state change
++                              }}
++                              label="State"
++                              required
++                              error={formErrors.primaryState}
++                              placeholder="Select State"
++                              disabled={isFieldRestricted || shouldRestrictFields}
++                              options={usStates.map(state => ({ value: state, label: state }))}
++                            />
++                          ) : (
++                            <>
++                              <label className="block text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
++                                {(() => {
++                                  const c = formData.primaryCountry;
++                                  return c === 'Tanzania' ? 'Region' : c === 'United Kingdom' ? 'County' : 'State/Province';
++                                })()} <span className="text-red-500">*</span>
++                              </label>
++                              <input
++                                type="text"
++                                name="primaryState"
++                                value={formData.primaryState}
++                                onChange={handleInputChange}
++                                onBlur={handleInputChange}
++                                disabled={isFieldRestricted || shouldRestrictFields}
++                                className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-4 transition-all duration-200 hover:border-blue-300/80 hover:bg-blue-50/20 focus:bg-transparent shadow-sm ${formErrors.primaryState ? 'border-red-500 focus:ring-red-500/10 focus:border-red-500 bg-red-50/30 text-red-900' : 'border-slate-200 focus:ring-blue-500/10 focus:border-blue-500 hover:border-blue-400'}`}
++                                placeholder={`Enter State/Province`}
++                              />
++                              {formErrors.primaryState && <p className="text-xs text-red-500 mt-1">{formErrors.primaryState}</p>}
++                            </>
++                          )}
++                        </div>
+                         <div>
+                           {(() => {
+                             const state = formData.primaryState;
+@@ -2096,9 +2325,9 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+                                 {showCitySelect ? (
+                                   <div className="space-y-2">
+                                     <Select
+-                                      value={isCustomCity ? "Other" : formData.primaryCity}
++                                      value={isCustomCity || formData.primaryCity === "Other" ? "Other" : formData.primaryCity}
+                                       onChange={(val: string) => {
+-                                        updateField("primaryCity", val === "Other" ? "" : val);
++                                        updateField("primaryCity", val);
+                                       }}
+                                       label="City"
+                                       required
+@@ -2110,7 +2339,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+                                         { value: "Other", label: "Other (Enter Manually)" }
+                                       ]}
+                                     />
+-                                    {(isCustomCity || formData.primaryCity === "Other" || (formData.primaryCity === "" && !shouldRestrictFields)) ? (
++                                    {(isCustomCity || formData.primaryCity === "Other") ? (
+                                       <div className="mt-2 animate-in fade-in slide-in-from-top-1">
+                                         <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                           Specify City Name <span className="text-red-500">*</span>
+@@ -2118,7 +2347,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+                                         <input
+                                           type="text"
+                                           name="primaryCity"
+-                                          value={isCustomCity ? formData.primaryCity : ""}
++                                          value={formData.primaryCity === "Other" ? "" : formData.primaryCity}
+                                           onChange={handleInputChange}
+                                           onBlur={handleInputChange}
+                                           disabled={isFieldRestricted || shouldRestrictFields}
+@@ -2151,55 +2380,21 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+                           })()}
+                         </div>
+                         <div>
+-                          {formData.primaryCountry === 'India' ? (
+-                            <Select
+-                              value={formData.primaryState}
+-                              onChange={(val: string) => {
+-                                updateField("primaryState", val);
+-                                updateField("primaryCity", ""); // Reset city on state change
+-                              }}
+-                              label="State"
+-                              required
+-                              error={formErrors.primaryState}
+-                              placeholder="Select State"
+-                              disabled={isFieldRestricted || shouldRestrictFields}
+-                              options={indianStates.map(state => ({ value: state, label: state }))}
+-                            />
+-                          ) : formData.primaryCountry === 'United States' || formData.primaryCountry === 'USA' ? (
+-                            <Select
+-                              value={formData.primaryState}
+-                              onChange={(val: string) => {
+-                                updateField("primaryState", val);
+-                                updateField("primaryCity", ""); // Reset city on state change
+-                              }}
+-                              label="State"
+-                              required
+-                              error={formErrors.primaryState}
+-                              placeholder="Select State"
+-                              disabled={isFieldRestricted || shouldRestrictFields}
+-                              options={usStates.map(state => ({ value: state, label: state }))}
+-                            />
+-                          ) : (
+-                            <>
+-                              <label className="block text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+-                                {(() => {
+-                                  const c = formData.primaryCountry;
+-                                  return c === 'Tanzania' ? 'Region' : c === 'United Kingdom' ? 'County' : 'State/Province';
+-                                })()} <span className="text-red-500">*</span>
+-                              </label>
+-                              <input
+-                                type="text"
+-                                name="primaryState"
+-                                value={formData.primaryState}
+-                                onChange={handleInputChange}
+-                                onBlur={handleInputChange}
+-                                disabled={isFieldRestricted || shouldRestrictFields}
+-                                className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-4 transition-all duration-200 hover:border-blue-300/80 hover:bg-blue-50/20 focus:bg-transparent shadow-sm ${formErrors.primaryState ? 'border-red-500 focus:ring-red-500/10 focus:border-red-500 bg-red-50/30 text-red-900' : 'border-slate-200 focus:ring-blue-500/10 focus:border-blue-500 hover:border-blue-400'}`}
+-                                placeholder={`Enter State/Province`}
+-                              />
+-                              {formErrors.primaryState && <p className="text-xs text-red-500 mt-1">{formErrors.primaryState}</p>}
+-                            </>
+-                          )}
++                          <Select
++                            value={formData.primaryCountry}
++                            onChange={(val) => updateField("primaryCountry", val)}
++                            label="Country"
++                            required
++                            error={formErrors.primaryCountry}
++                            placeholder="Select Country"
++                            options={[
++                              "India", "United States", "United Kingdom", "United Arab Emirates",
++                              "Singapore", "Canada", "Australia", "Germany", "France",
++                              "Netherlands", "Saudi Arabia", "South Africa", "Japan",
++                              "China", "Brazil", "Mexico", "Italy", "Spain", "Malaysia", "Indonesia",
++                              "Israel", "Ireland", "New Zealand", "Tanzania", "Kenya", "Nigeria", "Other"
++                            ].map(c => ({ value: c, label: c }))}
++                          />
+                         </div>
+                         <div>
+                           <label className="block text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+@@ -2222,23 +2417,6 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+                           />
+                           {formErrors.primaryZip && <p className="text-xs text-red-500 mt-1">{formErrors.primaryZip}</p>}
+                         </div>
+-                        <div>
+-                          <Select
+-                            value={formData.primaryCountry}
+-                            onChange={(val) => updateField("primaryCountry", val)}
+-                            label="Country"
+-                            required
+-                            error={formErrors.primaryCountry}
+-                            placeholder="Select Country"
+-                            options={[
+-                              "India", "United States", "United Kingdom", "United Arab Emirates",
+-                              "Singapore", "Canada", "Australia", "Germany", "France",
+-                              "Netherlands", "Saudi Arabia", "South Africa", "Japan",
+-                              "China", "Brazil", "Mexico", "Italy", "Spain", "Malaysia", "Indonesia",
+-                              "Israel", "Ireland", "New Zealand", "Tanzania", "Kenya", "Nigeria", "Other"
+-                            ].map(c => ({ value: c, label: c }))}
+-                          />
+-                        </div>
+                       </div>
+                     </div>
+ 
+@@ -2292,6 +2470,52 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+                             placeholder="Enter Street Address"
+                           />
+                         </div>
++                        <div>
++                          {formData.secondaryCountry === 'India' ? (
++                            <Select
++                              value={formData.secondaryState}
++                              onChange={(val: string) => {
++                                updateField("secondaryState", val);
++                                updateField("secondaryCity", ""); // Reset city on state change
++                              }}
++                              label="State"
++                              error={formErrors.secondaryState}
++                              placeholder="Select State"
++                              options={indianStates.map(state => ({ value: state, label: state }))}
++                            />
++                          ) : formData.secondaryCountry === 'United States' || formData.secondaryCountry === 'USA' ? (
++                            <Select
++                              value={formData.secondaryState}
++                              onChange={(val: string) => {
++                                updateField("secondaryState", val);
++                                updateField("secondaryCity", ""); // Reset city on state change
++                              }}
++                              label="State"
++                              error={formErrors.secondaryState}
++                              placeholder="Select State"
++                              options={usStates.map(state => ({ value: state, label: state }))}
++                            />
++                          ) : (
++                            <>
++                              <label className="block text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
++                                {(() => {
++                                  const c = formData.secondaryCountry;
++                                  return c === 'Tanzania' ? 'Region' : c === 'United Kingdom' ? 'County' : 'State/Province';
++                                })()}
++                              </label>
++                              <input
++                                type="text"
++                                name="secondaryState"
++                                value={formData.secondaryState}
++                                onChange={handleInputChange}
++                                onBlur={handleInputChange}
++                                className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-4 transition-all duration-200 hover:border-blue-300/80 hover:bg-blue-50/20 focus:bg-transparent shadow-sm ${formErrors.secondaryState ? 'border-red-500 focus:ring-red-500/10 focus:border-red-500 bg-red-50/30 text-red-900' : 'border-slate-200 focus:ring-blue-500/10 focus:border-blue-500 hover:border-blue-400'}`}
++                                placeholder={`Enter State/Province`}
++                              />
++                              {formErrors.secondaryState && <p className="text-xs text-red-500 mt-1">{formErrors.secondaryState}</p>}
++                            </>
++                          )}
++                        </div>
+                         <div>
+                           {(() => {
+                             const state = formData.secondaryState;
+@@ -2304,9 +2528,9 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+                                 {showCitySelect ? (
+                                   <div className="space-y-2">
+                                     <Select
+-                                      value={isCustomCity ? "Other" : formData.secondaryCity}
++                                      value={isCustomCity || formData.secondaryCity === "Other" ? "Other" : formData.secondaryCity}
+                                       onChange={(val: string) => {
+-                                        updateField("secondaryCity", val === "Other" ? "" : val);
++                                        updateField("secondaryCity", val);
+                                       }}
+                                       label="City"
+                                       error={formErrors.secondaryCity}
+@@ -2316,7 +2540,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+                                         { value: "Other", label: "Other (Enter Manually)" }
+                                       ]}
+                                     />
+-                                    {(isCustomCity || formData.secondaryCity === "Other" || formData.secondaryCity === "") ? (
++                                    {(isCustomCity || formData.secondaryCity === "Other") ? (
+                                       <div className="mt-2 animate-in fade-in slide-in-from-top-1">
+                                         <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                           Specify City Name
+@@ -2324,7 +2548,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+                                         <input
+                                           type="text"
+                                           name="secondaryCity"
+-                                          value={isCustomCity ? formData.secondaryCity : ""}
++                                          value={formData.secondaryCity === "Other" ? "" : formData.secondaryCity}
+                                           onChange={handleInputChange}
+                                           onBlur={handleInputChange}
+                                           className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-4 transition-all duration-200 hover:border-blue-300/80 hover:bg-blue-50/20 focus:bg-transparent shadow-sm ${formErrors.secondaryCity ? 'border-red-500 focus:ring-red-500/10 focus:border-red-500 bg-red-50/30 text-red-900' : 'border-slate-200 focus:ring-blue-500/10 focus:border-blue-500 hover:border-blue-400'}`}
+@@ -2355,50 +2579,20 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+                           })()}
+                         </div>
+                         <div>
+-                          {formData.secondaryCountry === 'India' ? (
+-                            <Select
+-                              value={formData.secondaryState}
+-                              onChange={(val: string) => {
+-                                updateField("secondaryState", val);
+-                                updateField("secondaryCity", ""); // Reset city on state change
+-                              }}
+-                              label="State"
+-                              error={formErrors.secondaryState}
+-                              placeholder="Select State"
+-                              options={indianStates.map(state => ({ value: state, label: state }))}
+-                            />
+-                          ) : formData.secondaryCountry === 'United States' || formData.secondaryCountry === 'USA' ? (
+-                            <Select
+-                              value={formData.secondaryState}
+-                              onChange={(val: string) => {
+-                                updateField("secondaryState", val);
+-                                updateField("secondaryCity", ""); // Reset city on state change
+-                              }}
+-                              label="State"
+-                              error={formErrors.secondaryState}
+-                              placeholder="Select State"
+-                              options={usStates.map(state => ({ value: state, label: state }))}
+-                            />
+-                          ) : (
+-                            <>
+-                              <label className="block text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+-                                {(() => {
+-                                  const c = formData.secondaryCountry;
+-                                  return c === 'Tanzania' ? 'Region' : c === 'United Kingdom' ? 'County' : 'State/Province';
+-                                })()}
+-                              </label>
+-                              <input
+-                                type="text"
+-                                name="secondaryState"
+-                                value={formData.secondaryState}
+-                                onChange={handleInputChange}
+-                                onBlur={handleInputChange}
+-                                className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-4 transition-all duration-200 hover:border-blue-300/80 hover:bg-blue-50/20 focus:bg-transparent shadow-sm ${formErrors.secondaryState ? 'border-red-500 focus:ring-red-500/10 focus:border-red-500 bg-red-50/30 text-red-900' : 'border-slate-200 focus:ring-blue-500/10 focus:border-blue-500 hover:border-blue-400'}`}
+-                                placeholder={`Enter State/Province`}
+-                              />
+-                              {formErrors.secondaryState && <p className="text-xs text-red-500 mt-1">{formErrors.secondaryState}</p>}
+-                            </>
+-                          )}
++                          <Select
++                            value={formData.secondaryCountry}
++                            onChange={(val) => updateField("secondaryCountry", val)}
++                            label="Country"
++                            error={formErrors.secondaryCountry}
++                            placeholder="Select Country"
++                            options={[
++                              "India", "United States", "United Kingdom", "United Arab Emirates",
++                              "Singapore", "Canada", "Australia", "Germany", "France",
++                              "Netherlands", "Saudi Arabia", "South Africa", "Japan",
++                              "China", "Brazil", "Mexico", "Italy", "Spain", "Malaysia", "Indonesia",
++                              "Israel", "Ireland", "New Zealand", "Tanzania", "Kenya", "Nigeria", "Other"
++                            ].map(c => ({ value: c, label: c }))}
++                          />
+                         </div>
+                         <div>
+                           <label className="block text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+@@ -2421,22 +2615,6 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+                           />
+                           {formErrors.secondaryZip && <p className="text-xs text-red-500 mt-1">{formErrors.secondaryZip}</p>}
+                         </div>
+-                        <div>
+-                          <Select
+-                            value={formData.secondaryCountry}
+-                            onChange={(val) => updateField("secondaryCountry", val)}
+-                            label="Country"
+-                            error={formErrors.secondaryCountry}
+-                            placeholder="Select Country"
+-                            options={[
+-                              "India", "United States", "United Kingdom", "United Arab Emirates",
+-                              "Singapore", "Canada", "Australia", "Germany", "France",
+-                              "Netherlands", "Saudi Arabia", "South Africa", "Japan",
+-                              "China", "Brazil", "Mexico", "Italy", "Spain", "Malaysia", "Indonesia",
+-                              "Israel", "Ireland", "New Zealand", "Tanzania", "Kenya", "Nigeria", "Other"
+-                            ].map(c => ({ value: c, label: c }))}
+-                          />
+-                        </div>
+                       </div>
+                     </div>
+                   </div>
+@@ -2723,13 +2901,13 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+                         <label className="block text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                           Start Date <span className="text-red-500">*</span>
+                         </label>
+-                        <input
+-                          type="date"
+-                          name="startDate"
++                        <ModernDatePicker
+                           value={formData.startDate}
+-                          onChange={handleInputChange}
+-                          onBlur={handleInputChange}
+-                          className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.startDate ? 'border-red-500' : 'border-border'}`} />
++                          onChange={(date) => updateField('startDate', date)}
++                          disabled={isFieldRestricted || shouldRestrictFields}
++                          error={!!formErrors.startDate}
++                          placeholder="Select Start Date"
++                        />
+                         {formErrors.startDate && <p className="text-xs text-red-500 mt-1">{formErrors.startDate}</p>}
+                       </div>
+                       <div>
+@@ -3125,8 +3303,12 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+                     <Button
+                       type="button"
+                       onClick={(e) => handleNext(e)}
+-                      disabled={isSubmitting}
+-                      className={`gap-2 min-w-[140px] h-10 bg-primary hover:bg-primary/70 shadow-sm font-semibold transition-all text-white ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}
++                      disabled={isSubmitting || !isCurrentSectionValid}
++                      className={`gap-2 min-w-[140px] h-10 shadow-sm font-semibold transition-all text-white ${
++                        !isCurrentSectionValid || isSubmitting
++                          ? "bg-slate-300 text-slate-500 cursor-not-allowed shadow-none hover:bg-slate-300"
++                          : "bg-primary hover:bg-primary/70 text-white"
++                      }`}
+                     >
+                       {isSubmitting ? (
+                         <Loader2 className="w-4 h-4 animate-spin" />
+@@ -3142,8 +3324,12 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }:
+                   {!isEdit && isLastStep && (
+                     <Button
+                       type="submit"
+-                      disabled={isSubmitting}
+-                      className="gap-2 min-w-[160px] h-10 bg-primary hover:bg-primary/70 shadow-sm font-bold transition-all text-white"
++                      disabled={isSubmitting || !isCurrentSectionValid}
++                      className={`gap-2 min-w-[160px] h-10 shadow-sm font-bold transition-all text-white ${
++                        !isCurrentSectionValid || isSubmitting
++                          ? "bg-slate-300 text-slate-500 cursor-not-allowed shadow-none hover:bg-slate-300"
++                          : "bg-primary hover:bg-primary/70 text-white"
++                      }`}
+                     >
+                       {isSubmitting ? (
+                         <Loader2 className="w-4 h-4 animate-spin" />
+diff --git a/src/features/employees/services/employees.ts b/src/features/employees/services/employees.ts
+index d7204c3..950d8c8 100644
+--- a/src/features/employees/services/employees.ts
++++ b/src/features/employees/services/employees.ts
+@@ -75,6 +75,41 @@ export const getEmployee = async (id: number): Promise<Employee> => {
+   }
+ };
+ 
++export const parseBackendError = (error: any, fallbackMessage: string): string => {
++  if (!error) return fallbackMessage;
++  if (typeof error === 'string') return error;
++
++  const data = error.response?.data || error;
++  if (!data) return fallbackMessage;
++  if (typeof data === 'string') return data;
++
++  const mainMessage = data.message || error.message;
++  const errors = data.errors || error.errors;
++
++  if (errors) {
++    if (Array.isArray(errors) && errors.length > 0) {
++      const fieldMessages = errors.map((e: any) => {
++        if (typeof e === 'string') return e;
++        if (e && typeof e === 'object' && e.message) {
++          const rawField = e.field ? String(e.field).replace(/^(body|query|params)\./, '') : '';
++          const cleanField = rawField ? rawField.replace(/_/g, ' ') : '';
++          return cleanField ? `${cleanField}: ${e.message}` : e.message;
++        }
++        return String(e);
++      });
++
++      if (!mainMessage || mainMessage.toLowerCase() === 'validation error') {
++        return fieldMessages.join('\n');
++      }
++      return `${mainMessage}: ${fieldMessages.join('\n')}`;
++    } else if (typeof errors === 'string') {
++      return errors;
++    }
++  }
++
++  return mainMessage || fallbackMessage;
++};
++
+ export const createEmployee = async (data: FormData | Record<string, any>): Promise<Employee> => {
+   try {
+     // Check if data is FormData
+@@ -89,7 +124,12 @@ export const createEmployee = async (data: FormData | Record<string, any>): Prom
+     });
+     return response.data.data;
+   } catch (error: any) {
+-    throw error.response?.data || { message: "Failed to create employee" };
++    const errorData = error.response?.data || error;
++    const formattedMsg = parseBackendError(error, "Failed to create employee");
++    throw {
++      ...(typeof errorData === 'object' ? errorData : {}),
++      message: formattedMsg,
++    };
+   }
+ };
+ 
+@@ -107,7 +147,12 @@ export const updateEmployee = async (id: number, data: FormData | Record<string,
+     });
+     return response.data.data;
+   } catch (error: any) {
+-    throw error.response?.data || { message: "Failed to update employee" };
++    const errorData = error.response?.data || error;
++    const formattedMsg = parseBackendError(error, "Failed to update employee");
++    throw {
++      ...(typeof errorData === 'object' ? errorData : {}),
++      message: formattedMsg,
++    };
+   }
+ };
+ 
+diff --git a/src/features/loans-advances/pages/LoansAdvancesSetup.tsx b/src/features/loans-advances/pages/LoansAdvancesSetup.tsx
+index 97185b9..df03428 100644
+--- a/src/features/loans-advances/pages/LoansAdvancesSetup.tsx
++++ b/src/features/loans-advances/pages/LoansAdvancesSetup.tsx
+@@ -1,3 +1,4 @@
++import { useParams, useSearchParams } from 'react-router-dom';
+ import { useCurrency } from "@/shared/hooks/useCurrency";
+ import React, { useState, useEffect, useMemo } from 'react';
+ import { createPortal } from 'react-dom';
+@@ -18,13 +19,20 @@ import { ConfirmationDialog } from '@/shared/components/ui/ConfirmationDialog';
+ import RejectReasonDialog from '@/shared/components/ui/RejectReasonDialog';
+ 
+ export function LoansAdvancesSetup() {
++    const [searchParams] = useSearchParams();
++    const { id } = useParams();
+     const { currencySymbol } = useCurrency();
+     const { employees } = usePayroll();
+     const [loans, setLoans] = useState<any[]>([]);
+     const [advances, setAdvances] = useState<any[]>([]);
+     const [pendingLoans, setPendingLoans] = useState<any[]>([]);
+     const [pendingAdvances, setPendingAdvances] = useState<any[]>([]);
+-    const [activeTab, setActiveTab] = useState('dashboard');
++    const [activeTab, setActiveTab] = useState(() => {
++        const tab = searchParams.get('tab');
++        if (tab) return tab;
++        if (id) return 'pending';
++        return 'dashboard';
++    });
+     const [remarksMap, setRemarksMap] = useState<Record<string, string>>({});
+ 
+     // Issue Loan Modal State
+diff --git a/src/features/notifications/pages/Notifications.tsx b/src/features/notifications/pages/Notifications.tsx
+index 8d87228..60148e7 100644
+--- a/src/features/notifications/pages/Notifications.tsx
++++ b/src/features/notifications/pages/Notifications.tsx
+@@ -19,6 +19,7 @@ import { Button } from '@/shared/components/ui/button';
+ import { useNotifications } from '@/shared/context/NotificationContext';
+ import RejectReasonDialog from '@/shared/components/ui/RejectReasonDialog';
+ import { useAuth } from '@/shared/context/AuthContext';
++import { useOrgNavigate } from '@/shared/hooks/useOrgNavigate';
+ import { handleLeaveAction } from '@/features/leaves/services/leaves';
+ import { toast } from "sonner";
+ 
+@@ -35,6 +36,7 @@ interface Notification {
+ }
+ 
+ export function Notifications() {
++  const navigate = useOrgNavigate();
+   const { 
+     notifications: sourceNotifications, 
+     clearAll, 
+@@ -45,6 +47,37 @@ export function Notifications() {
+     updateNotificationMetadata 
+   } = useNotifications();
+   const { user } = useAuth();
++
++  const getNotificationTargetUrl = (notif: Notification) => {
++    const mod = (notif.related_module || notif.type || '').toLowerCase();
++    const isEmployee = (user?.role as any) === 'employee' || (user as any)?.details?.role?.role_name?.toLowerCase() === 'employee';
++
++    if (mod.includes('loan') || mod.includes('advance')) {
++      return isEmployee ? '/employee/loans-advances' : '/loans-advances?tab=pending';
++    }
++    if (mod.includes('leave')) {
++      return '/leave-management';
++    }
++    if (mod.includes('tax')) {
++      return isEmployee ? '/employee/payroll' : '/payroll';
++    }
++    if (mod.includes('reimbursement') || mod.includes('expense')) {
++      return '/reimbursements';
++    }
++    if (mod.includes('asset')) {
++      return '/assets';
++    }
++    if (mod.includes('survey')) {
++      return isEmployee ? '/surveys' : '/surveys/admin';
++    }
++    if (mod.includes('document')) {
++      return '/documents';
++    }
++    if (mod.includes('news')) {
++      return '/news';
++    }
++    return `/${notif.related_module || 'dashboard'}`;
++  };
+   const [searchParams] = useSearchParams();
+   const [searchQuery, setSearchQuery] = useState("");
+   const [showClearModal, setShowClearModal] = useState(false);
+@@ -451,11 +484,11 @@ export function Notifications() {
+                 )}
+ 
+                 {/* Linking Support */}
+-                {(selectedNotification.related_module || selectedNotification.type === 'leave') && selectedNotification.related_id && (
++                {(selectedNotification.related_module || selectedNotification.type === 'leave') && (
+                   <div className="mt-8 border-t border-gray-100">
+-                    <Link
+-                      to={`/${(selectedNotification.related_module === 'leave' || selectedNotification.type === 'leave') ? 'leave-management' : selectedNotification.related_module}/${selectedNotification.related_id}`}
+-                      className="flex items-center justify-between p-4 bg-primary-50/50 hover:bg-primary-50 border border-primary-100 rounded-md transition-all group"
++                    <button
++                      onClick={() => navigate(getNotificationTargetUrl(selectedNotification))}
++                      className="w-full flex items-center justify-between p-4 bg-primary-50/50 hover:bg-primary-50 border border-primary-100 rounded-md transition-all group text-left"
+                     >
+                       <div className="flex items-center gap-3">
+                         <div className="w-10 h-10 bg-white rounded-md flex items-center justify-center border border-primary-100 shadow-sm group-hover:scale-110 transition-transform">
+@@ -463,10 +496,12 @@ export function Notifications() {
+                         </div>
+                         <div>
+                           <span className="text-xs font-semibold text-primary-600 block">View Source</span>
+-                          <span className="text-sm font-medium text-gray-700 capitalize">Go to {selectedNotification.related_module} module</span>
++                          <span className="text-sm font-medium text-gray-700 capitalize">
++                            Go to {selectedNotification.related_module === 'document' ? 'Documents' : selectedNotification.related_module === 'survey' ? 'Surveys' : (selectedNotification.related_module || 'module')}
++                          </span>
+                         </div>
+                       </div>
+-                    </Link>
++                    </button>
+                   </div>
+                 )}
+               </div>
+diff --git a/src/features/payroll/services/payroll.ts b/src/features/payroll/services/payroll.ts
+index f1d05a0..9ced6b4 100644
+--- a/src/features/payroll/services/payroll.ts
++++ b/src/features/payroll/services/payroll.ts
+@@ -272,3 +272,31 @@ export const requestAdvance = async (data: any) => {
+     const response = await axiosInstance.post(`${API_URL}/advances`, data);
+     return response.data.data;
+ };
++
++// ─── Tax Declarations ───────────────────────────────────────────────────
++export const getPendingTaxDeclarations = async () => {
++    const response = await axiosInstance.get(`${API_URL}/tax-declarations/pending`);
++    return response.data.data;
++};
++
++export const approveTaxDeclaration = async (id: number, remarks?: string) => {
++    const response = await axiosInstance.post(`${API_URL}/tax-declarations/${id}/approve`, { remarks });
++    return response.data.data;
++};
++
++export const rejectTaxDeclaration = async (id: number, remarks?: string) => {
++    const response = await axiosInstance.post(`${API_URL}/tax-declarations/${id}/reject`, { remarks });
++    return response.data.data;
++};
++
++const payrollService = {
++    getPendingTaxDeclarations,
++    approveTaxDeclaration,
++    rejectTaxDeclaration,
++    getSalaryComponents,
++    getSalaryStructures,
++    getPayrollGroups,
++    getTaxSections,
++};
++
++export default payrollService;
+diff --git a/src/routes/routes.tsx b/src/routes/routes.tsx
+index 35d1b3f..0050da6 100644
+--- a/src/routes/routes.tsx
++++ b/src/routes/routes.tsx
+@@ -219,6 +219,7 @@ export const routes = createRoutesFromElements(
+       {/* Loans & Advances Routes */}
+       <Route element={<ProtectedRoute requiredPermissions={[Permission.VIEW_ALL_PAYROLL]} />}>
+         <Route path="loans-advances" element={<LoansAdvancesSetup />} />
++        <Route path="loans-advances/:id" element={<LoansAdvancesSetup />} />
+         <Route path="loans-advances/config" element={<LoanTypeConfig />} />
+         <Route path="loans-advances/config/create" element={<CreateLoanType />} />
+         <Route path="loans-advances/config/edit/:id" element={<CreateLoanType />} />
+@@ -226,6 +227,7 @@ export const routes = createRoutesFromElements(
+         <Route path="loans-advances/issue" element={<IssueLoan />} />
+       </Route>
+       <Route path="employee/loans-advances" element={<LoansAdvancesPortalPage />} />
++      <Route path="employee/loans-advances/:id" element={<LoansAdvancesPortalPage />} />
+       <Route path="employee/loans-advances/apply" element={<LoanApply />} />
+       <Route path="employee/loans-advances/my-applications" element={<MyApplications />} />
+ 
+diff --git a/src/shared/components/layout/Sidebar.tsx b/src/shared/components/layout/Sidebar.tsx
+index 0610f6a..aedf2a2 100644
+--- a/src/shared/components/layout/Sidebar.tsx
++++ b/src/shared/components/layout/Sidebar.tsx
+@@ -72,18 +72,7 @@ const navItems = [
+   { path: "/time-attendance", label: "Time & Attendance", icon: Clock, module: "TIME_ATTENDANCE" },
+   { path: "/team-calendar", label: "Calendar", icon: CalendarDays, module: "TEAM_CALENDAR" },
+   { path: "/payroll", label: "Payroll", icon: DollarSign, module: "PAYROLL" },
+-  {
+-    path: "/loans-advances",
+-    label: "Loans & Advances",
+-    icon: HandCoins,
+-    module: "LOANS_ADVANCES",
+-    children: [
+-      { path: "/loans-advances/dashboard", label: "Dashboard", module: "LOANS_ADVANCES" },
+-      { path: "/loans-advances/issue", label: "Issue Loan", module: "LOANS_ADVANCES" },
+-      { path: "/loans-advances/config", label: "Configuration", module: "LOANS_ADVANCES" },
+-      { path: "/loans-advances", label: "Legacy View", module: "LOANS_ADVANCES" },
+-    ],
+-  },
++  { path: "/loans-advances", label: "Loans & Advances", icon: HandCoins, module: "LOANS_ADVANCES" },
+   { path: "/reimbursements", label: "Reimbursements", icon: FileText },
+   { path: "/lms/dashboard", label: "Talent & Growth", icon: GraduationCap, module: "TALENT_GROWTH" },
+   { path: "/surveys", label: "Surveys", icon: HelpCircle, module: "SURVEY" },
+@@ -117,16 +106,7 @@ const selfNavItems = [
+   { path: "/profile", label: "My Profile", icon: User },
+   { path: "/leave-management", label: "My Leaves", icon: Calendar },
+   { path: "/employee/payroll", label: "My Payroll", icon: DollarSign },
+-  {
+-    path: "/employee/loans-advances",
+-    label: "Loans & Advances",
+-    icon: HandCoins,
+-    children: [
+-      { path: "/employee/loans-advances/apply", label: "Apply" },
+-      { path: "/employee/loans-advances/my-applications", label: "My Applications" },
+-      { path: "/employee/loans-advances", label: "Overview" },
+-    ],
+-  },
++  { path: "/employee/loans-advances", label: "My Loans & Advances", icon: HandCoins },
+   { path: "/reimbursements", label: "My Reimbursements", icon: FileText },
+   { path: "/team-calendar", label: "My Calendar", icon: CalendarDays },
+   { path: "/lms/dashboard", label: "My Learning", icon: GraduationCap },
+-- 
+2.53.0.windows.1
+

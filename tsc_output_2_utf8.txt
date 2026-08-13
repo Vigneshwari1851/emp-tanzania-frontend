@@ -1,0 +1,14 @@
+﻿src/api/organizations.ts(26,3): error TS2300: Duplicate identifier 'entity_name'.
+src/api/organizations.ts(26,3): error TS2687: All declarations of 'entity_name' must have identical modifiers.
+src/api/organizations.ts(27,3): error TS2300: Duplicate identifier 'entity_name'.
+src/api/organizations.ts(27,3): error TS2687: All declarations of 'entity_name' must have identical modifiers.
+src/api/organizations.ts(27,3): error TS2717: Subsequent property declarations must have the same type.  Property 'entity_name' must be of type 'string', but here has type 'string | undefined'.
+src/components/Auth/ProtectedRoute.tsx(1,10): error TS1484: 'ReactNode' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/Auth/RoleGate.tsx(1,10): error TS1484: 'ReactNode' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/Auth/RoleSwitcher.tsx(14,17): error TS2339: Property 'switchRole' does not exist on type 'AuthContextType'.
+src/components/common/OrganizationDropdown.tsx(4,1): error TS6133: 'Organization' is declared but its value is never read.
+src/components/ui/button.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/context/AuthContext.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/hooks/useHierarchy.ts(1,1): error TS6133: 'useMemo' is declared but its value is never read.
+src/pages/AddEmployee.tsx(115,10): error TS6133: 'profilePhoto' is declared but its value is never read.
+src/pages/CompanySettings.tsx(319,7): error TS1117: An object literal cannot have multiple properties with the same name.
