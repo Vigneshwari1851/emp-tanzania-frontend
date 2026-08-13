@@ -141,6 +141,15 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
       ws.onclose = (event) => {
         console.log(`Disconnected from Notification WebSocket: code=${event.code}, reason=${event.reason || 'none'}. URL: ${wsUrl}`);
+        if (event.code === 3000) {
+          console.log("Session expired/invalidated. Reloading page to force logout...");
+          sessionStorage.removeItem('token');
+          sessionStorage.removeItem('user');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.reload();
+          return;
+        }
         if (isMounted) {
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
           reconnectAttempts++;
