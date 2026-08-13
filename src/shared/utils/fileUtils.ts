@@ -8,7 +8,7 @@ export const getProfilePictureUrl = (path: string | null | undefined): string | 
   if (!path) return null;
   if (path.startsWith('http') || path.startsWith('data:')) return path;
   
-  const cleanBaseUrl = BASE_URL.replace(/\/employee-api\/?$/, "");
+  const cleanBaseUrl = BASE_URL.replace(/\/rafiki\/?$/, "");
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   
   return `${cleanBaseUrl}${cleanPath}`;
@@ -21,7 +21,7 @@ export const getAssetUrl = (path: string | null | undefined): string => {
   if (!path) return '';
   if (path.startsWith('http') || path.startsWith('data:')) return path;
   
-  const cleanBaseUrl = BASE_URL.replace(/\/employee-api\/?$/, "");
+  const cleanBaseUrl = BASE_URL.replace(/\/rafiki\/?$/, "");
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   
   return `${cleanBaseUrl}${cleanPath}`;

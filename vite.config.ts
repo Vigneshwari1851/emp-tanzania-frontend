@@ -13,7 +13,7 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/employee-api': {
+      '/rafiki': {
         target: 'http://localhost:5000',
         changeOrigin: true,
         ws: true,

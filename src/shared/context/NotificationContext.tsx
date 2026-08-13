@@ -37,7 +37,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const { user } = useAuth();
   const lastEventRef = useRef<{ event: string, data: any, timestamp: number } | null>(null);
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/employee-api';
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/rafiki';
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -92,7 +92,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
       let wsUrl: string;
       if (API_URL.startsWith('http')) {
-        wsUrl = API_URL.replace(/\/employee-api\/?$/, "").replace(/^http[s]?/, wsProtocol);
+        wsUrl = API_URL.replace(/\/rafiki\/?$/, "").replace(/^http[s]?/, wsProtocol);
       } else {
         wsUrl = `${wsProtocol}://${window.location.hostname}:5000`;
       }

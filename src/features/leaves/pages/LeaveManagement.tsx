@@ -541,7 +541,7 @@ export function LeaveManagement() {
 
     setIsUploading(true);
     try {
-      const response = await axiosInstance.post("/employee-api/upload", formData, {
+      const response = await axiosInstance.post("/upload", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -650,7 +650,7 @@ export function LeaveManagement() {
 
     setIsPolicyUploading(true);
     try {
-      const response = await axiosInstance.post("/employee-api/upload", formData, {
+      const response = await axiosInstance.post("/upload", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },

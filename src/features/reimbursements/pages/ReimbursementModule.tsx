@@ -33,7 +33,7 @@ const resolveFileUrl = (url?: string): string | undefined => {
   if (/^(data:|blob:|https?:|\/\/)/i.test(url)) return url;
   if (url.startsWith('/')) {
     const apiBase = axiosInstance.defaults.baseURL || '';
-    const origin = apiBase.replace(/\/employee-api\/?$/, '');
+    const origin = apiBase.replace(/\/rafiki\/?$/, '');
     return `${origin}${url}`;
   }
   return url;

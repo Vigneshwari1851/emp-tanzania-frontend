@@ -182,7 +182,7 @@ export const DocumentDetail: React.FC = () => {
                   className="gap-2"
                   onClick={() => {
                     const link = document.createElement('a');
-                    link.href = `/employee-api/documents/${doc.id}/download`;
+                    link.href = `${import.meta.env.VITE_API_URL || '/rafiki'}/documents/${doc.id}/download`;
                     link.click();
                   }}
                 >

@@ -1,7 +1,7 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig, type AxiosResponse } from 'axios';
 import { toast } from 'sonner';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/employee-api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/rafiki';
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,

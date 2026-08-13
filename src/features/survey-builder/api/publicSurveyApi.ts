@@ -1,4 +1,4 @@
-const PUBLIC_API = `${import.meta.env.VITE_API_URL || "/employee-api"}/public/surveys`;
+const PUBLIC_API = `${import.meta.env.VITE_API_URL || "/rafiki"}/public/surveys`;
 
 export async function loadPublicSurvey(id: string) {
   const res = await fetch(`${PUBLIC_API}/${id}`);

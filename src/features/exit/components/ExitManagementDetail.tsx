@@ -1188,7 +1188,7 @@ const ExitManagementDetail: React.FC<ExitManagementDetailProps> = ({ request: in
                                  const response = await axiosInstance.post(`/exit/${request.id}/generate-docs`);
                                  if (response.data.success) {
                                    toast.success('Documents generated successfully', { id: 'gen-docs' });
-                                   const baseUrl = axiosInstance.defaults.baseURL?.replace('/employee-api', '') || '';
+                                   const baseUrl = axiosInstance.defaults.baseURL?.replace(/\/employee-api|\/rafiki/, '') || '';
                                    window.open(`${baseUrl}${response.data.data.relievingUrl}`, '_blank');
                                  }
                                } catch (error: any) {

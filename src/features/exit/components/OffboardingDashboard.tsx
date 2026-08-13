@@ -67,7 +67,7 @@ const OffboardingDashboard: React.FC<OffboardingDashboardProps> = ({ request }) 
       const response = await axiosInstance.post(`/exit/${request.id}/generate-docs`);
       if (response.data.success) {
         toast.success('Document loaded successfully', { id: 'download-doc' });
-        const baseUrl = axiosInstance.defaults.baseURL?.replace('/employee-api', '') || '';
+        const baseUrl = axiosInstance.defaults.baseURL?.replace(/\/employee-api|\/rafiki/, '') || '';
         const url = type === 'RELIEVING' ? response.data.data.relievingUrl : response.data.data.experienceUrl;
         window.open(`${baseUrl}${url}`, '_blank');
       }
