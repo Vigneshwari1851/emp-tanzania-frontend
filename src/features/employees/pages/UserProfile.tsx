@@ -852,7 +852,7 @@ export function UserProfile() {
                                   {cert.credentialUrl && (
                                     <button
                                       type="button"
-                                      onClick={() => window.open(getProfilePictureUrl(cert.credentialUrl), '_blank')}
+                                      onClick={() => window.open(getProfilePictureUrl(cert.credentialUrl) || undefined, '_blank')}
                                       title="View Certificate"
                                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:border-primary hover:bg-primary/5 hover:text-primary dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 transition-all"
                                     >
@@ -970,7 +970,7 @@ export function UserProfile() {
                                 <div className="flex items-center gap-1.5 shrink-0">
                                   <button
                                     type="button"
-                                    onClick={() => window.open(getProfilePictureUrl(doc.url), '_blank')}
+                                    onClick={() => window.open(getProfilePictureUrl(doc.url) || undefined, '_blank')}
                                     title="View Document"
                                     className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:border-primary hover:bg-primary/5 hover:text-primary dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-primary dark:hover:bg-primary/20 dark:hover:text-primary transition-all"
                                   >

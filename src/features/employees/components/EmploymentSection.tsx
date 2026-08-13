@@ -611,7 +611,7 @@ const EmploymentSection: React.FC<EmploymentSectionProps> = ({
                          id={`${prefix}_file`}
                          label="Experience Letter / Relieving Letter"
                          required={true}
-                         files={currentEmp.file ? [currentEmp.file] : (currentEmp.fileUrl || currentEmp.documentUrl || currentEmp.certificateUrl ? [currentEmp.fileUrl || currentEmp.documentUrl || currentEmp.certificateUrl] : [])}
+                         files={currentEmp.file ? [currentEmp.file] : (currentEmp.fileUrl || currentEmp.documentUrl || currentEmp.certificateUrl ? [currentEmp.fileUrl || currentEmp.documentUrl || currentEmp.certificateUrl] as string[] : [])}
                          onFilesChange={(files) => updateEmployment(currentIndex, "file", files[0] || null)}
                          error={formErrors[`${prefix}_file`]}
                          allowedFormats={['PDF', 'JPG', 'PNG', 'JPEG']}

@@ -140,6 +140,8 @@ export interface Education {
   grade?: string;
   file?: File;
   fileUrl?: string; // For existing records
+  documentUrl?: string; // Alias for existing records
+  certificateUrl?: string; // Alias for existing records
 }
 
 import EducationSection from '../components/EducationSection';
@@ -156,6 +158,8 @@ export interface Employment {
   reasonForLeaving: string;
   file?: File;
   fileUrl?: string; // For existing records
+  documentUrl?: string; // Alias for existing records
+  certificateUrl?: string; // Alias for existing records
 }
 
 import EmploymentSection from '../components/EmploymentSection';

@@ -626,7 +626,7 @@ const EducationSection: React.FC<EducationSectionProps> = ({
                     <FileUpload
                       id={`${prefix}_file`}
                       label="Education Certificate / Marksheet"
-                      files={currentEdu.file ? [currentEdu.file] : (currentEdu.fileUrl || currentEdu.documentUrl || currentEdu.certificateUrl ? [currentEdu.fileUrl || currentEdu.documentUrl || currentEdu.certificateUrl] : [])}
+                      files={currentEdu.file ? [currentEdu.file] : (currentEdu.fileUrl || currentEdu.documentUrl || currentEdu.certificateUrl ? [currentEdu.fileUrl || currentEdu.documentUrl || currentEdu.certificateUrl] as string[] : [])}
                       onFilesChange={(files) => updateEducation(currentIndex, "file", files[0] || null)}
                       error={formErrors[`${prefix}_file`]}
                       allowedFormats={['PDF', 'JPG', 'PNG', 'JPEG']}
