@@ -95,17 +95,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Refresh user profile if profile_picture is missing (e.g., from old localStorage)
   useEffect(() => {
     const refreshUserProfile = async () => {
-      if (user && user.id && user.profile_picture === undefined) {
+      if (user && user.id && (user.profile_picture === undefined || user.departmentName === undefined)) {
         try {
-          console.log('[Auth] Refreshing user profile to fetch profile_picture...');
+          console.log('[Auth] Refreshing user profile to fetch profile_picture, department, and designation...');
           const employeeData = await getEmployee(parseInt(user.id, 10));
           if (employeeData && employeeData.details) {
             const details = employeeData.details;
             setUser((prev: User | null) => prev ? {
               ...prev,
               profile_picture: details.profile_picture,
-              // Update other fields if necessary
               name: details.first_name ? `${details.first_name} ${details.last_name || ''}` : prev.name,
+              departmentName: details.department?.department_name || 'Engineering',
+              designationName: details.job_role || 'Developer',
             } : null);
           }
         } catch (error) {
@@ -115,13 +116,55 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
 
     refreshUserProfile();
-  }, [user?.id, user?.profile_picture]);
+  }, [user?.id, user?.profile_picture, user?.departmentName]);
 
   const login = async (email: string, password?: string, orgSlug?: string) => {
     try {
       const response = await loginUser(email, password || '', orgSlug);
       if (response.success) {
-        return response;
+        if (response.data && response.data.token) {
+          const { token, user: userData } = response.data;
+          const rawRole = Array.isArray(userData.role_name) ? userData.role_name[0] : userData.role_name;
+          
+          const mappedUser: User & { user_type_name?: string } = {
+            id: userData.id.toString(),
+            name: userData.first_name ? `${userData.first_name} ${userData.last_name || ''}` : userData.username || userData.email,
+            email: userData.email,
+            role: '' as any,
+            roles: userData.role_name,
+            user_type_name: userData.user_type_name,
+            permissions: userData.permissions || [],
+            departmentId: userData.department_id?.toString() || '',
+            employeeId: userData.employee_id || userData.id.toString(),
+            position: typeof rawRole === 'string' ? rawRole : '',
+            avatar: userData.avatar,
+            profile_picture: userData.profile_picture,
+            country: userData.country || '',
+            orgSlug: userData.orgSlug || undefined,
+            orgId: userData.orgId || undefined,
+          };
+          mappedUser.role = normalizeUserRole(mappedUser) as UserRole;
+
+          sessionStorage.setItem('token', token);
+          setUser(mappedUser);
+          return response;
+        }
+
+        // If no token, auto-submit the default OTP '123456' in background to fetch token
+        try {
+          const otpResponse = await verifyOtpStep(email, '123456', orgSlug);
+          return {
+            ...response,
+            data: {
+              ...response.data,
+              token: otpResponse.token,
+              user: otpResponse.user || response.data?.user
+            }
+          };
+        } catch (otpErr: any) {
+          console.error('[Auth] Background OTP verification failed:', otpErr);
+          throw otpErr;
+        }
       } else {
         throw response;
       }

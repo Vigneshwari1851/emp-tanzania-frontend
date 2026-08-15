@@ -56,6 +56,7 @@ export function ProtectedRoute({
       'audit',
       'privacy-policy',
       'report-builder',
+      'reports',
       'documents',
       'news',
       'surveys',

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useCurrency } from '@/shared/hooks/useCurrency';
 import { getEmployee } from '../../employees/services/employees';
 import { getLeaveHistory } from '../../leaves/services/leaves';
@@ -41,6 +42,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../shared/components/ui/Tabs';
 import { jsPDF } from 'jspdf';
 import { PageHeader } from '@/shared/components/ui/PageHeader';
+import ModernDatePicker from '@/shared/components/ui/ModernDatePicker';
 
 export function PayrollCalculation() {
   const { currencySymbol, isTanzania, formatCurrency, config } = useCurrency();
@@ -67,6 +69,7 @@ export function PayrollCalculation() {
   const [selectedRunMonth, setSelectedRunMonth] = useState<string | null>(null);
   const [showNewMonthModal, setShowNewMonthModal] = useState(false);
   const [newMonthInput, setNewMonthInput] = useState(new Date().toISOString().substring(0, 7));
+  const [monthError, setMonthError] = useState('');
   const [searchTermPayslips, setSearchTermPayslips] = useState('');
   const [lopReasons, setLopReasons] = useState('Loss of Pay');
   const [taxSections, setTaxSections] = useState<any[]>([]);
@@ -752,12 +755,12 @@ export function PayrollCalculation() {
           })}
         </div>
 
-        {showNewMonthModal && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+        {showNewMonthModal && createPortal(
+          <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
             <div className="bg-card rounded-xl p-6 max-w-sm w-full shadow-xl border border-border animate-in zoom-in-95 duration-200">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <CalendarIcon className="size-5 text-primary" />
+                <div className="w-10 h-10 flex items-center justify-center text-primary">
+                  <CalendarIcon className="size-5" />
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-foreground">Select Payroll Month</h3>
@@ -767,24 +770,41 @@ export function PayrollCalculation() {
 
               <div className="space-y-2 mb-6 mt-5">
                 <Label className="text-foreground text-sm font-semibold">Month & Year</Label>
-                <Input
-                  type="month"
-                  value={newMonthInput}
-                  onChange={(e) => setNewMonthInput(e.target.value)}
-                  className="rounded-lg h-12 border-border focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-400 focus:border-blue-600 dark:focus:border-blue-400"
+                <ModernDatePicker
+                  value={newMonthInput ? `${newMonthInput}-01` : ""}
+                  onChange={(date) => {
+                    if (date) {
+                      setNewMonthInput(date.substring(0, 7));
+                      setMonthError("");
+                    } else {
+                      setNewMonthInput("");
+                    }
+                  }}
+                  placeholder="Select Month & Year"
+                  error={!!monthError}
+                  required
                 />
+                {monthError && <p className="text-xs text-red-500 mt-1 font-semibold">{monthError}</p>}
               </div>
 
               <div className="flex gap-3">
                 <Button
                   variant="outline"
-                  onClick={() => setShowNewMonthModal(false)}
+                  onClick={() => {
+                    setShowNewMonthModal(false);
+                    setMonthError("");
+                  }}
                   className="flex-1 rounded-lg h-11 border-border hover:bg-muted font-bold text-muted-foreground"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={() => {
+                    if (!newMonthInput) {
+                      setMonthError("Please select a month and year");
+                      return;
+                    }
+                    setMonthError("");
                     setSelectedRunMonth(newMonthInput);
                     setShowNewMonthModal(false);
                   }}
@@ -794,7 +814,8 @@ export function PayrollCalculation() {
                 </Button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         <Card className="border border-border/80 shadow-sm bg-card rounded-xl overflow-hidden">

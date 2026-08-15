@@ -61,14 +61,8 @@ export function LoansAdvancesPortal({ userId, payslips = [], refresh }: LoansAdv
             setActiveLoans(portalData?.activeLoans || []);
             setActiveAdvances(portalData?.activeAdvances || []);
         } catch {
-            try {
-                const { getLoans, getAdvances } = await import('../services/loans-advances');
-                const [loanRes, advRes] = await Promise.all([getLoans(), getAdvances()]);
-                const userLoans = (loanRes || []).filter((l: any) => l.userDetail?.user_id === resolvedUserId);
-                const userAdvances = (advRes || []).filter((a: any) => a.userDetail?.user_id === resolvedUserId);
-                setActiveLoans(userLoans);
-                setActiveAdvances(userAdvances);
-            } catch { }
+            setActiveLoans([]);
+            setActiveAdvances([]);
         } finally {
             setLoading(false);
         }

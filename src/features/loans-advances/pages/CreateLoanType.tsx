@@ -12,6 +12,7 @@ import { getDepartments, type Department } from '@/features/organization/service
 import { getRoles, type Role } from '@/features/rbac/services/roles';
 import * as loanConfig from '../services/loan-config';
 import { StandardDatePicker } from '@/shared/components/ui/StandardDatePicker';
+import Select from '@/shared/components/ui/Select';
 
 const PERIOD_OPTIONS = ['Lifetime', 'Monthly', 'Quarterly', 'Annually'];
 
@@ -38,6 +39,18 @@ export function CreateLoanType() {
   const [designations, setDesignations] = useState<any[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
+  const [workflow, setWorkflow] = useState<string[]>(['MANAGER', 'HR', 'FINANCE']);
+
+  const toggleWorkflowStep = (step: string) => {
+    setWorkflow(current => {
+      let next = current.includes(step) ? current.filter(x => x !== step) : [...current, step];
+      const ordered = [];
+      if (next.includes('MANAGER')) ordered.push('MANAGER');
+      if (next.includes('HR')) ordered.push('HR');
+      if (next.includes('FINANCE')) ordered.push('FINANCE');
+      return ordered;
+    });
+  };
 
   const fetchReferenceData = useCallback(async () => {
     try {
@@ -84,6 +97,11 @@ export function CreateLoanType() {
             maxApplicationsPerPeriod: lt.maxApplicationsPerPeriod ? String(lt.maxApplicationsPerPeriod) : '',
             period: lt.period || 'Lifetime'
           });
+          if (lt.approvalWorkflow && lt.approvalWorkflow.length > 0) {
+            setWorkflow(lt.approvalWorkflow.map((s: any) => s.roleName.toUpperCase()));
+          } else {
+            setWorkflow([]);
+          }
         })
         .catch(() => { toast.error('Failed to load loan type'); navigate('/loans-advances?tab=policies'); })
         .finally(() => setLoading(false));
@@ -92,15 +110,30 @@ export function CreateLoanType() {
 
   const handleSubmit = async () => {
     if (!formData.name || !formData.code) { toast.error('Name and code are required'); return; }
+    if (formData.effectiveDate && formData.expiryDate) {
+      const start = new Date(formData.effectiveDate);
+      const end = new Date(formData.expiryDate);
+      if (end <= start) {
+        toast.error('Expiry date must be after the effective date');
+        return;
+      }
+    }
     try {
       setSaving(true);
+      let savedId = Number(id);
       if (id) {
         await loanConfig.updateLoanType(Number(id), formData);
-        toast.success('Loan policy updated');
       } else {
-        await loanConfig.createLoanType(formData);
-        toast.success('Loan policy created');
+        const res = await loanConfig.createLoanType(formData);
+        savedId = res.id;
       }
+      const steps = workflow.map((w, idx) => ({
+        stepOrder: idx + 1,
+        roleName: w.toUpperCase(),
+        isRequired: true
+      }));
+      await loanConfig.updateApprovalWorkflow(savedId, steps);
+      toast.success(id ? 'Loan policy updated' : 'Loan policy created');
       navigate('/loans-advances?tab=policies');
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to save');
@@ -156,11 +189,14 @@ export function CreateLoanType() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-muted-foreground uppercase">Category</label>
-                <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}
-                  className={inputCls}>
-                  <option value="LOAN">Loan</option>
-                  <option value="ADVANCE">Advance</option>
-                </select>
+                <Select
+                  value={formData.category}
+                  onChange={val => setFormData({ ...formData, category: val })}
+                  options={[
+                    { value: "LOAN", label: "Loan" },
+                    { value: "ADVANCE", label: "Advance" }
+                  ]}
+                />
               </div>
               {/* <div className="space-y-1">
                 <label className="text-xs font-bold text-muted-foreground uppercase">Repayment Method</label>
@@ -230,45 +266,41 @@ export function CreateLoanType() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-muted-foreground uppercase">Department</label>
-                <select value={formData.department_id} onChange={e => setFormData({ ...formData, department_id: e.target.value })}
-                  className={inputCls}>
-                  <option value="">All Departments</option>
-                  {departments.map(d => (
-                    <option key={d.id} value={d.id}>{(d as any).department_name || (d as any).name}</option>
-                  ))}
-                </select>
+                <Select
+                  value={formData.department_id}
+                  onChange={val => setFormData({ ...formData, department_id: val })}
+                  placeholder="All Departments"
+                  options={departments.map(d => ({ value: String(d.id), label: (d as any).department_name || (d as any).name }))}
+                />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-muted-foreground uppercase">Designation</label>
-                <select value={formData.designation_id} onChange={e => setFormData({ ...formData, designation_id: e.target.value })}
-                  className={inputCls}>
-                  <option value="">All Designations</option>
-                  {designations.map(d => (
-                    <option key={d.id} value={d.id}>{d.designation_name || d.name}</option>
-                  ))}
-                </select>
+                <Select
+                  value={formData.designation_id}
+                  onChange={val => setFormData({ ...formData, designation_id: val })}
+                  placeholder="All Designations"
+                  options={designations.map(d => ({ value: String(d.id), label: d.designation_name || d.name }))}
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-muted-foreground uppercase">Branch / Location</label>
-                <select value={formData.branch_id} onChange={e => setFormData({ ...formData, branch_id: e.target.value })}
-                  className={inputCls}>
-                  <option value="">All Branches</option>
-                  {branches.map(b => (
-                    <option key={b.id} value={b.id}>{b.branch_name || b.name}</option>
-                  ))}
-                </select>
+                <Select
+                  value={formData.branch_id}
+                  onChange={val => setFormData({ ...formData, branch_id: val })}
+                  placeholder="All Branches"
+                  options={branches.map(b => ({ value: String(b.id), label: b.branch_name || b.name }))}
+                />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-muted-foreground uppercase">Role</label>
-                <select value={formData.role_id} onChange={e => setFormData({ ...formData, role_id: e.target.value })}
-                  className={inputCls}>
-                  <option value="">All Roles</option>
-                  {roles.map(r => (
-                    <option key={r.id} value={r.id}>{r.name}</option>
-                  ))}
-                </select>
+                <Select
+                  value={formData.role_id}
+                  onChange={val => setFormData({ ...formData, role_id: val })}
+                  placeholder="All Roles"
+                  options={roles.map(r => ({ value: String(r.id), label: r.name }))}
+                />
               </div>
             </div>
             <p className="text-[11px] text-muted-foreground italic">Leave all fields empty to make this available to all employees.</p>
@@ -292,18 +324,92 @@ export function CreateLoanType() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-muted-foreground uppercase">Application Limit Period</label>
-                <select value={formData.period} onChange={e => setFormData({ ...formData, period: e.target.value })}
-                  className={inputCls}>
-                  {PERIOD_OPTIONS.map(p => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
+                <Select
+                  value={formData.period}
+                  onChange={val => setFormData({ ...formData, period: val })}
+                  options={PERIOD_OPTIONS.map(p => ({ value: p, label: p }))}
+                />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-muted-foreground uppercase">Max Applications per Period</label>
                 <input type="number" value={formData.maxApplicationsPerPeriod} onChange={e => setFormData({ ...formData, maxApplicationsPerPeriod: e.target.value })}
                   className={inputCls} placeholder="Unlimited" />
               </div>
+            </div>
+          </div>
+
+          {/* ── Approval Routing Workflow ── */}
+          <div className="space-y-3 pt-4 border-t border-border">
+            <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+              <Workflow className="size-4 text-primary" /> Approval Routing Workflow
+            </div>
+            <p className="text-[11px] text-muted-foreground">Define the multi-level verification path for applications submitted under this policy.</p>
+            
+            {/* Visual Workflow Preview */}
+            <div className="flex items-center gap-2 mb-4 bg-slate-50 dark:bg-zinc-900 p-3 rounded-xl border border-border overflow-x-auto">
+              {workflow.length === 0 ? (
+                <span className="text-xs text-muted-foreground">No workflow steps. Applications will be auto-approved.</span>
+              ) : (
+                workflow.map((step, idx) => (
+                  <React.Fragment key={step}>
+                    {idx > 0 && <span className="text-slate-400 dark:text-slate-500 font-bold text-sm">→</span>}
+                    <div className="flex items-center gap-2 bg-white dark:bg-card px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                      <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200">
+                        {step === 'MANAGER' ? 'Reporting Manager' : step === 'HR' ? 'HR Department' : 'Finance Disbursal'}
+                      </span>
+                    </div>
+                  </React.Fragment>
+                ))
+              )}
+            </div>
+
+            {/* Workflow Configuration Toggles */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <label className="flex items-center justify-between p-3 bg-white dark:bg-card border border-slate-200 dark:border-slate-700 rounded-xl hover:border-slate-300 dark:hover:border-slate-600 transition cursor-pointer shadow-sm">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={workflow.includes('MANAGER')}
+                    onChange={() => toggleWorkflowStep('MANAGER')}
+                    className="rounded accent-primary focus:ring-primary w-4 h-4 cursor-pointer"
+                  />
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">1. Reporting Manager</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-500">First level direct manager</span>
+                  </div>
+                </div>
+              </label>
+
+              <label className="flex items-center justify-between p-3 bg-white dark:bg-card border border-slate-200 dark:border-slate-700 rounded-xl hover:border-slate-300 dark:hover:border-slate-600 transition cursor-pointer shadow-sm">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={workflow.includes('HR')}
+                    onChange={() => toggleWorkflowStep('HR')}
+                    className="rounded accent-primary focus:ring-primary w-4 h-4 cursor-pointer"
+                  />
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">2. HR Verification</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-500">Policy audit & compliance check</span>
+                  </div>
+                </div>
+              </label>
+
+              <label className="flex items-center justify-between p-3 bg-white dark:bg-card border border-slate-200 dark:border-slate-700 rounded-xl hover:border-slate-300 dark:hover:border-slate-600 transition cursor-pointer shadow-sm">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={workflow.includes('FINANCE')}
+                    onChange={() => toggleWorkflowStep('FINANCE')}
+                    className="rounded accent-primary focus:ring-primary w-4 h-4 cursor-pointer"
+                  />
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">3. Finance Processing</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-500">Ledger accounting & bank payout</span>
+                  </div>
+                </div>
+              </label>
             </div>
           </div>
 

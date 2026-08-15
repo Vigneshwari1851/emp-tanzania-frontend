@@ -991,7 +991,13 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate("/org-setup/settings?tab=organizational&edit=true")}
+              onClick={() => {
+                if (selectedNode) {
+                  handleEditClick(selectedNode);
+                } else {
+                  toast.error("Please select a designation node to edit");
+                }
+              }}
               className="h-[36px] gap-2 font-bold border-border rounded-lg text-foreground hover:bg-muted hover:text-primary hover:border-primary-300 shadow-sm shrink-0"
             >
               <Pencil className="w-4 h-4 text-muted-foreground" />
@@ -1586,9 +1592,7 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
                 {/* Header */}
                 <div className="flex items-center justify-between pb-3 border-b border-slate-150">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-blue-50 text-primaryflex items-center justify-center border border-blue-100/50 shrink-0">
-                      <Briefcase className="w-5 h-5" />
-                    </div>
+                    <Briefcase className="w-6 h-6 text-primary shrink-0" />
                     <div>
                       <h3 className="font-bold text-foreground leading-tight">Details</h3>
                       <p className="text-[11px] text-muted-foreground font-medium mt-1">Structure info</p>

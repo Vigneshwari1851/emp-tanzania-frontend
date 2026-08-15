@@ -286,8 +286,8 @@ export function Notifications() {
           <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-border">
             {filteredNotifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center px-4">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                  <Bell className="w-8 h-8 text-primary" />
+                <div className="w-16 h-16 flex items-center justify-center mb-4 text-primary">
+                  <Bell className="w-8 h-8" />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground">
                   {searchQuery ? "No matches found" : "All caught up!"}
@@ -488,8 +488,8 @@ export function Notifications() {
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-gray-400 dark:text-gray-500">
-              <div className="w-20 h-20 bg-gray-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
-                <Info className="w-10 h-10 text-gray-200 dark:text-gray-600" />
+              <div className="w-20 h-20 flex items-center justify-center mb-6 text-gray-200 dark:text-gray-600">
+                <Info className="w-10 h-10" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Select a Notification</h3>
               <p className="text-sm max-w-[240px]">Click on a notification from the list to view its detailed information and available actions.</p>

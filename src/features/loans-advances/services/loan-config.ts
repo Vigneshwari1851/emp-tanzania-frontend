@@ -87,13 +87,13 @@ export const checkAllEligibility = async () => {
     return response.data.data;
 };
 
-export const approveApplicationStep = async (id: number, remarks?: string) => {
-    const response = await axiosInstance.post(`/loan-applications/${id}/approve`, { remarks });
+export const approveApplicationStep = async (id: number, remarks?: string, expectedStep?: number) => {
+    const response = await axiosInstance.post(`/loan-applications/${id}/approve`, { remarks, expectedStep });
     return response.data.data;
 };
 
-export const rejectApplicationStep = async (id: number, remarks?: string) => {
-    const response = await axiosInstance.post(`/loan-applications/${id}/reject`, { remarks });
+export const rejectApplicationStep = async (id: number, remarks?: string, expectedStep?: number) => {
+    const response = await axiosInstance.post(`/loan-applications/${id}/reject`, { remarks, expectedStep });
     return response.data.data;
 };
 

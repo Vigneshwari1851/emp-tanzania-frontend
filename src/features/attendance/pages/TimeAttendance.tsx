@@ -177,6 +177,28 @@ export const TimeAttendance: React.FC = () => {
   const teamOnLeave = teamLogs.filter(l => l.status === 'ON_LEAVE' || l.status === 'LEAVE').length;
   const teamAbsent = teamLogs.filter(l => l.status === 'ABSENT' || !l.check_in).length;
 
+  const summaryStats = useMemo(() => {
+    const records = myLogs || [];
+    return {
+      present: records.filter(r => {
+        const s = (r.status || '').toUpperCase();
+        return s === 'PRESENT' || s === 'HALF_DAY';
+      }).length,
+      late: records.filter(r => {
+        const s = (r.status || '').toUpperCase();
+        return r.is_late === true || (r.late_minutes && r.late_minutes > 0) || s === 'LATE';
+      }).length,
+      onLeave: records.filter(r => {
+        const s = (r.status || '').toUpperCase();
+        return s === 'ON_LEAVE' || s === 'LEAVE' || s.includes('LEAVE');
+      }).length,
+      absent: records.filter(r => {
+        const s = (r.status || '').toUpperCase();
+        return s === 'ABSENT';
+      }).length,
+    };
+  }, [myLogs]);
+
   return (
     <div className="space-y-4 w-full min-w-0 font-sans text-foreground animate-in fade-in duration-300">
       {/* Header */}
@@ -221,7 +243,7 @@ export const TimeAttendance: React.FC = () => {
                 <UserCheck className="w-5 h-5 text-primary shrink-0" />
               </div>
               <div className="my-1 text-2xl font-bold tracking-tight text-foreground tabular-nums">
-                {stats?.present || stats?.totalPresent || 0}
+                {summaryStats.present}
               </div>
               <div className="space-y-0.5">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block truncate">
@@ -235,7 +257,7 @@ export const TimeAttendance: React.FC = () => {
                 <AlertCircle className="w-5 h-5 text-primary shrink-0" />
               </div>
               <div className="my-1 text-2xl font-bold tracking-tight text-foreground tabular-nums">
-                {stats?.late || stats?.totalLate || 0}
+                {summaryStats.late}
               </div>
               <div className="space-y-0.5">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block truncate">
@@ -249,7 +271,7 @@ export const TimeAttendance: React.FC = () => {
                 <Calendar className="w-5 h-5 text-primary shrink-0" />
               </div>
               <div className="my-1 text-2xl font-bold tracking-tight text-foreground tabular-nums">
-                {stats?.onLeave || stats?.leave || 0}
+                {summaryStats.onLeave}
               </div>
               <div className="space-y-0.5">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block truncate">
@@ -263,7 +285,7 @@ export const TimeAttendance: React.FC = () => {
                 <UserX className="w-5 h-5 text-primary shrink-0" />
               </div>
               <div className="my-1 text-2xl font-bold tracking-tight text-foreground tabular-nums">
-                {stats?.absent || stats?.totalAbsent || 0}
+                {summaryStats.absent}
               </div>
               <div className="space-y-0.5">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block truncate">
@@ -320,16 +342,7 @@ export const TimeAttendance: React.FC = () => {
                           </g>
                         </svg>
                       ) : (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 16 15"
-                          fill="currentColor"
-                          className="w-4 h-4"
-                        >
-                          <path d="M15.8,2H6.9C6.7,0.7,5.4-0.2,4,0.1C3,0.3,2.2,1,2,2H0.2C0.1,2,0,2.1,0,2.3v0.5 C0,2.9,0.1,3,0.2,3H2C2.3,4.4,3.6,5.2,5,5c1-0.2,1.8-1,1.9-2h8.8C15.9,3,16,2.9,16,2.8V2.3C16,2.1,15.9,2,15.8,2z M4.5,4 C3.7,4,3,3.3,3,2.5S3.7,1,4.5,1S6,1.7,6,2.5S5.3,4,4.5,4z" />
-                          <path d="M15.8,12H8.9C8.7,10.7,7.4,9.8,6,10.1c-1,0.2-1.8,1-1.9,1.9H0.2C0.1,12,0,12.1,0,12.3v0.5 C0,12.9,0.1,13,0.2,13h3.8C4.3,14.4,5.6,15.2,7,15c1-0.2,1.8-1,1.9-1.9h6.8c0.1,0,0.2-0.1,0.2-0.2v-0.5C16,12.1,15.9,12,15.8,12z M6.5,14C5.7,14,5,13.3,5,12.5S5.7,11,6.5,11S8,12.5S7.3,14,6.5,14z" />
-                          <path d="M0,7.3v0.5C0,7.9,0.1,8,0.2,8h8.8c0.3,1.4,1.6,2.2,2.9,1.9c1-0.2,1.8-1,1.9-1.9h1.8 C15.9,8,16,7.9,16,7.8V7.3C16,7.1,15.9,7,15.8,7h-1.8c-0.3-1.3-1.6-2.2-2.9-1.9C10,5.3,9.2,6,9.1,7H0.2C0.1,7,0,7.1,0,7.3z M10,7.5 C10,6.7,10.7,6,11.5,6S13,6.7,13,7.5S12.3,9,11.5,9S10,8.3,10,7.5z" />
-                        </svg>
+                        <Filter className="size-4" />
                       )}
                       Filters
                         {activeCount > 0 && (
@@ -420,26 +433,26 @@ export const TimeAttendance: React.FC = () => {
           <Card className="border-border shadow-sm overflow-hidden">
             <CardContent className="p-0">
               <Table>
-                <TableHeader className="bg-muted border-b border-border">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">DATE</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">CHECK IN</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">CHECK OUT</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">WORK HOURS</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">STATUS</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">LOCATION</TableHead>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>DATE</TableHead>
+                    <TableHead>CHECK IN</TableHead>
+                    <TableHead>CHECK OUT</TableHead>
+                    <TableHead>WORK HOURS</TableHead>
+                    <TableHead>STATUS</TableHead>
+                    <TableHead>LOCATION</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody className="bg-card divide-y divide-border">
+                <TableBody>
                   {filteredMyLogs.length > 0 ? (
                     filteredMyLogs.map((log: any) => (
-                      <TableRow key={log.id} className="hover:bg-muted transition-colors cursor-pointer">
-                        <TableCell className="px-4 py-3 font-semibold text-sm text-foreground">
+                      <TableRow key={log.id} className="cursor-pointer">
+                        <TableCell className="font-semibold text-sm text-foreground">
                           {new Date(log.date || log.check_in).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-sm text-foreground font-medium">{log.check_in ? new Date(log.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</TableCell>
-                        <TableCell className="px-4 py-3 text-sm text-foreground font-medium">{log.check_out ? new Date(log.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</TableCell>
-                        <TableCell className="px-4 py-3 text-sm font-mono text-muted-foreground">
+                        <TableCell className="text-sm text-foreground font-medium">{log.check_in ? new Date(log.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</TableCell>
+                        <TableCell className="text-sm text-foreground font-medium">{log.check_out ? new Date(log.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</TableCell>
+                        <TableCell className="text-sm font-mono text-muted-foreground">
                           {(() => {
                             if (log.work_hours || log.workHours) {
                               const hrs = parseFloat(log.work_hours || log.workHours);
@@ -459,7 +472,7 @@ export const TimeAttendance: React.FC = () => {
                             return log.check_in ? 'In Progress' : '-';
                           })()}
                         </TableCell>
-                        <TableCell className="px-4 py-3">
+                        <TableCell>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
                             log.status === 'PRESENT' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
                             log.status === 'LATE' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' :
@@ -469,7 +482,7 @@ export const TimeAttendance: React.FC = () => {
                             {log.status === 'PRESENT' ? 'Present' : log.status === 'LATE' ? 'Late' : log.status === 'ON_LEAVE' ? 'On Leave' : 'Absent'}
                           </span>
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-sm text-muted-foreground flex items-center gap-1.5">
+                        <TableCell className="text-sm text-muted-foreground flex items-center gap-1.5">
                           <MapPin className="size-3.5 text-muted-foreground shrink-0" /> {log.location || 'Office'}
                         </TableCell>
                       </TableRow>
@@ -709,18 +722,18 @@ export const TimeAttendance: React.FC = () => {
             <Card className="border-border shadow-sm overflow-hidden">
               <CardContent className="p-0">
                 <Table>
-                  <TableHeader className="bg-muted border-b border-border">
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">EMPLOYEE</TableHead>
-                      <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">DATE</TableHead>
-                      <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">CHECK IN</TableHead>
-                      <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">CHECK OUT</TableHead>
-                      <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">WORK HOURS</TableHead>
-                      <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">STATUS</TableHead>
-                      <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">LOCATION</TableHead>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>EMPLOYEE</TableHead>
+                      <TableHead>DATE</TableHead>
+                      <TableHead>CHECK IN</TableHead>
+                      <TableHead>CHECK OUT</TableHead>
+                      <TableHead>WORK HOURS</TableHead>
+                      <TableHead>STATUS</TableHead>
+                      <TableHead>LOCATION</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody className="bg-card divide-y divide-border">
+                  <TableBody>
                     {teamLoading ? (
                       <TableRow>
                         <TableCell colSpan={7} className="py-16 text-center text-muted-foreground text-xs">
@@ -729,21 +742,21 @@ export const TimeAttendance: React.FC = () => {
                       </TableRow>
                     ) : filteredTeamLogs.length > 0 ? (
                       filteredTeamLogs.map((empLog: any) => (
-                        <TableRow key={`team-${empLog.id || empLog.user_id}`} className="hover:bg-muted transition-colors cursor-pointer">
-                          <TableCell className="px-4 py-3 font-semibold text-sm text-foreground">
+                        <TableRow key={`team-${empLog.id || empLog.user_id}`} className="cursor-pointer">
+                          <TableCell className="font-semibold text-sm text-foreground">
                             {empLog.user?.first_name || empLog.user?.name || empLog.user?.username || empLog.employee_name || `Employee #${empLog.user_id}`}
                             <div className="text-xs font-normal text-muted-foreground">{empLog.user?.department?.name || empLog.department || 'General'}</div>
                           </TableCell>
-                          <TableCell className="px-4 py-3 text-sm text-foreground font-medium">
+                          <TableCell className="text-sm text-foreground font-medium">
                             {new Date(empLog.date || empLog.check_in).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                           </TableCell>
-                          <TableCell className="px-4 py-3 text-sm text-foreground font-medium">
+                          <TableCell className="text-sm text-foreground font-medium">
                             {empLog.check_in ? new Date(empLog.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                           </TableCell>
-                          <TableCell className="px-4 py-3 text-sm text-foreground font-medium">
+                          <TableCell className="text-sm text-foreground font-medium">
                             {empLog.check_out ? new Date(empLog.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                           </TableCell>
-                          <TableCell className="px-4 py-3 text-sm font-mono text-muted-foreground">
+                          <TableCell className="text-sm font-mono text-muted-foreground">
                             {(() => {
                               if (empLog.work_hours || empLog.workHours) {
                                 const hrs = parseFloat(empLog.work_hours || empLog.workHours);
@@ -763,7 +776,7 @@ export const TimeAttendance: React.FC = () => {
                               return empLog.check_in ? 'In Progress' : '-';
                             })()}
                           </TableCell>
-                          <TableCell className="px-4 py-3">
+                          <TableCell>
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
                               empLog.status === 'PRESENT' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
                               empLog.status === 'LATE' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' :
@@ -773,7 +786,7 @@ export const TimeAttendance: React.FC = () => {
                               {empLog.status === 'PRESENT' ? 'Present' : empLog.status === 'LATE' ? 'Late' : empLog.status === 'ON_LEAVE' ? 'On Leave' : 'Absent'}
                             </span>
                           </TableCell>
-                          <TableCell className="px-4 py-3 text-sm text-muted-foreground flex items-center gap-1.5">
+                          <TableCell className="text-sm text-muted-foreground flex items-center gap-1.5">
                             <MapPin className="size-3.5 text-muted-foreground shrink-0" /> {empLog.location || empLog.remarks || 'Office'}
                           </TableCell>
                         </TableRow>

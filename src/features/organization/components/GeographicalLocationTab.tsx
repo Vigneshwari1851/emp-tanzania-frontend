@@ -49,10 +49,18 @@ const usStates = [
   "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"
 ];
 
+const tanzaniaRegions = [
+  "Arusha", "Dar es Salaam", "Dodoma", "Geita", "Iringa", "Kagera", "Katavi", "Kigoma", 
+  "Kilimanjaro", "Lindi", "Manyara", "Mara", "Mbeya", "Morogoro", "Mtwara", "Mwanza", 
+  "Njombe", "Pemba North", "Pemba South", "Pwani", "Rukwa", "Ruvuma", "Shinyanga", 
+  "Simiyu", "Singida", "Songwe", "Tabora", "Tanga", "Zanzibar North", "Zanzibar South", "Zanzibar Urban/West"
+];
+
 const COUNTRY_STATES_MAP: Record<string, string[]> = {
   "India": indianStates,
   "United States": usStates,
   "USA": usStates,
+  "Tanzania": tanzaniaRegions,
 };
 
 const stateCities: Record<string, string[]> = {
@@ -60,7 +68,7 @@ const stateCities: Record<string, string[]> = {
   "Arunachal Pradesh": ["Itanagar", "Naharlagun", "Pasighat"],
   "Assam": ["Guwahati", "Silchar", "Dibrugarh", "Jorhat", "Nagaon", "Tinsukia"],
   "Bihar": ["Patna", "Gaya", "Bhagalpur", "Muzaffarpur", "Purnia", "Darbhanga", "Bihar Sharif", "Arrah", "Begusarai"],
-  "Chhattisgarh": ["Raipur", "Bhilai", "Bilaspur", "Korba", "Rajnandgaon", "Jagdalpur", "Ambikapur"],
+  "Chhattisgarh": ["Raipur", "Bhilai", "Bilaspur", "Coreba", "Rajnandgaon", "Jagdalpur", "Ambikapur"],
   "Goa": ["Panaji", "Margao", "Vasco da Gama", "Mapusa", "Ponda"],
   "Gujarat": ["Ahmedabad", "Surat", "Vadodara", "Rajkot", "Bhavnagar", "Jamnagar", "Gandhinagar", "Junagadh", "Morbi", "Anand", "Vapi"],
   "Haryana": ["Gurugram", "Faridabad", "Panipat", "Ambala", "Yamunanagar", "Rohtak", "Hisar", "Karnal", "Sonipat", "Panchkula"],
@@ -91,7 +99,38 @@ const stateCities: Record<string, string[]> = {
   "Lakshadweep": ["Kavaratti"],
   "Puducherry": ["Puducherry", "Karaikal", "Mahe", "Yanam"],
   "Ladakh": ["Leh", "Kargil"],
-  "Jammu and Kashmir": ["Srinagar", "Jammu", "Anantnag", "Baramulla"]
+  "Jammu and Kashmir": ["Srinagar", "Jammu", "Anantnag", "Baramulla"],
+  "Arusha": ["Arusha", "Karatu", "Mto wa Mbu", "Monduli"],
+  "Dar es Salaam": ["Dar es Salaam", "Kinondoni", "Ilala", "Temeke", "Ubungo", "Kigamboni"],
+  "Dodoma": ["Dodoma", "Kondoa", "Mpwapwa", "Kongwa"],
+  "Geita": ["Geita", "Chato"],
+  "Iringa": ["Iringa", "Mafinga", "Ruaha Mbuyuni"],
+  "Kagera": ["Bukoba", "Biharamulo", "Ngara"],
+  "Katavi": ["Mpanda"],
+  "Kigoma": ["Kigoma", "Kasulu", "Kibondo"],
+  "Kilimanjaro": ["Moshi", "Same", "Mwanga", "Hai"],
+  "Lindi": ["Lindi", "Ruangwa", "Nachingwea"],
+  "Manyara": ["Babati", "Mbulu", "Simanjiro"],
+  "Mara": ["Musoma", "Bunda", "Tarime"],
+  "Mbeya": ["Mbeya", "Tunduma", "Mbarali", "Chunya"],
+  "Morogoro": ["Morogoro", "Ifakara", "Kilosa", "Mikumi"],
+  "Mtwara": ["Mtwara", "Masasi", "Newala"],
+  "Mwanza": ["Mwanza", "Sengerema", "Nansio", "Geita"],
+  "Njombe": ["Njombe", "Makambako"],
+  "Pemba North": ["Wete"],
+  "Pemba South": ["Mkoani"],
+  "Pwani": ["Kibaha", "Bagamoyo", "Kisarawe", "Chalinze"],
+  "Rukwa": ["Sumbawanga"],
+  "Ruvuma": ["Songea", "Mbinga", "Tunduru"],
+  "Shinyanga": ["Shinyanga", "Kahama"],
+  "Simiyu": ["Bariadi", "Maswa"],
+  "Singida": ["Singida", "Manyoni"],
+  "Songwe": ["Vwawa", "Mlowo"],
+  "Tabora": ["Tabora", "Nzega", "Igunga"],
+  "Tanga": ["Tanga", "Korogwe", "Muheza", "Lushoto"],
+  "Zanzibar North": ["Mkokotoni"],
+  "Zanzibar South": ["Koani"],
+  "Zanzibar Urban/West": ["Zanzibar City", "Mwanakwerekwe"]
 };
 
 const getTaxLabelAndPlaceholder = (countryName: string) => {

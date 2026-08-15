@@ -21,12 +21,14 @@ import { StandardDatePicker } from '@/shared/components/ui/StandardDatePicker';
 import { createDocument, updateDocument, getDocument, uploadDocumentFile, getDocuments, type Document } from '@/features/documents/services/documents';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/shared/components/common/ConfirmDialog';
+import { useAuth } from '@/shared/context/AuthContext';
 
 export const DocumentUpload: React.FC = () => {
   const navigate = useOrgNavigate();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('id');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
   
   const [activeTab, setActiveTab] = useState('Basic Info');
   const [dragActive, setDragActive] = useState(false);
@@ -42,7 +44,7 @@ export const DocumentUpload: React.FC = () => {
   const [category, setCategory] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
-  const [author, setAuthor] = useState('Sarah Chen');
+  const [author, setAuthor] = useState('');
   const [language, setLanguage] = useState('English');
   
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);

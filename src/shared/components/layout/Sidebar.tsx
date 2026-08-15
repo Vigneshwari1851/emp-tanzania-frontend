@@ -25,7 +25,8 @@ import {
   Newspaper,
   FileSpreadsheet,
   HandCoins,
-  ShieldCheck
+  ShieldCheck,
+  FolderOpen
 } from "lucide-react";
 import { useAuth } from '@/shared/context/AuthContext';
 import { canAccessNavItem, navItemPermissions } from '@/shared/config/permissions';

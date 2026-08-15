@@ -162,39 +162,49 @@ export function CreateLoanAdvance() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                                 <div className="flex flex-col justify-end space-y-1.5">
                                     <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Select Policy *</Label>
-                                    <Select value={selectedPolicyId} onValueChange={(val) => {
-                                        setSelectedPolicyId(val);
-                                        const policy = policies.find(p => String(p.id) === val);
-                                        if (policy) {
-                                            setType(policy.category.toLowerCase());
-                                            setPrincipal(String(policy.maxAmount));
-                                            setDuration(String(policy.maxTenure));
-                                            // Calculate monthly emi
-                                            const p = Number(policy.maxAmount);
-                                            const d = Number(policy.maxTenure);
-                                            const rate = Number(policy.interestRate) || 0;
-                                            const method = policy.repaymentMethod || 'EMI';
-                                            let emiVal: number;
-                                            if (method === 'ONE_TIME') {
-                                                emiVal = p;
-                                            } else {
-                                                const ratePerMonth = rate / 12 / 100;
-                                                if (ratePerMonth > 0) {
-                                                    emiVal = (p * ratePerMonth * Math.pow(1 + ratePerMonth, d)) / (Math.pow(1 + ratePerMonth, d) - 1);
+                                    {policies.length === 0 ? (
+                                        <div 
+                                            onClick={() => toast.error('Add the policies first in policies setup')}
+                                            className="rounded-lg h-11 border border-border bg-card shadow-sm flex items-center justify-between px-3 cursor-pointer text-muted-foreground text-sm"
+                                        >
+                                            <span>Select Loan/Advance Policy</span>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-chevron-down h-4 w-4 opacity-50"><path d="m6 9 6 6 6-6"/></svg>
+                                        </div>
+                                    ) : (
+                                        <Select value={selectedPolicyId} onValueChange={(val) => {
+                                            setSelectedPolicyId(val);
+                                            const policy = policies.find(p => String(p.id) === val);
+                                            if (policy) {
+                                                setType(policy.category.toLowerCase());
+                                                setPrincipal(String(policy.maxAmount));
+                                                setDuration(String(policy.maxTenure));
+                                                // Calculate monthly emi
+                                                const p = Number(policy.maxAmount);
+                                                const d = Number(policy.maxTenure);
+                                                const rate = Number(policy.interestRate) || 0;
+                                                const method = policy.repaymentMethod || 'EMI';
+                                                let emiVal: number;
+                                                if (method === 'ONE_TIME') {
+                                                    emiVal = p;
                                                 } else {
-                                                    emiVal = p / d;
+                                                    const ratePerMonth = rate / 12 / 100;
+                                                    if (ratePerMonth > 0) {
+                                                        emiVal = (p * ratePerMonth * Math.pow(1 + ratePerMonth, d)) / (Math.pow(1 + ratePerMonth, d) - 1);
+                                                    } else {
+                                                        emiVal = p / d;
+                                                    }
                                                 }
+                                                setMonthly(Math.ceil(emiVal).toString());
                                             }
-                                            setMonthly(Math.ceil(emiVal).toString());
-                                        }
-                                    }}>
-                                        <SelectTrigger className="rounded-lg h-11 border-border bg-card shadow-sm"><SelectValue placeholder="Select Loan/Advance Policy" /></SelectTrigger>
-                                        <SelectContent className="rounded-xl max-h-64 overflow-y-auto" side="bottom" align="start" sideOffset={6}>
-                                            {policies.map((p: any) => (
-                                                <SelectItem key={p.id} value={p.id.toString()}>{p.name} ({p.code})</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                        }}>
+                                            <SelectTrigger className="rounded-lg h-11 border-border bg-card shadow-sm"><SelectValue placeholder="Select Loan/Advance Policy" /></SelectTrigger>
+                                            <SelectContent className="rounded-xl max-h-64 overflow-y-auto" side="bottom" align="start" sideOffset={6}>
+                                                {policies.map((p: any) => (
+                                                    <SelectItem key={p.id} value={p.id.toString()}>{p.name} ({p.code})</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
                                 </div>
 
                                 <div className="flex flex-col justify-end space-y-1.5">

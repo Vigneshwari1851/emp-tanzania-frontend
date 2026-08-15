@@ -16,7 +16,7 @@ import {
   FileDown,
   Trash2,
 } from 'lucide-react';
-import { getDocument, deleteDocument, type Document } from '@/features/documents/services/documents';
+import { getDocument, deleteDocument, type Document, downloadDocumentAction } from '@/features/documents/services/documents';
 import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui/button';
 import { usePermissions } from '@/features/rbac/hooks/usePermissions';
@@ -180,10 +180,30 @@ export const DocumentDetail: React.FC = () => {
                   variant="primary"
                   size="sm"
                   className="gap-2"
-                  onClick={() => {
-                    const link = document.createElement('a');
-                    link.href = `${import.meta.env.VITE_API_URL || '/rafiki'}/documents/${doc.id}/download`;
-                    link.click();
+                  onClick={async () => {
+                    if (!doc.file_url) {
+                      toast.error("No file available for download");
+                      return;
+                    }
+                    downloadDocumentAction(Number(doc.id)).catch(err => {
+                      console.error('Failed to log document download:', err);
+                    });
+                    try {
+                      const response = await fetch(`${window.location.origin}${doc.file_url}`);
+                      const blob = await response.blob();
+                      const url = window.URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      link.href = url;
+                      const filename = doc.file_url.split('/').pop() || `${doc.title.replace(/\s+/g, '_')}`;
+                      link.setAttribute('download', filename);
+                      document.body.appendChild(link);
+                      link.click();
+                      window.URL.revokeObjectURL(url);
+                      document.body.removeChild(link);
+                    } catch (err) {
+                      console.error('Failed to download file:', err);
+                      window.open(`${window.location.origin}${doc.file_url}`, '_blank');
+                    }
                   }}
                 >
                   <FileDown className="w-4 h-4" /> Download

@@ -334,8 +334,8 @@ export function RolesPermissionsTab() {
                   <ChevronRight className="w-5 h-5" />
                 </button>
               )}
-              <div className="w-16 h-16 bg-card shadow-sm rounded-full flex items-center justify-center mb-4">
-                <Shield className="w-8 h-8 text-gray-300 dark:text-gray-600" />
+              <div className="w-16 h-16 flex items-center justify-center mb-4 text-gray-300 dark:text-gray-600">
+                <Shield className="w-8 h-8" />
               </div>
               <p className="text-base font-semibold text-foreground">No Role Selected</p>
               <p className="text-sm mt-1">Choose a role from the list to view or manage permissions</p>

@@ -53,10 +53,21 @@ export interface MappedOrganization {
   payrollStatutoryUnit?: string;
   legalEmployer?: string;
   legislativeDataGroup?: string;
+  workingCalendar?: {
+    standardHours: number;
+    workingDays: string[];
+    scheduleType: string;
+    fixedStartTime: string;
+    fixedEndTime: string;
+    flexRequiredHours: number;
+    flexCoreStartTime: string;
+    flexCoreEndTime: string;
+  };
   locations: {
     id: number;
     locationName?: string;
     locationCode?: string;
+    timeZone?: string;
     branch_employee_count?: number;
     address: { city: string; country: string; street?: string; state?: string; zipCode?: string };
     departments: DepartmentNode[];
@@ -108,7 +119,7 @@ function mapOrganization(org: Organization): MappedOrganization {
     city: org.city,
     state: org.state,
     country: org.country,
-    zip:org.zip,
+    zip: org.zip,
     pan: org.pan,
     tin: org.tin,
     ein: org.ein,
@@ -119,10 +130,21 @@ function mapOrganization(org: Organization): MappedOrganization {
     payrollStatutoryUnit: org.payroll_statutory_unit,
     legalEmployer: org.legal_employer,
     legislativeDataGroup: org.legislative_data_group,
+    workingCalendar: {
+      standardHours: org.standard_working_hours_per_week || 40,
+      workingDays: org.working_days || ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+      scheduleType: org.schedule_type || "fixed",
+      fixedStartTime: org.fixed_start_time || "09:30",
+      fixedEndTime: org.fixed_end_time || "18:30",
+      flexRequiredHours: org.flex_required_hours || 8,
+      flexCoreStartTime: org.flex_core_start_time || "11:00",
+      flexCoreEndTime: org.flex_core_end_time || "16:00",
+    },
     locations: (org.branches ?? org.branch ?? []).map((b: any) => ({
       id: b.id,
       locationName: b.location_name ?? b.branch_name,
       locationCode: b.location_code ?? b.branch_code,
+      timeZone: b.time_zone || b.timeZone,
       branch_employee_count: b.branch_employee_count,
       address: {
         city: b.city,

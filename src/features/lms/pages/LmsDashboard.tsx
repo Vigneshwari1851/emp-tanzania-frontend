@@ -86,7 +86,7 @@ const LearnerDashboard: React.FC<{
                 ].map((rec, i) => (
                   <div key={i} className="group p-4 rounded-lg bg-muted/40 border border-border dark:border-border/60 hover:bg-card hover:border-primary/30 hover:shadow-sm transition-all">
                      <div className="flex items-start justify-between mb-3">
-                        <div className="w-10 h-10 rounded-lg bg-card flex items-center justify-center text-primary shadow-sm group-hover:scale-110 transition-transform">
+                        <div className="w-10 h-10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                            <Target size={20} />
                         </div>
                         <span className="text-[10px] font-black bg-primary/10 text-primary px-2 py-0.5 rounded-sm">{rec.level}</span>
@@ -199,7 +199,7 @@ const LearnerDashboard: React.FC<{
                   { title: 'Project Management', progress: 88, icon: <Target size={14} /> },
                 ].map((item, i) => (
                   <div key={i} className="min-w-[180px] p-3 rounded-lg bg-muted/40 border border-border dark:border-border/60 hover:bg-card hover:shadow-sm transition-all cursor-pointer group">
-                     <div className="w-8 h-8 rounded-lg bg-card flex items-center justify-center text-primary mb-3 group-hover:scale-110 transition-transform">
+                     <div className="w-8 h-8 flex items-center justify-center text-primary mb-3 group-hover:scale-110 transition-transform">
                         {item.icon}
                      </div>
                      <p className="text-[11px] font-bold text-foreground line-clamp-1 group-hover:text-primary transition-colors">{item.title}</p>
@@ -222,7 +222,7 @@ const LearnerDashboard: React.FC<{
               <div className="relative z-10 space-y-4">
                  <h4 className="text-[12px] font-medium opacity-80">ACHIEVEMENT VAULT</h4>
                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-card/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+                    <div className="w-12 h-12 flex items-center justify-center border-none">
                        <Award size={24} />
                     </div>
                     <div>
@@ -243,7 +243,7 @@ const LearnerDashboard: React.FC<{
            {/* Next Deadline */}
            <div className="bg-card p-6 rounded-lg border border-border shadow-sm space-y-6">
               <div className="flex items-center gap-3">
-                 <div className="w-10 h-10 rounded-lg bg-rose-50 dark:bg-rose-950/40 flex items-center justify-center text-rose-500 dark:text-rose-400 shadow-sm">
+                 <div className="w-10 h-10 flex items-center justify-center text-rose-500 dark:text-rose-400">
                     <Calendar size={20} />
                  </div>
                  <div>
@@ -307,7 +307,7 @@ const LearnerDashboard: React.FC<{
                   </div>
                   <div className="relative z-10 space-y-6">
                      <div className="flex items-center justify-between">
-                        <div className={`w-12 h-12 rounded-lg bg-card shadow-sm flex items-center justify-center text-${cert.color}-600 dark:text-${cert.color}-400`}>
+                        <div className={`w-12 h-12 flex items-center justify-center text-${cert.color}-600 dark:text-${cert.color}-400`}>
                            <Award size={24} />
                         </div>
                         <span className="text-[10px] font-black text-muted-foreground tracking-widest">{cert.id}</span>
@@ -381,8 +381,8 @@ const LearnerDashboard: React.FC<{
            
            <div className="relative z-10 space-y-8 max-w-lg">
               <div className="flex flex-col items-center gap-4">
-                 <div className="w-20 h-20 bg-card/10 backdrop-blur-xl rounded-[2rem] border border-white/20 flex items-center justify-center shadow-sm">
-                    <Award size={40} className="text-primary-300" />
+                 <div className="w-20 h-20 flex items-center justify-center text-primary-300">
+                    <Award size={40} />
                  </div>
                  <div className="space-y-1">
                     <p className="text-[10px] font-black text-primary-400">Official Certification</p>

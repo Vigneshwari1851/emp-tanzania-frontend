@@ -123,7 +123,12 @@ export const DocumentHub: React.FC = () => {
   const [deleteDocTarget, setDeleteDocTarget] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDownload = (doc: Document) => {
+  const handleDownload = async (doc: Document) => {
+    if (!doc.file_url) {
+      toast.error("No file available for download");
+      return;
+    }
+    
     setIsDownloading(doc.id);
     
     // Call backend to log the download action
@@ -131,19 +136,26 @@ export const DocumentHub: React.FC = () => {
       console.error('Failed to log document download:', err);
     });
 
-    // Simulate a download delay
-    setTimeout(() => {
-      const blob = new Blob([`This is a mock downloaded file for: ${doc.title}\n\nDescription: ${doc.description}`], { type: 'text/plain' });
+    try {
+      const response = await fetch(`${window.location.origin}${doc.file_url}`);
+      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${doc.title.replace(/\s+/g, '_')}.txt`;
-      document.body.appendChild(a);
-      a.click();
+      const link = document.createElement('a');
+      link.href = url;
+      // Get the filename from the path or default to document title
+      const filename = doc.file_url.split('/').pop() || `${doc.title.replace(/\s+/g, '_')}`;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
       window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Failed to download file:', err);
+      // Fallback: open in new tab
+      window.open(`${window.location.origin}${doc.file_url}`, '_blank');
+    } finally {
       setIsDownloading(null);
-    }, 800);
+    }
   };
 
   const handleDeleteDoc = async () => {
@@ -717,45 +729,39 @@ export const DocumentHub: React.FC = () => {
               </button>
             </div>
 
-            {/* Modal Body - Mock Document Viewer */}
-            <div className="flex-1 overflow-y-auto bg-muted p-4 sm:p-8">
-              <div className="bg-card w-full max-w-3xl min-h-[600px] mx-auto shadow-sm border border-border p-8 sm:p-14 font-serif text-foreground relative h-max">
-                <div className="absolute top-0 left-0 right-0 h-2 bg-primary"></div>
-
-                {/* Mock Document Content */}
-                <h1 className="text-3xl font-bold mb-6 text-foreground border-b border-border pb-4">{previewDoc.title}</h1>
-
-                <div className="flex flex-wrap items-center gap-4 mb-8 text-sm text-muted-foreground bg-muted/50 p-4 rounded-lg border border-border">
-                  <div><strong>Category:</strong> {previewDoc.category}</div>
-                  <div><strong>Access Level:</strong> {previewDoc.access}</div>
-                  <div><strong>Document ID:</strong> DOC-{previewDoc.id.padStart(4, '0')}</div>
+            {/* Modal Body - Actual Document Viewer */}
+            <div className="flex-1 overflow-y-auto bg-muted p-4 flex justify-center items-center">
+              {previewDoc.file_url ? (
+                previewDoc.file_url.toLowerCase().endsWith('.pdf') ? (
+                  <iframe
+                    src={`${window.location.origin}${previewDoc.file_url}`}
+                    className="w-full min-h-[600px] border-0 rounded-lg shadow-sm bg-white"
+                    title={previewDoc.title}
+                  />
+                ) : (
+                  // For images (jpg, jpeg, png, etc.)
+                  /\.(jpg|jpeg|png|gif|webp)$/i.test(previewDoc.file_url) ? (
+                    <div className="bg-card p-4 rounded-lg border border-border max-w-full max-h-[70vh] overflow-auto flex items-center justify-center">
+                      <img
+                        src={`${window.location.origin}${previewDoc.file_url}`}
+                        alt={previewDoc.title}
+                        className="max-w-full max-h-[65vh] object-contain rounded-md"
+                      />
+                    </div>
+                  ) : (
+                    // Fallback iframe for other types (doc, docx, etc.)
+                    <iframe
+                      src={`${window.location.origin}${previewDoc.file_url}`}
+                      className="w-full min-h-[600px] border-0 rounded-lg shadow-sm bg-white"
+                      title={previewDoc.title}
+                    />
+                  )
+                )
+              ) : (
+                <div className="bg-card w-full max-w-3xl min-h-[400px] mx-auto shadow-sm border border-border p-8 sm:p-14 text-center flex flex-col justify-center items-center">
+                  <p className="text-muted-foreground mb-4">No file preview available for this document.</p>
                 </div>
-
-                <p className="text-lg leading-relaxed mb-6 font-medium text-foreground">
-                  {previewDoc.description}
-                </p>
-
-                <div className="space-y-4 text-slate-600 dark:text-slate-400 leading-relaxed">
-                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
-
-                  <h3 className="text-xl font-bold text-foreground mt-8 mb-3">1. Introduction</h3>
-                  <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
-
-                  <ul className="list-disc pl-6 space-y-2 my-6">
-                    <li>First important policy point to remember</li>
-                    <li>Secondary compliance requirement</li>
-                    <li>Standard operating procedure guideline</li>
-                  </ul>
-
-                  <h3 className="text-xl font-bold text-foreground mt-8 mb-3">2. Core Guidelines</h3>
-                  <p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p>
-                </div>
-
-                {/* Watermark */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none select-none overflow-hidden">
-                  <span className="text-6xl sm:text-8xl font-bold transform -rotate-45 whitespace-nowrap">HORIZON HR</span>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Modal Footer */}

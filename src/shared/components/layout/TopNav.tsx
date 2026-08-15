@@ -328,7 +328,7 @@ export function TopNav({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void
             </div>
             <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${showProfile ? 'rotate-180' : ''}`} />
           </button>
-          <div className={`absolute right-0 mt-2 w-48 bg-card rounded-sm shadow-sm border border-border p-2 z-50 transition-all duration-200 origin-top-right ${showProfile ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}>
+          <div className={`absolute left-0 right-0 mt-2 bg-card rounded-sm shadow-sm border border-border p-2 z-50 transition-all duration-200 origin-top-right ${showProfile ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}>
             <button
               onClick={() => {
                 navigate(getPath("/profile"));

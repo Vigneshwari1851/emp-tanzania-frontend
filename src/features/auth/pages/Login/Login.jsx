@@ -33,6 +33,12 @@ function Login() {
             setOrganization(res.data);
             const cfg = res.data.config || {};
             applyBrandTheme(cfg.primary_color, cfg.secondary_color);
+            if (res.data.logo_url) {
+              localStorage.setItem('cached_company_logo', res.data.logo_url);
+            }
+            if (res.data.entity_name) {
+              localStorage.setItem('cached_company_name', res.data.entity_name);
+            }
           }
         })
         .catch((err) => {
@@ -125,36 +131,11 @@ function Login() {
 
       handleRememberLogic();
 
-      // Determine MFA behaviour from org config
-      const mfaPolicy = organization?.config?.mfa_policy ?? "email_otp";
-
-      if (mfaPolicy === "disabled") {
-        // No MFA – go straight to the portal
-        sessionStorage.setItem("is_session_active", "true");
-        if (orgSlug) {
-          navigate(`/${orgSlug}`, { replace: true });
-        } else {
-          navigate("/", { replace: true });
-        }
+      sessionStorage.setItem("is_session_active", "true");
+      if (orgSlug) {
+        navigate(`/${orgSlug}`, { replace: true });
       } else {
-        // MFA required – go to OTP verification
-        sessionStorage.setItem("pendingEmail", formData.email);
-        sessionStorage.setItem("rememberMePreference", rememberMe.toString());
-        sessionStorage.setItem("mfa_policy", mfaPolicy);
-
-        if (mfaPolicy === "totp") {
-          toast.info("Open your authenticator app (Google Authenticator / Authy) to get your 6-digit code.");
-        } else if (mfaPolicy === "sms_otp") {
-          toast.success("OTP sent to your registered mobile number!");
-        } else {
-          toast.success("OTP sent to your email!");
-        }
-
-        if (orgSlug) {
-          navigate(`/${orgSlug}/verify-login`);
-        } else {
-          navigate("/verify-login");
-        }
+        navigate("/", { replace: true });
       }
     } catch (error) {
       console.error("Login failed:", error);

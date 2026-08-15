@@ -21,6 +21,7 @@ interface SelectProps {
   searchable?: boolean;
   clearable?: boolean;
   className?: string;
+  buttonClassName?: string;
   onBlur?: () => void;
   direction?: "bottom" | "top";
 }
@@ -47,6 +48,7 @@ const Select: React.FC<SelectProps> = ({
   searchable = false,
   clearable = false,
   className = "",
+  buttonClassName = "",
   onBlur,
   direction,
 }) => {
@@ -204,7 +206,7 @@ const Select: React.FC<SelectProps> = ({
               : isOpen
                 ? "border-primary ring-2 ring-primary/20"
                 : "border-border hover:border-primary/50"
-          } ${disabled ? "bg-muted text-muted-foreground cursor-not-allowed" : "cursor-pointer text-left"}`}
+          } ${disabled ? "bg-muted text-muted-foreground cursor-not-allowed" : "cursor-pointer text-left"} ${buttonClassName}`}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
         >

@@ -792,7 +792,7 @@ const ExitManagementDetail: React.FC<ExitManagementDetailProps> = ({ request: in
          <div className="mt-8 p-8 bg-amber-50/60 border border-amber-200/80 rounded-xl animate-in slide-in-from-top-4 duration-700 shadow-sm">
             <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
                <div className="flex items-center gap-5">
-                  <div className="w-14 h-14 bg-amber-100/80 rounded-xl flex items-center justify-center text-amber-700 shrink-0 shadow-xs">
+                  <div className="w-14 h-14 flex items-center justify-center text-amber-700 shrink-0">
                      <User className="w-7 h-7" />
                   </div>
                   <div>
@@ -849,7 +849,7 @@ const ExitManagementDetail: React.FC<ExitManagementDetailProps> = ({ request: in
         <div className="mt-8 p-6 bg-amber-50/60 border border-amber-200/80 rounded-xl shadow-sm animate-in fade-in duration-300">
           <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-amber-100/80 rounded-xl flex items-center justify-center text-amber-700 shrink-0 shadow-2xs">
+              <div className="w-12 h-12 flex items-center justify-center text-amber-700 shrink-0">
                 <MessageSquare className="w-6 h-6" />
               </div>
               <div className="space-y-1">
@@ -918,8 +918,8 @@ const ExitManagementDetail: React.FC<ExitManagementDetailProps> = ({ request: in
          <div className="mt-8 p-8 bg-purple-50 border border-purple-100 rounded-lg animate-in slide-in-from-top-4 duration-700 shadow-sm">
             <div className="flex flex-col md:flex-row items-center justify-between gap-8">
                <div className="flex items-center gap-6">
-                  <div className="w-16 h-16 bg-card rounded-lg flex items-center justify-center shadow-sm shadow-purple-100/50">
-                     <ClipboardCheck className="w-8 h-8 text-purple-600" />
+                  <div className="w-16 h-16 flex items-center justify-center text-purple-600">
+                     <ClipboardCheck className="w-8 h-8" />
                   </div>
                   <div>
                      <h4 className="text-[12px] font-medium text-foreground mb-1">
@@ -951,8 +951,8 @@ const ExitManagementDetail: React.FC<ExitManagementDetailProps> = ({ request: in
           <div className="mt-8 p-8 bg-green-50/50 border border-green-200 rounded-lg animate-in slide-in-from-top-4 duration-700 shadow-sm">
              <div className="flex flex-col md:flex-row items-center justify-between gap-8">
                 <div className="flex items-center gap-6">
-                   <div className="w-16 h-16 bg-card rounded-lg flex items-center justify-center shadow-sm shadow-green-100/50">
-                      <Shield className="w-8 h-8 text-green-600" />
+                   <div className="w-16 h-16 flex items-center justify-center text-green-600">
+                      <Shield className="w-8 h-8" />
                    </div>
                    <div>
                       <h4 className="text-[12px] font-medium text-foreground mb-1">Phase 5: Complete Asset Handover</h4>
@@ -982,8 +982,8 @@ const ExitManagementDetail: React.FC<ExitManagementDetailProps> = ({ request: in
          <div className="mt-8 p-8 bg-blue-50 border border-blue-100 rounded-lg animate-in slide-in-from-top-4 duration-700 shadow-sm">
             <div className="flex flex-col md:flex-row items-center justify-between gap-8">
                <div className="flex items-center gap-6">
-                  <div className="w-16 h-16 bg-card rounded-lg flex items-center justify-center shadow-sm shadow-blue-100/50">
-                     <DollarSign className="w-8 h-8 text-blue-600" />
+                  <div className="w-16 h-16 flex items-center justify-center text-blue-600">
+                     <DollarSign className="w-8 h-8" />
                   </div>
                   <div>
                      <h4 className="text-[12px] font-medium text-foreground mb-1">Phase 6: Final Settlement & Exit</h4>

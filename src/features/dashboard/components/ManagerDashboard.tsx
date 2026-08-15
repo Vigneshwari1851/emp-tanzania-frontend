@@ -113,51 +113,46 @@ export function ManagerDashboard() {
   return (
     <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500">
       
-      {/* KPI Stats Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-card rounded-lg border border-border/80 shadow-sm p-5 hover:shadow-sm transition-shadow duration-200">
           <div className="flex items-center justify-between mb-2">
-            <Users className="w-5 h-5 text-primary" />
+            <Users className="w-5 h-5 text-primary shrink-0" />
             <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-0.5">
               {teamSize} total <TrendingUp className="w-3 h-3" />
             </span>
           </div>
           <p className="text-[11px] text-muted-foreground font-medium tracking-wide">My team</p>
           <p className="text-[24px] font-semibold text-foreground tabular-nums mt-1 tracking-tight">{teamSize}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Fully staffed</p>
         </div>
         <div className="bg-card rounded-lg border border-border/80 shadow-sm p-5 hover:shadow-sm transition-shadow duration-200">
           <div className="flex items-center justify-between mb-2">
-            <CheckCircle2 className="w-5 h-5 text-primary" />
+            <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
             <span className="text-[11px] font-medium text-rose-600 flex items-center gap-0.5">
               {pendingLeaves} pending <Clock className="w-3 h-3" />
             </span>
           </div>
           <p className="text-[11px] text-muted-foreground font-medium tracking-wide">Pending approvals</p>
           <p className="text-[24px] font-semibold text-foreground tabular-nums mt-1 tracking-tight">{pendingLeaves}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Leave & timesheet requests</p>
         </div>
         <div className="bg-card rounded-lg border border-border/80 shadow-sm p-5 hover:shadow-sm transition-shadow duration-200">
           <div className="flex items-center justify-between mb-2">
-            <Calendar className="w-5 h-5 text-primary" />
+            <Calendar className="w-5 h-5 text-primary shrink-0" />
             <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-0.5">
               {presentToday} present <CheckCircle2 className="w-3 h-3" />
             </span>
           </div>
           <p className="text-[11px] text-muted-foreground font-medium tracking-wide">Present today</p>
           <p className="text-[24px] font-semibold text-foreground tabular-nums mt-1 tracking-tight">{presentToday}<span className="text-sm font-medium text-muted-foreground"> / {teamSize}</span></p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Optimal attendance</p>
         </div>
         <div className="bg-card rounded-lg border border-border/80 shadow-sm p-5 hover:shadow-sm transition-shadow duration-200">
           <div className="flex items-center justify-between mb-2">
-            <Target className="w-5 h-5 text-primary" />
+            <Target className="w-5 h-5 text-primary shrink-0" />
             <span className="text-[11px] font-medium text-primary flex items-center gap-0.5">
               Q2 cycle <TrendingUp className="w-3 h-3" />
             </span>
           </div>
           <p className="text-[11px] text-muted-foreground font-medium tracking-wide">Goals on track</p>
           <p className="text-[24px] font-semibold text-foreground tabular-nums mt-1 tracking-tight">85%</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Q2 objectives</p>
         </div>
       </div>
 
@@ -308,9 +303,7 @@ export function ManagerDashboard() {
                   className="p-4 hover:bg-muted/50 transition-colors flex items-center justify-between group cursor-pointer"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-                      <AlertCircle className="w-5 h-5 text-amber-600" />
-                    </div>
+                    <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
                     <div>
                       <p className="text-sm font-semibold text-foreground group-hover:text-primarytransition-colors">3 Leave Requests Pending</p>
                       <p className="text-xs text-muted-foreground font-medium">Require approval before Friday</p>
@@ -318,15 +311,13 @@ export function ManagerDashboard() {
                   </div>
                   <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-blue-500 transition-colors" />
                 </div>
-
+ 
                 <div 
                   onClick={() => navigate('/payroll')}
                   className="p-4 hover:bg-muted/50 transition-colors flex items-center justify-between group cursor-pointer"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                      <FileText className="w-5 h-5 text-blue-600" />
-                    </div>
+                    <FileText className="w-5 h-5 text-blue-600 shrink-0" />
                     <div>
                       <p className="text-sm font-semibold text-foreground group-hover:text-primarytransition-colors">2 Expense Claims</p>
                       <p className="text-xs text-muted-foreground font-medium">Team travel reimbursements</p>
@@ -334,15 +325,13 @@ export function ManagerDashboard() {
                   </div>
                   <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-blue-500 transition-colors" />
                 </div>
-
+ 
                 <div 
                   onClick={() => navigate('/')}
                   className="p-4 hover:bg-muted/50 transition-colors flex items-center justify-between group cursor-pointer"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                      <Activity className="w-5 h-5 text-purple-600" />
-                    </div>
+                    <Activity className="w-5 h-5 text-purple-600 shrink-0" />
                     <div>
                       <p className="text-sm font-semibold text-foreground group-hover:text-primarytransition-colors">Performance Reviews</p>
                       <p className="text-xs text-muted-foreground font-medium">1x1s scheduled for tomorrow</p>
@@ -369,42 +358,34 @@ export function ManagerDashboard() {
                   onClick={() => navigate('/employee-management')}
                   className="flex flex-col items-center justify-center p-4 h-full rounded-lg border border-border hover:border-blue-200 hover:bg-blue-50/30 transition-all duration-300 group gap-2"
                 >
-                  <div className="p-2 bg-blue-50 dark:bg-transparent rounded-lg group-hover:bg-blue-100 transition-colors">
-                    <UserPlus className="w-5 h-5 text-blue-600" />
-                  </div>
+                  <UserPlus className="w-5 h-5 text-blue-600 shrink-0" />
                   <span className="text-xs font-bold text-foreground group-hover:text-blue-700">Add Member</span>
                 </Button>
-
+ 
                 <Button 
                   variant="outline" 
                   onClick={() => navigate('/leave-management/requests')}
                   className="flex flex-col items-center justify-center p-4 h-full rounded-lg border border-border hover:border-pink-200 hover:bg-pink-50/30 transition-all duration-300 group gap-2"
                 >
-                  <div className="p-2 bg-pink-50 dark:bg-transparent rounded-lg group-hover:bg-pink-100 transition-colors">
-                    <Calendar className="w-5 h-5 text-pink-600" />
-                  </div>
+                  <Calendar className="w-5 h-5 text-pink-600 shrink-0" />
                   <span className="text-xs font-bold text-foreground group-hover:text-pink-700">Time Off</span>
                 </Button>
-
+ 
                 <Button 
                   variant="outline" 
                   onClick={() => navigate('/payroll')}
                   className="flex flex-col items-center justify-center p-4 h-full rounded-lg border border-border hover:border-emerald-200 hover:bg-emerald-50/30 transition-all duration-300 group gap-2"
                 >
-                  <div className="p-2 bg-emerald-50 dark:bg-transparent rounded-lg group-hover:bg-emerald-100 transition-colors">
-                    <FileText className="w-5 h-5 text-emerald-600" />
-                  </div>
+                  <FileText className="w-5 h-5 text-emerald-600 shrink-0" />
                   <span className="text-xs font-bold text-foreground group-hover:text-emerald-700">Payroll</span>
                 </Button>
-
+ 
                 <Button 
                   variant="outline" 
                   onClick={() => navigate('/')}
                   className="flex flex-col items-center justify-center p-4 h-full rounded-lg border border-border hover:border-purple-200 hover:bg-purple-50/30 transition-all duration-300 group gap-2"
                 >
-                  <div className="p-2 bg-purple-50 dark:bg-transparent rounded-lg group-hover:bg-purple-100 transition-colors">
-                    <Bell className="w-5 h-5 text-purple-600" />
-                  </div>
+                  <Bell className="w-5 h-5 text-purple-600 shrink-0" />
                   <span className="text-xs font-bold text-foreground group-hover:text-purple-700">Announce</span>
                 </Button>
               </div>
@@ -477,9 +458,7 @@ export function ManagerDashboard() {
               ].map((item, index) => (
                 <div key={index} className="p-3 bg-muted/50/50 hover:bg-muted/50 border border-border rounded-lg flex items-center justify-between transition-colors">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-blue-50/80 dark:bg-transparent flex items-center justify-center flex-shrink-0 shadow-sm border border-blue-100 dark:border-transparent">
-                      <Briefcase className="w-4 h-4 text-blue-600" />
-                    </div>
+                    <Briefcase className="w-5 h-5 text-blue-600 shrink-0" />
                     <div>
                       <h4 className="text-[12px] font-medium text-foreground">{item.title}</h4>
                       <p className="text-xs font-medium text-muted-foreground mt-0.5">{item.candidates} candidates • {item.stage}</p>

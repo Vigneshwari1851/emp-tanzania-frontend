@@ -1495,9 +1495,7 @@ export function LeaveManagement() {
             <div className="flex flex-col gap-5 mb-2">
               <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                    <CalendarIcon className="w-6 h-6 text-primary" />
-                  </div>
+                  <CalendarIcon className="w-6 h-6 text-primary shrink-0" />
                   <div className="flex flex-col">
                     <h3 className="font-['Space_Grotesk'] text-[20px] font-bold text-foreground leading-tight">
                       {isEmployee ? "My Leave Requests" : "Pending Leave Requests"}
@@ -2688,7 +2686,7 @@ export function LeaveManagement() {
 
                 <div className="flex items-start justify-between mb-5">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 shadow-sm border ${(policy.leave_category === 'paid' || policy.is_paid) ? "bg-primary/10 text-primary border-primary/20" : "bg-muted/50 text-slate-600 border-border"}`}>
+                    <div className={`w-10 h-10 flex items-center justify-center shrink-0 ${(policy.leave_category === 'paid' || policy.is_paid) ? "text-primary" : "text-slate-600"}`}>
                       <CalendarIcon className="w-5 h-5" />
                     </div>
                     <div className="flex flex-col">

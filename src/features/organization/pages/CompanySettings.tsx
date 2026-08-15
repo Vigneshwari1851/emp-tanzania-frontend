@@ -223,26 +223,56 @@ export function CompanySettings() {
     const checks: { label: string; done: boolean; weight: number }[] = [];
     const isIndia = companyData.legalAddress.country === "India";
     const filled = (v: string | undefined | null) => typeof v === "string" && v.trim() !== "";
-    // Legal tab checks
+
+    // 1. Legal Entity & Tax Tab
     checks.push({ label: "Entity Name", done: filled(companyData.EntityName), weight: 2 });
     checks.push({ label: "Company Code", done: filled(companyData.companyCode), weight: 2 });
-    checks.push({ label: "Company Type", done: filled(companyData.companyType), weight: 2 });
-    checks.push({ label: "Street Address", done: filled(companyData.legalAddress.street), weight: 2 });
-    checks.push({ label: "City", done: filled(companyData.legalAddress.city), weight: 2 });
-    checks.push({ label: "State", done: filled(companyData.legalAddress.state), weight: 2 });
-    checks.push({ label: "Zip Code", done: filled(companyData.legalAddress.zipCode), weight: 2 });
-    checks.push({ label: "Country", done: filled(companyData.legalAddress.country), weight: 2 });
+    checks.push({ label: "Company Type", done: filled(companyData.companyType), weight: 1 });
+    checks.push({ label: "Street Address", done: filled(companyData.legalAddress.street), weight: 1 });
+    checks.push({ label: "City", done: filled(companyData.legalAddress.city), weight: 1 });
+    checks.push({ label: "State", done: filled(companyData.legalAddress.state), weight: 1 });
+    checks.push({ label: "Zip Code", done: filled(companyData.legalAddress.zipCode), weight: 1 });
+    checks.push({ label: "Country", done: filled(companyData.legalAddress.country), weight: 1 });
     const mainTaxId = isIndia ? companyData.taxRegistrationNumbers.pan : (companyData.taxRegistrationNumbers.tin || companyData.taxRegistrationNumber);
-    checks.push({ label: isIndia ? "PAN" : "Tax ID", done: filled(mainTaxId), weight: isIndia ? 2 : 1 });
-    // Recommended legal fields
+    checks.push({ label: isIndia ? "PAN" : "Tax ID", done: filled(mainTaxId), weight: 2 });
     checks.push({ label: "Jurisdiction", done: filled(companyData.jurisdiction), weight: 1 });
     checks.push({ label: "Fiscal Year End", done: filled(companyData.fiscalYearEnd), weight: 1 });
-    // Organizational tab
-    const hasCostCenters = (companyData.costCenters || []).some(cc => cc && cc.trim() !== "");
+
+    // 2. Geographical/Location Tab
+    const hasLocations = Array.isArray(companyData.locations) && companyData.locations.length > 0;
+    const locationsComplete = hasLocations && companyData.locations.every(loc => 
+      filled(loc.locationName) && 
+      filled(loc.locationCode) && 
+      filled(loc.address?.street) && 
+      filled(loc.address?.city) && 
+      filled(loc.timeZone)
+    );
+    checks.push({ label: "Office Locations Configured", done: hasLocations, weight: 1 });
+    checks.push({ label: "Office Locations Complete", done: locationsComplete, weight: 1 });
+
+    // 3. Organizational Structure Tab
+    const hasBusinessUnits = Array.isArray(companyData.businessUnits) && companyData.businessUnits.some(bu => filled(bu));
+    const hasDivisions = Array.isArray(companyData.divisions) && companyData.divisions.some(div => filled(div));
+    const hasCostCenters = Array.isArray(companyData.costCenters) && companyData.costCenters.some(cc => filled(cc));
+    checks.push({ label: "Business Units", done: hasBusinessUnits, weight: 1 });
+    checks.push({ label: "Divisions", done: hasDivisions, weight: 1 });
     checks.push({ label: "Cost Centers", done: hasCostCenters, weight: 1 });
-    // Geographical tab
-    const hasValidLocation = (companyData.locations || []).some(loc => loc.locationName && loc.locationName.trim() !== "");
-    checks.push({ label: "Office Location", done: hasValidLocation, weight: 2 });
+    checks.push({ label: "Payroll Statutory Unit", done: filled(companyData.payrollStatutoryUnit), weight: 1 });
+    checks.push({ label: "Legal Employer", done: filled(companyData.legalEmployer), weight: 1 });
+    checks.push({ label: "Legislative Data Group", done: filled(companyData.legislativeDataGroup), weight: 1 });
+
+    // 4. Working Calendar & Schedule Tab
+    const calendar = companyData.workingCalendar;
+    checks.push({ label: "Standard Hours", done: !!calendar.standardHours, weight: 1 });
+    checks.push({ label: "Working Days Configured", done: Array.isArray(calendar.workingDays) && calendar.workingDays.length > 0, weight: 1 });
+    checks.push({ label: "Schedule Type Selected", done: filled(calendar.scheduleType), weight: 1 });
+    
+    if (calendar.scheduleType === "fixed") {
+      checks.push({ label: "Fixed Hours Configured", done: filled(calendar.fixedStartTime) && filled(calendar.fixedEndTime), weight: 2 });
+    } else if (calendar.scheduleType === "flexible") {
+      checks.push({ label: "Flex Hours Configured", done: !!calendar.flexRequiredHours && filled(calendar.flexCoreStartTime) && filled(calendar.flexCoreEndTime), weight: 2 });
+    }
+
     const totalWeight = checks.reduce((sum, c) => sum + c.weight, 0);
     const doneWeight = checks.reduce((sum, c) => (c.done ? sum + c.weight : sum), 0);
     return Math.min(100, Math.round((doneWeight / totalWeight) * 100));
@@ -520,6 +550,14 @@ export function CompanySettings() {
         setCompanyData(prev => ({ ...prev, locations: mapBranchesToLocations(savedOrg.branches || []) }));
       }
       (window as any).temp_company_logo = undefined;
+      if (savedOrg?.logo_url) {
+        localStorage.setItem('cached_company_logo', savedOrg.logo_url);
+      } else {
+        localStorage.removeItem('cached_company_logo');
+      }
+      if (savedOrg?.entity_name) {
+        localStorage.setItem('cached_company_name', savedOrg.entity_name);
+      }
       window.dispatchEvent(new Event('company-logo-updated'));
       window.dispatchEvent(new CustomEvent('org-country-changed', { detail: { country: savedOrg.country } }));
       if (shouldNavigate) {

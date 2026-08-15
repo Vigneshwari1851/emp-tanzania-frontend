@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { LoanTypeConfig } from './LoanTypeConfig';
 import * as loansAdvancesService from '../services/loans-advances';
+import * as loanConfig from '../services/loan-config';
 import { ApprovalTimeline, getStatusLabel, getStatusColor } from '../components/ApprovalTimeline';
 import { ConfirmationDialog } from '@/shared/components/ui/ConfirmationDialog';
 import { Card, CardContent } from '@/shared/components/ui/card';
@@ -29,6 +30,7 @@ export function LoansAdvancesSetup() {
     const [advances, setAdvances] = useState<any[]>([]);
     const [pendingLoans, setPendingLoans] = useState<any[]>([]);
     const [pendingAdvances, setPendingAdvances] = useState<any[]>([]);
+    const [pendingApps, setPendingApps] = useState<any[]>([]);
     const [activeTab, setActiveTab] = useState(() => {
         const tab = searchParams.get('tab');
         if (tab) return tab;
@@ -66,16 +68,18 @@ export function LoansAdvancesSetup() {
 
     const fetchRecords = async () => {
         try {
-            const [loanRes, advRes, pendingLoanRes, pendingAdvRes] = await Promise.all([
-                loansAdvancesService.getLoans(),
-                loansAdvancesService.getAdvances(),
-                loansAdvancesService.getLoansForApproval(),
-                loansAdvancesService.getAdvancesForApproval()
+            const [loanRes, advRes, pendingLoanRes, pendingAdvRes, pendingAppRes] = await Promise.all([
+                loansAdvancesService.getLoans().catch(() => []),
+                loansAdvancesService.getAdvances().catch(() => []),
+                loansAdvancesService.getLoansForApproval().catch(() => []),
+                loansAdvancesService.getAdvancesForApproval().catch(() => []),
+                loanConfig.getPendingApprovals().catch(() => [])
             ]);
             setLoans(loanRes || []);
             setAdvances(advRes || []);
             setPendingLoans(pendingLoanRes || []);
             setPendingAdvances(pendingAdvRes || []);
+            setPendingApps(pendingAppRes || []);
         } catch {
             toast.error('Failed to load loans and advances');
         }
@@ -98,10 +102,15 @@ export function LoansAdvancesSetup() {
     const handleApprove = async (id: number, loanType: 'loan' | 'advance') => {
         const remarks = remarksMap[`${loanType}-${id}`] || '';
         try {
-            if (loanType === 'loan') {
-                await loansAdvancesService.approveLoanStep(id, remarks);
+            const isApp = pendingApps.some(app => app.id === id && app.loanType?.category?.toLowerCase() === loanType);
+            if (isApp) {
+                await loanConfig.approveApplicationStep(id, remarks);
             } else {
-                await loansAdvancesService.approveAdvanceStep(id, remarks);
+                if (loanType === 'loan') {
+                    await loansAdvancesService.approveLoanStep(id, remarks);
+                } else {
+                    await loansAdvancesService.approveAdvanceStep(id, remarks);
+                }
             }
             toast.success(`${loanType === 'loan' ? 'Loan' : 'Advance'} approved at current step`);
             setRemarksMap(prev => { const n = { ...prev }; delete n[`${loanType}-${id}`]; return n; });
@@ -113,10 +122,15 @@ export function LoansAdvancesSetup() {
 
     const handleReject = async (id: number, loanType: 'loan' | 'advance', reason: string) => {
         try {
-            if (loanType === 'loan') {
-                await loansAdvancesService.rejectLoanStep(id, reason);
+            const isApp = pendingApps.some(app => app.id === id && app.loanType?.category?.toLowerCase() === loanType);
+            if (isApp) {
+                await loanConfig.rejectApplicationStep(id, reason);
             } else {
-                await loansAdvancesService.rejectAdvanceStep(id, reason);
+                if (loanType === 'loan') {
+                    await loansAdvancesService.rejectLoanStep(id, reason);
+                } else {
+                    await loansAdvancesService.rejectAdvanceStep(id, reason);
+                }
             }
             toast.success(`${loanType === 'loan' ? 'Loan' : 'Advance'} rejected`);
             setRejectTarget(null);
@@ -142,7 +156,19 @@ export function LoansAdvancesSetup() {
         }
     };
 
-    const allPending = [...pendingLoans.map(l => ({ ...l, _type: 'loan' })), ...pendingAdvances.map(a => ({ ...a, _type: 'advance' }))];
+    const mappedApps = pendingApps.map(app => ({
+        ...app,
+        _type: app.loanType?.category?.toLowerCase() === 'loan' ? 'loan' : 'advance',
+        principalAmount: app.requestedAmount,
+        monthlyRecovery: app.monthlyEmi,
+        isApplication: true
+    }));
+
+    const allPending = [
+        ...pendingLoans.map(l => ({ ...l, _type: 'loan' })),
+        ...pendingAdvances.map(a => ({ ...a, _type: 'advance' })),
+        ...mappedApps
+    ];
     const allRecords = [...loans.map(l => ({ ...l, _type: 'loan' })), ...advances.map(a => ({ ...a, _type: 'advance' }))];
 
     const stats = useMemo(() => {
@@ -195,7 +221,7 @@ export function LoansAdvancesSetup() {
                         className={`group px-1 py-3 text-[13px] font-bold transition-all whitespace-nowrap border-b-2 select-none cursor-pointer flex items-center gap-2 ${activeTab === 'pending' ? 'text-primary border-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
                     >
                         <HandCoins className={`w-4 h-4 transition-colors ${activeTab === 'pending' ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
-                        <span>Pending Approval</span> {allPending.length > 0 && <span className="bg-amber-400 dark:bg-amber-500 text-amber-900 dark:text-amber-950 text-[10px] px-1.5 py-0.5 rounded-full font-black">{allPending.length}</span>}
+                        <span>Pending Approval</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('all')}

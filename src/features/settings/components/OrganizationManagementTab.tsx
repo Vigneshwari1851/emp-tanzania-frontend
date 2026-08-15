@@ -403,8 +403,8 @@ function DropZone({ onFile, label, accept }: DropZoneProps) {
       }`}
     >
       <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={handleSelect} />
-      <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-        <Upload className="h-4 w-4 text-primary" />
+      <div className="h-8 w-8 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform text-primary">
+        <Upload className="h-4 w-4" />
       </div>
       <p className="text-xs font-semibold text-foreground text-center mb-0.5">{label || "Click or drag file to upload"}</p>
       <p className="text-[10px] text-muted-foreground text-center">Supports PDF, JPG, PNG</p>
@@ -1118,8 +1118,8 @@ export function OrganizationManagementTab() {
               {/* Group 1: Legal Entity Information */}
               <div className="bg-card border border-border/60 rounded-xl p-5 shadow-sm space-y-4">
                 <div className="flex items-center gap-3 pb-3 border-b border-border/50">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-primary/10 dark:bg-primary/20 flex-shrink-0">
-                    <Building2 className="w-4 h-4 text-primary" strokeWidth={2} />
+                  <div className="w-8 h-8 flex items-center justify-center flex-shrink-0 text-primary">
+                    <Building2 className="w-4 h-4" strokeWidth={2} />
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-foreground leading-tight tracking-[0.01em]">Legal Entity Information</h4>
@@ -1236,8 +1236,8 @@ export function OrganizationManagementTab() {
               {getTaxFieldsForCountryName(form.country, form.company_type).length > 0 && (
                 <div className="bg-card border border-border/60 rounded-xl p-5 shadow-sm space-y-4">
                   <div className="flex items-center gap-3 pb-3 border-b border-border/50">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-50 dark:bg-amber-950/30 flex-shrink-0">
-                    <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" strokeWidth={2} />
+                  <div className="w-8 h-8 flex items-center justify-center flex-shrink-0 text-amber-600 dark:text-amber-400">
+                    <FileText className="w-4 h-4" strokeWidth={2} />
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-foreground leading-tight tracking-[0.01em]">Tax Registration Numbers</h4>
@@ -1264,8 +1264,8 @@ export function OrganizationManagementTab() {
               {/* Group 3: Legal Address */}
               <div className="bg-card border border-border/60 rounded-xl p-5 shadow-sm space-y-4">
                 <div className="flex items-center gap-3 pb-3 border-b border-border/50">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-cyan-50 dark:bg-cyan-950/30 flex-shrink-0">
-                    <MapPin className="w-4 h-4 text-cyan-600 dark:text-cyan-400" strokeWidth={2} />
+                  <div className="w-8 h-8 flex items-center justify-center flex-shrink-0 text-cyan-600 dark:text-cyan-400">
+                    <MapPin className="w-4 h-4" strokeWidth={2} />
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-foreground leading-tight tracking-[0.01em]">Legal Address</h4>
@@ -1321,8 +1321,8 @@ export function OrganizationManagementTab() {
               {/* Group 4: Company Logo */}
               <div className="bg-card border border-border/60 rounded-xl p-5 shadow-sm space-y-4">
                 <div className="flex items-center gap-3 pb-3 border-b border-border/50">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-pink-50 dark:bg-pink-950/30 flex-shrink-0">
-                    <Palette className="w-4 h-4 text-pink-600 dark:text-pink-400" strokeWidth={2} />
+                  <div className="w-8 h-8 flex items-center justify-center flex-shrink-0 text-pink-600 dark:text-pink-400">
+                    <Palette className="w-4 h-4" strokeWidth={2} />
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-foreground leading-tight tracking-[0.01em]">Company Logo</h4>
@@ -1382,8 +1382,8 @@ export function OrganizationManagementTab() {
               {/* Settings Card */}
               <div className="bg-card border border-border/60 rounded-xl p-5 shadow-sm space-y-4">
                 <div className="flex items-center gap-3 pb-3 border-b border-border/50">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-50 dark:bg-amber-950/30 flex-shrink-0">
-                    <Palette className="w-4 h-4 text-amber-600 dark:text-amber-400" strokeWidth={2} />
+                  <div className="w-8 h-8 flex items-center justify-center flex-shrink-0 text-amber-600 dark:text-amber-400">
+                    <Palette className="w-4 h-4" strokeWidth={2} />
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-foreground leading-tight tracking-[0.01em]">Branding Customization</h4>

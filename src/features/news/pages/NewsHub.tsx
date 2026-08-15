@@ -142,6 +142,7 @@ export default function NewsHub() {
   // Filtered & Searched News
   const visibleNews = useMemo(() => {
     let items = (allNews ?? []).filter((item) => {
+      if (canManageNews) return true;
       if (item.access_type === 'public') return true;
       if (item.access_type === 'department' && userDeptId && item.department_ids) {
         return item.department_ids.includes(userDeptId);

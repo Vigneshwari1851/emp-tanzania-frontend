@@ -30,6 +30,8 @@ import {
 const STATUS_META: Record<string, { label: string; className: string; icon: React.ComponentType<{ className?: string }> }> = {
   PENDING_MANAGER: { label: "Pending Manager", className: "bg-amber-50 text-amber-700 border-amber-200", icon: Clock },
   PENDING_HR: { label: "Pending HR", className: "bg-blue-50 text-blue-700 border-blue-200", icon: Clock },
+  PENDING_HR_APPROVAL: { label: "Pending HR Approval", className: "bg-blue-50 text-blue-700 border-blue-200", icon: Clock },
+  PENDING_FINANCE_APPROVAL: { label: "Pending Finance", className: "bg-purple-50 text-purple-700 border-purple-200", icon: Clock },
   APPROVED: { label: "Approved", className: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: CheckCircle2 },
   REJECTED: { label: "Rejected", className: "bg-rose-50 text-rose-700 border-rose-200", icon: XCircle },
 };
@@ -92,7 +94,7 @@ export function ChangeRequestHub() {
   const userRolesArr = (Array.isArray(user?.roles) ? user.roles : []).map((r: any) => String(r).toUpperCase());
   const allUserRoles = [userRoleStr, ...userRolesArr];
   const isManagerOrAdminRole = allUserRoles.some((r) => 
-    ['ADMIN', 'SUPER_ADMIN', 'SUPER ADMIN', 'HR', 'HR_ADMIN', 'HR ADMIN', 'MANAGER', 'REPORTING MANAGER', 'CEO', 'SYSTEM ADMINISTRATOR'].includes(r)
+    ['ADMIN', 'SUPER_ADMIN', 'SUPER ADMIN', 'HR', 'HR_ADMIN', 'HR ADMIN', 'FINANCE', 'FINANCE_MANAGER', 'FINANCE MANAGER', 'SYSTEM ADMINISTRATOR'].includes(r)
   );
   
   const [inbox, setInbox] = useState<ChangeRequest[]>([]);
@@ -133,13 +135,11 @@ export function ChangeRequestHub() {
   const handleDecision = async (request: ChangeRequest, action: "approve" | "reject", note?: string) => {
     setBusyId(request.id);
     try {
-      const role = request.status === "PENDING_MANAGER" ? "manager" : "hr";
+      const role = request.status === "PENDING_FINANCE_APPROVAL" ? "finance" : "hr";
       await decideChangeRequest(request.id, { action, role, note });
       toast.success(
         action === "approve"
-          ? request.status === "PENDING_MANAGER"
-            ? "Approved — request forwarded to HR"
-            : "Approved — changes applied to profile"
+          ? "Approved — changes applied to profile"
           : "Request rejected"
       );
       setNoteFor(null);
