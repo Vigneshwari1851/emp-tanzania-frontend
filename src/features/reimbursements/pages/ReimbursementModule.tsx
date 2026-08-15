@@ -791,7 +791,7 @@ export function ReimbursementModule() {
     }
 
     // 2. Designation match
-    const userDesig = user.designationName || 'Developer';
+    const userDesig = user.designationName || user.position || user.role || 'Developer';
     const desigEligible = policy.eligibility.designations.includes('All') || 
                           policy.eligibility.designations.some(d => d.toLowerCase() === userDesig.toLowerCase());
     if (!desigEligible) {
@@ -2047,11 +2047,10 @@ export function ReimbursementModule() {
             {/* Category & Policy Selector */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Expense Category <span className="text-red-500 dark:text-red-400">*</span></label>
-                <select
+                <Select
                   value={newClaim.category}
-                  onChange={e => {
-                    const catName = e.target.value;
+                  onChange={val => {
+                    const catName = val;
                     const matchedPolicy = policies.find(p => p.status === 'Active' && p.categories.includes(catName));
                     
                     if (matchedPolicy) {
@@ -2067,13 +2066,14 @@ export function ReimbursementModule() {
                       policyId: matchedPolicy ? matchedPolicy.id : ''
                     }));
                   }}
-                  className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-card hover:bg-slate-50 dark:hover:bg-slate-900/50 outline-none transition"
-                >
-                  <option value="">Select an Expense Category</option>
-                  {categories.filter(c => c.status === 'Active').map(c => (
-                    <option key={c.id} value={c.name}>{c.name}</option>
-                  ))}
-                </select>
+                  label="Expense Category"
+                  required
+                  placeholder="Select an Expense Category"
+                  options={categories.filter(c => c.status === 'Active').map(c => ({
+                    value: c.name,
+                    label: c.name
+                  }))}
+                />
               </div>
 
               <div>

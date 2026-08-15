@@ -791,6 +791,11 @@ export const ReportBuilder: React.FC = () => {
     setSaveTemplateDescription('');
     setShowSaveTemplateModal(false);
     toast.success(`Successfully saved "${newConfig.name}" template.`);
+    api.post('/notifications', {
+      title: 'Report Template Saved',
+      message: `Successfully saved "${newConfig.name}" template.`,
+      type: 'REPORT_BUILDER'
+    }).catch(e => console.error('Failed to save notification:', e));
   };
 
   const handleSaveReport = () => {
@@ -818,6 +823,11 @@ export const ReportBuilder: React.FC = () => {
     setSaveReportDescription('');
     setShowSaveReportModal(false);
     toast.success(`Successfully saved "${newSnapshot.title}" report snapshot.`);
+    api.post('/notifications', {
+      title: 'Report Snapshot Saved',
+      message: `Successfully saved "${newSnapshot.title}" report snapshot.`,
+      type: 'REPORT_BUILDER'
+    }).catch(e => console.error('Failed to save notification:', e));
   };
 
   const handleSnapshotDelete = (id: string) => {
@@ -829,6 +839,11 @@ export const ReportBuilder: React.FC = () => {
       if (selectedSnapshot?.id === id) {
         setSnapshotPreviewOpen(false);
       }
+      api.post('/notifications', {
+        title: 'Report Snapshot Deleted',
+        message: `Saved report snapshot has been deleted.`,
+        type: 'REPORT_BUILDER'
+      }).catch(e => console.error('Failed to save notification:', e));
     }
   };
 
@@ -858,6 +873,11 @@ export const ReportBuilder: React.FC = () => {
     setSavedReports(updated);
     localStorage.setItem('emp_xp_reports_configs', JSON.stringify(updated));
     toast.info("Deleted configuration template.");
+    api.post('/notifications', {
+      title: 'Report Template Deleted',
+      message: `Report configuration template was deleted.`,
+      type: 'REPORT_BUILDER'
+    }).catch(e => console.error('Failed to save notification:', e));
   };
 
   // Scheduling Configuration
@@ -887,6 +907,11 @@ export const ReportBuilder: React.FC = () => {
     setShowScheduleModal(false);
     setSelectedTemplateForSchedule(null);
     toast.success("Schedule created successfully!");
+    api.post('/notifications', {
+      title: 'Report Schedule Created',
+      message: `Created run schedule for "${newSchedule.name}".`,
+      type: 'REPORT_BUILDER'
+    }).catch(e => console.error('Failed to save notification:', e));
   };
 
   const handleToggleSchedule = (id: string) => {
@@ -907,6 +932,11 @@ export const ReportBuilder: React.FC = () => {
     setScheduledReports(updated);
     localStorage.setItem('emp_xp_reports_schedules', JSON.stringify(updated));
     toast.info("Deleted schedule profile.");
+    api.post('/notifications', {
+      title: 'Report Schedule Deleted',
+      message: `Schedule profile has been deleted.`,
+      type: 'REPORT_BUILDER'
+    }).catch(e => console.error('Failed to save notification:', e));
   };
 
   const handleTriggerScheduleRun = async (schedule: ScheduledReport) => {
@@ -1071,6 +1101,11 @@ export const ReportBuilder: React.FC = () => {
       localStorage.setItem('emp_xp_reports_schedules', JSON.stringify(updatedSchedules));
 
       toast.success(`Scheduled job executed successfully! Sent to: [${schedule.recipients}]`);
+      api.post('/notifications', {
+        title: 'Report Schedule Run Success',
+        message: `Scheduled run of "${schedule.name}" completed successfully.`,
+        type: 'REPORT_BUILDER'
+      }).catch(e => console.error('Failed to save notification:', e));
     } catch (err: any) {
       console.error(err);
       toast.error(`Scheduled run failed: ${err.message || 'Unknown error'}`);
@@ -2676,13 +2711,6 @@ export const ReportBuilder: React.FC = () => {
                             </TableCell>
                             <TableCell className="px-6 py-4 text-right">
                               <div className="flex justify-end gap-1 items-center">
-                                <button
-                                  onClick={() => handleTriggerScheduleRun(row)}
-                                  className="p-2 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg text-emerald-600 hover:text-emerald-700 transition-colors cursor-pointer"
-                                  title="Run Now"
-                                >
-                                  <Play className="w-4 h-4" />
-                                </button>
                                 <button
                                   onClick={() => handleToggleSchedule(row.id)}
                                   className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors cursor-pointer"

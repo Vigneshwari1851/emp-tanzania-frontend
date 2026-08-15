@@ -2496,7 +2496,6 @@ export function LeaveManagement() {
                             <th className="px-6 py-4 text-left text-sm font-semibold text-black tracking-wider">Doc</th>
                             <th className="px-6 py-4 text-left text-sm font-semibold text-black tracking-wider">Status</th>
                             <th className="px-6 py-4 text-left text-sm font-semibold text-black tracking-wider">Approved By</th>
-                            <th className="px-6 py-4 text-right text-sm font-semibold text-black tracking-wider">Actions</th>
                           </tr>
                        </thead>
                       <tbody className="divide-y divide-border">
@@ -2547,11 +2546,6 @@ export function LeaveManagement() {
                                 </span>
                               </td>
                               <td className="px-6 py-4 text-sm text-muted-foreground">{approverName}</td>
-                              <td className="px-6 py-4 text-right">
-                                <button onClick={() => handleViewDetails(request)} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-all" title="View Details">
-                                  <Eye className="w-4 h-4" />
-                                </button>
-                              </td>
                             </tr>
                           );
                         })}
@@ -2654,16 +2648,6 @@ export function LeaveManagement() {
                         </div>
                       </div>
 
-                      {/* Actions: Right Side */}
-                      <div className="flex flex-col sm:flex-row items-center gap-2 shrink-0 pr-1">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); handleViewDetails(request); }}
-                          className="mini-icon-btn"
-                                  aria-label="View Details"
-                                >
-                                  <Eye />
-                        </button>
-                      </div>
                     </div>
                   );
                 })}

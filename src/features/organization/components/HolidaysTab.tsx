@@ -159,6 +159,31 @@ const getDefaultHolidaysForCountry = (country: string, year: number): { date: st
         { date: fixed(9, 23), name: "Saudi National Day" },
       );
       break;
+    case "tanzania":
+      holidays.push(
+        { date: fixed(1, 1), name: "New Year's Day" },
+        { date: fixed(1, 12), name: "Zanzibar Revolution Day" },
+        { date: fixed(4, 7), name: "Karume Day" },
+        { date: fixed(4, 26), name: "Union Day" },
+        { date: fixed(5, 1), name: "Labour Day" },
+        { date: fixed(7, 7), name: "Saba Saba Day" },
+        { date: fixed(8, 8), name: "Nane Nane / Farmers' Day" },
+        { date: fixed(10, 14), name: "Mwalimu Nyerere Day" },
+        { date: fixed(12, 9), name: "Independence / Republic Day" },
+        { date: fixed(12, 25), name: "Christmas Day" },
+        { date: fixed(12, 26), name: "Boxing Day" },
+      );
+      if (year === 2026) {
+        holidays.push(
+          { date: fixed(3, 20), name: "Eid al-Fitr" },
+          { date: fixed(3, 21), name: "Eid al-Fitr Holiday" },
+          { date: fixed(4, 3), name: "Good Friday" },
+          { date: fixed(4, 6), name: "Easter Monday" },
+          { date: fixed(5, 27), name: "Eid al-Adha / Eid al-Hajj" },
+          { date: fixed(9, 15), name: "Maulidi Day" },
+        );
+      }
+      break;
     case "south africa":
       holidays.push(
         { date: fixed(1, 1), name: "New Year's Day" },
@@ -276,40 +301,67 @@ export const HolidaysTab = ({
 
   const isEditable = !isReadOnly;
 
-  // Ensure default holidays for all years if not yet populated
-  const initializedRef = useRef(false);
+  // Ensure default holidays for all years if not yet populated or if country changes
+  const prevCountryRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (initializedRef.current) return;
-    const hols = companyData?.workingCalendar?.publicHolidays;
+    if (!setCompanyData) return;
     const country = companyData?.legalAddress?.country || "India";
-    if (country) {
-      const allYears = [2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032];
-      const existingYears = new Set<string>();
-      if (hols) {
-        hols.forEach((h: string) => {
-          const colonIdx = h.indexOf(':');
-          const dateStr = colonIdx !== -1 ? h.substring(0, colonIdx).trim() : h.trim();
-          const match = dateStr.match(/^(\d{4})/);
-          if (match) existingYears.add(match[1]);
-        });
+    const hols = companyData?.workingCalendar?.publicHolidays || [];
+    const allYears = [2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032];
+
+    const prevCountry = prevCountryRef.current;
+
+    // Check if it is a fresh initialization or a country change
+    if (prevCountry !== country) {
+      // 1. Identify previous country's defaults (if any) and filter them out
+      let customHolidays = [...hols];
+      if (prevCountry) {
+        const prevDefaults = allYears.flatMap(y => 
+          getDefaultHolidaysForCountry(prevCountry, y).map(d => `${d.date}: ${d.name}`)
+        );
+        const prevDefaultsSet = new Set(prevDefaults);
+        customHolidays = customHolidays.filter(h => !prevDefaultsSet.has(h));
+      } else {
+        // If prevCountry is null, we are initializing. But we might have some defaults from another country already loaded.
+        // To be safe, let's identify defaults for ALL supported countries (other than the current one) and filter them out
+        // to cleanly transition to the current country's defaults.
+        const otherCountries = ["india", "united states", "usa", "united kingdom", "uk", "united arab emirates", "uae", "singapore", "canada", "australia", "germany", "france", "netherlands", "saudi arabia", "south africa", "japan", "brazil", "tanzania"];
+        const otherDefaults = allYears.flatMap(y => 
+          otherCountries
+            .filter(c => c.toLowerCase() !== country.toLowerCase())
+            .flatMap(c => getDefaultHolidaysForCountry(c, y).map(d => `${d.date}: ${d.name}`))
+        );
+        const otherDefaultsSet = new Set(otherDefaults);
+        customHolidays = customHolidays.filter(h => !otherDefaultsSet.has(h));
       }
-      const missingYears = allYears.filter(y => !existingYears.has(String(y)));
-      if (missingYears.length > 0 && setCompanyData) {
-        const toAdd = missingYears.flatMap(y => {
-          const defaults = getDefaultHolidaysForCountry(country, y);
-          return defaults.map(d => `${d.date}: ${d.name}`);
-        });
-        setCompanyData({
-          ...companyData,
-          workingCalendar: {
-            ...companyData.workingCalendar,
-            publicHolidays: [...(hols || []), ...toAdd],
-          },
-        });
+
+      // 2. Generate new country defaults
+      const newDefaults = allYears.flatMap(y => 
+        getDefaultHolidaysForCountry(country, y).map(d => `${d.date}: ${d.name}`)
+      );
+
+      // 3. Merge custom holidays with new country defaults
+      const customSet = new Set(customHolidays);
+      const mergedHolidays = [...customHolidays];
+      for (const defHoliday of newDefaults) {
+        if (!customSet.has(defHoliday)) {
+          mergedHolidays.push(defHoliday);
+        }
       }
+
+      // 4. Update the state
+      setCompanyData({
+        ...companyData,
+        workingCalendar: {
+          ...companyData.workingCalendar,
+          publicHolidays: mergedHolidays,
+        },
+      });
+
+      prevCountryRef.current = country;
     }
-    initializedRef.current = true;
-  }, []);
+  }, [companyData?.legalAddress?.country, setCompanyData]);
 
   // Close dropdown on click outside
   useEffect(() => {

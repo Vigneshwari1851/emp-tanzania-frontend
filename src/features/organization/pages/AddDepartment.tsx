@@ -240,7 +240,7 @@ export function AddDepartment() {
       setIsSaving(true);
       await deleteDepartment(parseInt(id, 10));
       toast.success("Department deleted successfully");
-      navigate("/org-setup");
+      navigate("/org-setup/settings");
     } catch (error: any) {
       console.error("Failed to delete department", error);
       toast.error(error.response?.data?.message || error.message || "Failed to delete department");
@@ -354,7 +354,7 @@ export function AddDepartment() {
         toast.success("Department(s) created successfully");
       }
       
-      const returnTo = (location.state as any)?.from || "/org-setup";
+      const returnTo = (location.state as any)?.from || "/org-setup/settings";
       navigate(returnTo, {
         replace: true,
         state: { createdDeptIds },
@@ -607,7 +607,7 @@ export function AddDepartment() {
         params.set("view", "true");
         navigate(`${location.pathname}?${params.toString()}`, { replace: true });
       } else {
-        navigate("/org-setup");
+        navigate("/org-setup/settings");
       }
     }
   };

@@ -60,7 +60,7 @@ const AuthLayout = ({ children, logoUrl, entityName }) => {
   const leftImage = resolvedTheme === "dark" ? loginDarkImage : loginImage;
   const textColorClass = resolvedTheme === "dark" ? "text-[#ffffff]" : "text-[#000000]";
 
-  const displayLogo = logoUrl || localOrg?.logo_url || localStorage.getItem('cached_company_logo') || window.temp_company_logo || logoSmall;
+  const uploadedLogo = logoUrl || localOrg?.logo_url || localStorage.getItem('cached_company_logo') || window.temp_company_logo;
   const displayName = entityName || localOrg?.entity_name || localStorage.getItem('cached_company_name') || "";
 
   return (
@@ -79,12 +79,14 @@ const AuthLayout = ({ children, logoUrl, entityName }) => {
 
           <div className="space-y-2">
             {/* <div className="w-16 h-1.5 bg-blue-600 rounded-full"></div> */}
-              <div className="flex items-center gap-2 mb-2" style={{ marginTop: '-30px' }}>
-                <img src={displayLogo} alt={`${displayName} Logo`} className="w-10 h-10 object-contain" />
-                <p className={`${textColorClass} text-[25px] font-extrabold leading-none`}>
-                  {displayName}
-                </p>
-              </div>
+              {uploadedLogo && (
+                <div className="flex items-center gap-2 mb-2" style={{ marginTop: '-30px' }}>
+                  <img src={uploadedLogo} alt={`${displayName} Logo`} className="w-10 h-10 object-contain" />
+                  <p className={`${textColorClass} text-[25px] font-extrabold leading-none`}>
+                    {displayName}
+                  </p>
+                </div>
+              )}
             <div className="flex flex-col">
               <p className={`${textColorClass} text-[55px] font-bold leading-[0.85]`}>
                Streamline your 

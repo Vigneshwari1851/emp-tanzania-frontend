@@ -13,6 +13,9 @@ export function HolidaysPage() {
         const org = Array.isArray(orgRes) ? orgRes[0] : (orgRes as any)?.data || orgRes;
         if (org) {
           setCompanyData({
+            legalAddress: {
+              country: org.country || "India"
+            },
             workingCalendar: {
               publicHolidays: org.public_holidays || []
             }

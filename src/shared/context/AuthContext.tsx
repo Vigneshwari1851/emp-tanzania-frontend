@@ -106,7 +106,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               profile_picture: details.profile_picture,
               name: details.first_name ? `${details.first_name} ${details.last_name || ''}` : prev.name,
               departmentName: details.department?.department_name || 'Engineering',
-              designationName: details.job_role || 'Developer',
+              designationName: details.designation?.designation_name || details.job_role || 'Developer',
             } : null);
           }
         } catch (error) {
