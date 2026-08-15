@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useOrgNavigate } from '@/shared/hooks/useOrgNavigate';
 import {
   getDesignations,
@@ -8,7 +8,7 @@ import {
   getDesignationEmployees,
   type DesignationNode,
 } from "../services/designations";
-import { getDepartments } from "../services/departments";
+import { getDepartments, type Department } from "../services/departments";
 import {
   Briefcase,
   Plus,
@@ -34,6 +34,7 @@ import {
   Clock,
   Search,
   User,
+  Sparkles,
 } from "lucide-react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { Button } from "@/shared/components/ui/button";
@@ -48,8 +49,18 @@ export interface PendingDesignation {
   description?: string;
   parent_designation_id?: number | null;
   secondary_parent_designation_id?: number | null;
-  secondary_reporting_employee_id?: number | null;
+
 }
+
+// Top-level executive shown as a suggestion in the global designation chart (mirrors the department canvas)
+const TOP_EXECUTIVE_ROLE = {
+  name: "CEO / Managing Director",
+  code: "CEO / MD",
+  description: "Executive Office & Board of Directors",
+};
+
+const isSuggestedNode = (node: { id: any }) =>
+  typeof node.id === "string" && String(node.id).startsWith("suggested-");
 
 interface DesignationSettingsFormProps {
   isReadOnly: boolean;
@@ -185,25 +196,47 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
   const [description, setDescription] = useState("");
   const [parentId, setParentId] = useState<number | null>(null);
   const [secondaryParentId, setSecondaryParentId] = useState<number | null>(null);
-  const [secondaryReportingEmployeeId, setSecondaryReportingEmployeeId] = useState<number | null>(null);
-  const [secondaryEmployees, setSecondaryEmployees] = useState<{ id: number; first_name: string; last_name: string; employee_id: string }[]>([]);
-  const [departments, setDepartments] = useState<any[]>([]);
-  const [selectedDeptId, setSelectedDeptId] = useState<number | null>(null);
+  const [departmentsList, setDepartmentsList] = useState<Department[]>([]);
+  const [deptId, setDeptId] = useState<number | null>(null);
 
-  // Fetch employees when secondary parent designation changes
-  useEffect(() => {
-    if (secondaryParentId && !isPendingMode) {
-      getDesignationEmployees(secondaryParentId).then(setSecondaryEmployees).catch(() => setSecondaryEmployees([]));
-    } else {
-      setSecondaryEmployees([]);
-    }
-    setSecondaryReportingEmployeeId(null);
-  }, [secondaryParentId, isPendingMode]);
 
   const [deleteConfirm, setDeleteConfirm] = useState<{
     isOpen: boolean;
     data: DesignationNode | null;
   }>({ isOpen: false, data: null });
+
+  const hasTopExec = useMemo(() => {
+    const savedCodes = new Set(
+      designations.map(d => d.designation_code?.toUpperCase()).filter(Boolean)
+    );
+    return savedCodes.has("CEO") || savedCodes.has("MD");
+  }, [designations]);
+
+  /** Global roots: "CEO / Managing Director" sits at top and all saved designations nest under it (deduped when CEO/MD already exists) */
+  const displayRoots = useMemo(() => {
+    if (!isGlobal) return designations;
+    if (!hasTopExec) {
+      return [];
+    }
+
+    const topExecNode = designations.find(d => {
+      const code = (d.designation_code || "").toUpperCase();
+      return code === "CEO" || code === "MD";
+    });
+
+    if (!topExecNode) return designations;
+
+    const otherRoots = designations.filter(d => d.id !== topExecNode.id && !d.parent_designation_id);
+    const modifiedTopExecNode = {
+      ...topExecNode,
+      sub_designations: [
+        ...(topExecNode.sub_designations || []),
+        ...otherRoots
+      ]
+    };
+
+    return [modifiedTopExecNode];
+  }, [designations, isGlobal, hasTopExec]);
 
   const chartRef = useRef<HTMLDivElement>(null);
   const [connectionPaths, setConnectionPaths] = useState<string[]>([]);
@@ -439,11 +472,6 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
       };
       flatten(data);
       setFlatDesignations(flatList);
-
-      if (isGlobal && !isReadOnly) {
-        const depts = await getDepartments();
-        setDepartments(depts);
-      }
     } catch (error: any) {
       toast.error(error.message || "Failed to load designations");
     } finally {
@@ -452,6 +480,18 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
   };
 
   useEffect(() => { loadData(); }, [departmentId, isGlobal]);
+
+  useEffect(() => {
+    const fetchDepts = async () => {
+      try {
+        const data = await getDepartments();
+        setDepartmentsList(data);
+      } catch (err) {
+        console.error("Failed to load departments in designation settings form", err);
+      }
+    };
+    fetchDepts();
+  }, []);
 
   useEffect(() => {
     if (showForm) {
@@ -463,9 +503,8 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
   }, [showForm]);
 
   const resetForm = () => {
-    setName(""); setCode(""); setDescription(""); setParentId(null); setSecondaryParentId(null); setSecondaryReportingEmployeeId(null);
-    setSecondaryEmployees([]);
-    setSelectedDeptId(null);
+    setName(""); setCode(""); setDescription(""); setParentId(null); setSecondaryParentId(null);
+    setDeptId(null);
     setEditingId(null); setShowForm(false);
   };
 
@@ -489,7 +528,6 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
         description: description.trim() || undefined,
         parent_designation_id: parentId || null,
         secondary_parent_designation_id: secondaryParentId || null,
-        secondary_reporting_employee_id: secondaryReportingEmployeeId || null,
       };
       let updated = [...pendingDesignations];
       if (editingId !== null) {
@@ -521,8 +559,7 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
       description: description.trim() || undefined,
       parent_designation_id: parentId || null,
       secondary_parent_designation_id: secondaryParentId || null,
-      secondary_reporting_employee_id: secondaryReportingEmployeeId || null,
-      department_id: isGlobal ? selectedDeptId : (departmentId ?? null),
+      department_id: isGlobal ? (deptId || null) : (departmentId ?? null),
     };
     try {
       if (editingId) {
@@ -558,16 +595,26 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
     setDescription(node.description || "");
     setParentId(node.parent_designation_id || null);
     setSecondaryParentId(node.secondary_parent_designation_id || null);
-    setSecondaryReportingEmployeeId(node.secondary_reporting_employee_id || null);
-    if (node.secondary_parent_designation_id) {
-      getDesignationEmployees(node.secondary_parent_designation_id).then(setSecondaryEmployees).catch(() => setSecondaryEmployees([]));
-    }
-    setSelectedDeptId(node.department_id || node.department?.id || null);
+    setDeptId(node.department_id || null);
     setShowForm(true);
   };
 
   const executeDelete = async () => {
     if (!deleteConfirm.data) return;
+    
+    const isTopExec = (deleteConfirm.data.designation_code || "").toUpperCase() === "CEO" || 
+                      (deleteConfirm.data.designation_code || "").toUpperCase() === "MD";
+    
+    if (isTopExec) {
+      const hasChildren = designations.some(d => d.parent_designation_id === deleteConfirm.data!.id) || 
+                          (deleteConfirm.data.sub_designations && deleteConfirm.data.sub_designations.length > 0);
+      if (hasChildren) {
+        toast.error("Cannot delete the top-level designation while it has reporting designations. Please delete or reassign lower-level designations first.");
+        setDeleteConfirm({ isOpen: false, data: null });
+        return;
+      }
+    }
+
     try {
       await deleteDesignation(deleteConfirm.data.id);
       toast.success("Structure deleted!");
@@ -643,6 +690,11 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
               <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-muted text-muted-foreground border border-border shrink-0">
                 {node.designation_code}
               </span>
+              {node.department && (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-primary/10 text-primary border border-primary-100/50 shrink-0">
+                  {node.department.department_name}
+                </span>
+              )}
             </div>
             {node.description && (
               <p className="text-[12px] leading-4 text-muted-foreground mt-0.5 truncate">{node.description}</p>
@@ -708,7 +760,8 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
 
   const renderFlowchartNode = (node: DesignationNode): React.ReactNode => {
     const hasChildren = node.sub_designations && node.sub_designations.length > 0;
-    const isSelected = selectedNode?.id === node.id;
+    const isSuggested = isSuggestedNode(node);
+    const isSelected = selectedNode?.id === node.id && !isSuggested;
     const isMatched = searchQuery ? doesNodeMatchSearch(node, searchQuery) : false;
     const isRootCEO = node.parent_designation_id === null;
 
@@ -717,11 +770,12 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
         {/* Node Card */}
         <div
           onClick={() => {
+            if (isSuggested) return;
             setSelectedEmployee(null);
             setSelectedNode(node);
           }}
           onContextMenu={(e) => {
-            if (isReadOnly) return;
+            if (isReadOnly || isSuggested) return;
             e.preventDefault();
             e.stopPropagation();
             setNewlyCreatedId(null);
@@ -735,27 +789,39 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
           }}
           data-node-id={node.id}
           /* Added hierarchy-node class to exclude from panning/dragging triggers, and stabilized dimensions without scale-105/translations */
-          className={`relative p-4 border-2 rounded-lg flex flex-col items-center min-w-[200px] max-w-[260px] text-center transition-all duration-300 cursor-pointer hierarchy-node ${newlyCreatedId === node.id
-              ? "bg-card border-emerald-400 shadow-[0_12px_40px_rgb(34,197,94,0.2)] ring-4 ring-emerald-500/20 z-10"
-              : isSelected
-                ? "bg-card border-primary-500 shadow-[0_12px_40px_rgb(99,102,241,0.2)] ring-4 ring-primary/10 z-10"
-                : isMatched
-                  ? "bg-card border-amber-400 shadow-[0_12px_40px_rgb(251,191,36,0.2)] ring-4 ring-amber-400/20 z-10"
-                  : "bg-card/90 backdrop-blur-sm border-border/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:border-primary-300"
+          className={`relative p-4 border-2 rounded-lg flex flex-col items-center min-w-[200px] max-w-[260px] text-center transition-all duration-300 hierarchy-node ${
+              isSuggested
+                ? "border-dashed border-amber-300 bg-amber-50/60 dark:bg-amber-950/20 shadow-[0_8px_30px_rgb(251,191,36,0.08)] cursor-default"
+                : newlyCreatedId === node.id
+                  ? "bg-card border-emerald-400 shadow-[0_12px_40px_rgb(34,197,94,0.2)] ring-4 ring-emerald-500/20 z-10 cursor-pointer"
+                  : isSelected
+                    ? "bg-card border-primary-500 shadow-[0_12px_40px_rgb(99,102,241,0.2)] ring-4 ring-primary/10 z-10 cursor-pointer"
+                    : isMatched
+                      ? "bg-card border-amber-400 shadow-[0_12px_40px_rgb(251,191,36,0.2)] ring-4 ring-amber-400/20 z-10 cursor-pointer"
+                      : "bg-card/90 backdrop-blur-sm border-border/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:border-primary-300 cursor-pointer"
             }`}
         >
           <div className="designation-card-anchor w-full flex flex-col items-center">
-            <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border uppercase tracking-wider shadow-sm ${isSelected
-                ? "text-primary bg-primary/10 border-primary-150"
-                : isMatched
-                  ? "text-amber-700 bg-amber-100 border-amber-200"
-                  : "text-muted-foreground bg-muted border-border/80"
+            <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border uppercase tracking-wider shadow-sm ${isSuggested
+                ? "text-amber-700 bg-amber-100 border-amber-200"
+                : isSelected
+                  ? "text-primary bg-primary/10 border-primary-150"
+                  : isMatched
+                    ? "text-amber-700 bg-amber-100 border-amber-200"
+                    : "text-muted-foreground bg-muted border-border/80"
               }`}>
               {node.designation_code}
             </span>
             <span className="font-extrabold text-foreground text-[14px] leading-5 mt-2.5 leading-tight">
               {node.designation_name}
             </span>
+            {node.department && (
+              <span className="text-[10px] text-muted-foreground font-semibold mt-1">
+                {node.department.department_name}
+              </span>
+            )}
+
+            {/* Suggested labels removed */}
 
 
             {/* Secondary Reporting Badge (forward — with arrow) */}
@@ -763,11 +829,7 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
               <div className="mt-2 w-full text-[10px] font-semibold text-primary-600 bg-primary-50/80 border border-dashed border-primary-300 px-3 py-1.5 rounded-lg shadow-sm text-center leading-normal">
                 <span className="text-primary-400 mr-1 inline-block">&#8599;</span>
                 Reports to <span className="font-bold">{node.secondary_parent.designation_name}</span>
-                {node.secondary_reporting_employee && (
-                  <span className="text-primary-500 font-normal">
-                    {" "}({node.secondary_reporting_employee.first_name} {node.secondary_reporting_employee.last_name})
-                  </span>
-                )}
+
               </div>
             )}
 
@@ -916,7 +978,7 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
               className="h-[36px] gap-2 font-bold border-border rounded-lg text-foreground hover:bg-muted hover:text-primary hover:border-primary-300 shadow-sm shrink-0"
               onClick={() => {
                 setShowForm(true); setEditingId(null);
-                setName(""); setCode(""); setDescription(""); setParentId(null); setSelectedDeptId(null);
+                setName(""); setCode(""); setDescription(""); setParentId(null);
               }}
             >
               <Plus className="w-4 h-4" />
@@ -925,7 +987,7 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
           )}
 
           {/* Edit button to toggle/enter edit mode for the organization structure data */}
-          {!isReadOnly && (
+          {isReadOnly && (
             <Button
               type="button"
               variant="outline"
@@ -933,7 +995,7 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
               className="h-[36px] gap-2 font-bold border-border rounded-lg text-foreground hover:bg-muted hover:text-primary hover:border-primary-300 shadow-sm shrink-0"
             >
               <Pencil className="w-4 h-4 text-muted-foreground" />
-              Edit
+              Edit Settings
             </Button>
           )}
         </div>
@@ -988,16 +1050,15 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
               </div>
             </div>
 
-            {/* Department Dropdown (only visible in global mode) */}
             {isGlobal && (
               <Select
-                value={String(selectedDeptId || "")}
-                onChange={(val) => setSelectedDeptId(Number(val) || null)}
+                value={String(deptId || "")}
+                onChange={(val) => setDeptId(Number(val) || null)}
                 label="Department"
-                placeholder="None (Global / Root-Level)"
-                options={departments.map((dept) => ({
-                  value: String(dept.id),
-                  label: dept.department_name,
+                placeholder="None (Global / No Department)"
+                options={departmentsList.map((d) => ({
+                  value: String(d.id),
+                  label: d.department_name,
                 }))}
               />
             )}
@@ -1044,19 +1105,7 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
               }
             />
 
-            {/* Secondary Reporting Employee (only shown when a secondary parent is selected) */}
-            {secondaryParentId && !isPendingMode && (
-              <Select
-                value={String(secondaryReportingEmployeeId || "")}
-                onChange={(val) => setSecondaryReportingEmployeeId(Number(val) || null)}
-                label="Secondary Reporting Employee"
-                placeholder="Select employee"
-                options={secondaryEmployees.map((emp) => ({
-                  value: String(emp.id),
-                  label: `${emp.first_name} ${emp.last_name} (${emp.employee_id || emp.first_name})`,
-                }))}
-              />
-            )}
+
 
             {/* Description */}
             <div className="space-y-2">
@@ -1178,30 +1227,38 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
               <div className="flex items-center justify-center py-10">
                 <Loader2 className="w-5 h-5 animate-spin text-primary-500" />
               </div>
-            ) : designations.length === 0 ? (
-              <div className="text-center py-12 border-2 border-dashed border-border rounded-sm">
-                <Briefcase className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                <p className="text-muted-foreground mb-1 text-[14px] leading-5">No structures added yet</p>
-                <p className="text-[14px] leading-5 text-muted-foreground">
-                  {isReadOnly
-                    ? "No structures defined for this department"
-                    : "Structures define role titles within this department"}
-                </p>
-              </div>
             ) : viewType === "chart" ? (
               <>
-                <div className="relative bg-card rounded-lg border border-border shadow-sm h-[600px] w-full hierarchy-canvas-container">
-                  <TransformWrapper
-                    initialScale={1}
-                    minScale={0.3}
-                    maxScale={2.5}
-                    ref={inlineTransformRef}
-                    /* Enable wheel zoom for native pinch-to-zoom support */
-                    wheel={{ disabled: false }}
-                    panning={{ disabled: false, velocityDisabled: true, excluded: ["hierarchy-node"] }}
-                    doubleClick={{ disabled: true }}
-                    zoomAnimation={{ disabled: false, size: 0.05, animationTime: 150, animationType: "easeOut" }}
-                  >
+                <div className="relative bg-card rounded-lg border border-border shadow-sm h-[600px] w-full hierarchy-canvas-container flex flex-col items-center justify-center p-8 text-center">
+                  {displayRoots.length === 0 ? (
+                    <div className="flex flex-col items-center max-w-sm animate-in fade-in duration-300">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                        <Network className="w-6 h-6 text-primary" />
+                      </div>
+                      <h4 className="text-sm font-semibold text-foreground">Set Up Your Top Designation</h4>
+                      <p className="text-[12px] leading-relaxed text-muted-foreground mt-2">
+                        To get started, you must first define your top-level executive designation (e.g. CEO or Managing Director) using the Setup Wizard. Once saved, it will reflect here and you can expand lower levels.
+                      </p>
+                      <Button
+                        onClick={() => navigate("/org-setup/job-hierarchy-setup")}
+                        className="bg-primary hover:bg-primary/95 text-white font-bold h-9 px-5 text-[12px] rounded-lg shadow-sm border-none gap-1.5 mt-5 transition-all"
+                      >
+                        <Network className="w-3.5 h-3.5" />
+                        Launch Setup Wizard
+                      </Button>
+                    </div>
+                  ) : (
+                    <TransformWrapper
+                      initialScale={1}
+                      minScale={0.3}
+                      maxScale={2.5}
+                      ref={inlineTransformRef}
+                      /* Enable wheel zoom for native pinch-to-zoom support */
+                      wheel={{ disabled: false }}
+                      panning={{ disabled: false, velocityDisabled: true, excluded: ["hierarchy-node"] }}
+                      doubleClick={{ disabled: true }}
+                      zoomAnimation={{ disabled: false, size: 0.05, animationTime: 150, animationType: "easeOut" }}
+                    >
                     {({ zoomIn, zoomOut, resetTransform }) => (
                       <>
                         <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 bg-card p-1 rounded-sm shadow-sm border border-border">
@@ -1223,7 +1280,7 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
                           contentStyle={{ minWidth: "100%", minHeight: "100%", display: "flex", justifyContent: "center", alignItems: "flex-start", paddingTop: "2rem", paddingBottom: "2rem" }}
                         >
                           <div className="hierarchy-tree-content flex gap-16 justify-center items-start px-8 relative" ref={isModalOpen ? null : chartRef}>
-                            {designations.map((rootNode) => renderFlowchartNode(rootNode))}
+                            {displayRoots.map((rootNode) => renderFlowchartNode(rootNode))}
                             <svg className="hierarchy-svg-overlay" style={{ overflow: 'visible' }}>
                               <defs>
                                 <marker id="secondaryArrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
@@ -1248,10 +1305,11 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
                       </>
                     )}
                   </TransformWrapper>
-                </div>
+                )}
+              </div>
 
-                {/* Fullscreen Org Chart Modal */}
-                {isModalOpen && (
+              {/* Fullscreen Org Chart Modal */}
+              {isModalOpen && (
                   <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-card rounded-lg w-full h-[90vh] flex flex-col shadow-sm border border-border overflow-hidden animate-in fade-in zoom-in-95 duration-200 relative">
                       {/* Modal Header */}
@@ -1311,7 +1369,7 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
                                 }}
                               >
                                 <div className="hierarchy-tree-content flex gap-16 justify-center items-start px-16 relative" ref={isModalOpen ? chartRef : null}>
-                                  {designations.map((rootNode) => renderFlowchartNode(rootNode))}
+                                  {displayRoots.map((rootNode) => renderFlowchartNode(rootNode))}
                                   <svg className="hierarchy-svg-overlay" style={{ overflow: 'visible' }}>
                                     <defs>
                                       <marker id="secondaryArrowModal" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
@@ -1368,11 +1426,7 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
                                 <div className="flex justify-end">
                                   <span>Secondary: <strong className="truncate max-w-[100px] inline-block align-bottom text-primary-600">
                                     {selectedNode.secondary_parent.designation_name}
-                                    {selectedNode.secondary_reporting_employee && (
-                                      <span className="text-primary-500 font-normal">
-                                        {" "}({selectedNode.secondary_reporting_employee.first_name} {selectedNode.secondary_reporting_employee.last_name})
-                                      </span>
-                                    )}
+
                                   </strong></span>
                                 </div>
                               )}
@@ -1384,6 +1438,16 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
                   </div>
                 )}
               </>
+            ) : displayRoots.length === 0 ? (
+              <div className="text-center py-12 border-2 border-dashed border-border rounded-sm">
+                <Briefcase className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-muted-foreground mb-1 text-[14px] leading-5">No structures added yet</p>
+                <p className="text-[14px] leading-5 text-muted-foreground">
+                  {isReadOnly
+                    ? "No structures defined for this department"
+                    : "Structures define role titles within this department"}
+                </p>
+              </div>
             ) : (
               <div className="space-y-2">
                 {designations.map((rootNode) => renderDesignationNode(rootNode, 0))}

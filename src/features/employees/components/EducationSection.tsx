@@ -17,8 +17,9 @@ interface EducationSectionProps {
 }
 
 const EDUCATION_LEVELS = [
-  "SSLC",
-  "PUC",
+  "Primary",
+  "O-Level",
+  "A-Level",
   "Diploma",
   "UG",
   "PG",
@@ -28,11 +29,12 @@ const EDUCATION_LEVELS = [
 const getNormalizedLevel = (level: string) => {
   if (!level) return "";
   const l = level.toLowerCase();
-  if (l.includes("10th") || l.includes("sslc") || l.includes("sse")) return "SSLC";
-  if (l.includes("12th") || l.includes("puc") || l.includes("hsc")) return "PUC";
+  if (l.includes("primary")) return "Primary";
+  if (l.includes("10th") || l.includes("sslc") || l.includes("sse") || l.includes("o-level") || l.includes("ordinary")) return "SSLC";
+  if (l.includes("12th") || l.includes("puc") || l.includes("hsc") || l.includes("a-level") || l.includes("advanced")) return "PUC";
   if (l.includes("diploma")) return "Diploma";
-  if (l.includes("undergraduate") || l.includes("ug")) return "UG";
-  if (l.includes("postgraduate") || l.includes("pg")) return "PG";
+  if (l.includes("undergraduate") || l.includes("ug") || l.includes("bachelor")) return "UG";
+  if (l.includes("postgraduate") || l.includes("pg") || l.includes("master")) return "PG";
   if (l.includes("doctorate") || l.includes("phd")) return "PhD";
   return level;
 };
@@ -92,19 +94,19 @@ const checkChronology = (record: Education, history: Education[], currentIndex: 
 
   if (sslcYear !== null && pucYear !== null) {
     if (pucYear < sslcYear + 2) {
-      return "PUC completion year must be at least 2 years after SSLC completion year.";
+      return "A-Level / Form VI completion year must be at least 2 years after O-Level / Form IV completion year.";
     }
   }
 
   if (pucYear !== null && degreeYear !== null) {
     if (degreeYear <= pucYear) {
-      return "Degree/Diploma completion year must be strictly greater than PUC completion year.";
+      return "Degree/Diploma completion year must be strictly greater than A-Level / Form VI completion year.";
     }
   }
 
   if (sslcYear !== null && degreeYear !== null) {
     if (degreeYear <= sslcYear) {
-      return "Degree/Diploma completion year must be strictly greater than SSLC completion year.";
+      return "Degree/Diploma completion year must be strictly greater than O-Level / Form IV completion year.";
     }
   }
 

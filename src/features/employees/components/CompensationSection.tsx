@@ -1,5 +1,5 @@
 import { useMemo, useEffect } from 'react';
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { TrendingUp, TrendingDown, Info } from "lucide-react";
 import type { CompensationSplit } from '../pages/AddEmployee';
 import Select from "@/shared/components/ui/Select";
 import { useCurrency } from '@/shared/hooks/useCurrency';
@@ -39,6 +39,20 @@ const CompensationSection: React.FC<CompensationSectionProps> = ({
   }, [compensationSplits]);
   
   const { currencySymbol: currentSymbol } = useCurrency(formData.currency);
+
+  const ctcPaddingClass = useMemo(() => {
+    if (!currentSymbol) return "pl-8";
+    if (currentSymbol.length > 2) return "pl-14";
+    if (currentSymbol.length > 1) return "pl-11";
+    return "pl-8";
+  }, [currentSymbol]);
+
+  const splitPaddingClass = useMemo(() => {
+    if (!currentSymbol) return "pl-7";
+    if (currentSymbol.length > 2) return "pl-12";
+    if (currentSymbol.length > 1) return "pl-9";
+    return "pl-7";
+  }, [currentSymbol]);
 
 
   const updateCompensationSplit = (index: number, field: keyof CompensationSplit, value: string) => {
@@ -175,145 +189,117 @@ const CompensationSection: React.FC<CompensationSectionProps> = ({
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-1">
-              <label className="block text-[13px] font-bold text-foreground mb-2">
-                CTC (Cost to Company) <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">{currentSymbol}</span>
-                <input
-                  type="number"
-                  name="baseSalary"
-                  value={formData.baseSalary}
-                  onChange={handleInputChange}
-                  readOnly={readOnly}
-                  className={`w-full pl-8 pr-4 py-2.5 bg-card border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold transition-all ${formErrors.baseSalary ? 'border-red-400' : 'border-border'} ${readOnly ? 'cursor-default opacity-90' : ''}`}
-                  placeholder="Enter CTC"
-                />
-              </div>
-              {formErrors.baseSalary && <p className="text-xs text-red-500 mt-1">{formErrors.baseSalary}</p>}
-            </div>
-
-            <div>
-              <Select
-                value={formData.currency}
-                onChange={(val) => handleInputChange({ target: { name: 'currency', value: val } } as any)}
-                label="Currency"
-                disabled={readOnly}
-                options={[
-                  { value: "INR", label: "INR (₹) - India" },
-                  { value: "USD", label: "USD ($) - USA" },
-                  { value: "SGD", label: "SGD (S$) - Singapore" },
-                  { value: "AED", label: "AED - UAE" },
-                  { value: "TZS", label: "TZS - Tanzania" },
-                  { value: "EUR", label: "EUR (€)" },
-                  { value: "GBP", label: "GBP (£)" },
-                  { value: "CAD", label: "CAD ($)" },
-                  { value: "AUD", label: "AUD ($)" },
-                ]}
+          <div className="max-w-md">
+            <label className="block text-[13px] font-bold text-foreground mb-2">
+              CTC (Cost to Company) <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">{currentSymbol}</span>
+              <input
+                type="number"
+                name="baseSalary"
+                value={formData.baseSalary}
+                onChange={handleInputChange}
+                readOnly={readOnly}
+                className={`w-full ${ctcPaddingClass} pr-4 py-2.5 bg-card border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold transition-all ${formErrors.baseSalary ? 'border-red-400' : 'border-border'} ${readOnly ? 'cursor-default opacity-90' : ''}`}
+                placeholder="Enter CTC"
               />
             </div>
-
-            <div>
-              <Select
-                value={formData.payFrequency}
-                onChange={(val) => handleInputChange({ target: { name: 'payFrequency', value: val } } as any)}
-                label="Pay Frequency"
-                disabled={readOnly}
-                options={[
-                  { value: "Monthly", label: "Monthly" },
-                  { value: "Yearly", label: "Yearly" },
-                ]}
-              />
-            </div>
+            {formErrors.baseSalary && <p className="text-xs text-red-500 mt-1">{formErrors.baseSalary}</p>}
           </div>
 
-          <div className="pt-4 space-y-6">
-            {/* Earnings Section */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-emerald-600 px-1">
-                <TrendingUp className="w-4 h-4" />
-                <span className="text-[11px] font-bold uppercase tracking-widest">Earnings</span>
-              </div>
-              <div className="space-y-2">
-                {compensationSplits
-                  .filter(s => s.type === 'earning')
-                  .map((split, idx) => {
-                    // Find actual index in original array for potential updates
-                    const originalIndex = compensationSplits.findIndex(s => s === split);
-                    return (
-                      <div key={idx} className="flex items-center gap-3 p-3 bg-emerald-50/40 rounded border border-emerald-100/50 group transition-all hover:bg-emerald-50/60">
-                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shrink-0" />
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            value={split.componentType}
-                            readOnly
-                            className="w-full bg-transparent border-none focus:ring-0 text-[13px] font-bold text-foreground cursor-default"
-                            placeholder="Component Name"
-                          />
-                          <p className="text-[10px] text-emerald-600/70 font-medium px-0.5 mt-0.5">Salary Earning</p>
-                        </div>
-                        <div className="w-44 relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-500 text-xs font-bold">{currentSymbol}</span>
-                          <input
-                            type="number"
-                            value={split.amount}
-                            readOnly
-                            className="w-full pl-7 pr-3 py-2 bg-emerald-50/50 border border-emerald-100/60 rounded text-sm text-right font-black text-emerald-700 cursor-default"
-                            placeholder="0"
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
+          {!formData.payrollGroupId ? (
+            <div className="pt-6 text-center">
+              <p className="text-[13px] font-bold text-foreground">Salary Breakdown Not Set Up</p>
+              <p className="text-[12px] text-muted-foreground mt-1">Configure your Payroll Groups and structures to automatically display the earnings and deductions breakdown here.</p>
             </div>
+          ) : (
+            <div className="pt-4 space-y-6">
+              {/* Earnings Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-emerald-600 px-1">
+                  <TrendingUp className="w-4 h-4" />
+                  <span className="text-[11px] font-bold uppercase tracking-widest">Earnings</span>
+                </div>
+                <div className="space-y-2">
+                  {compensationSplits
+                    .filter(s => s.type === 'earning')
+                    .map((split, idx) => {
+                      // Find actual index in original array for potential updates
+                      const originalIndex = compensationSplits.findIndex(s => s === split);
+                      return (
+                        <div key={idx} className="flex items-center gap-3 p-3 bg-emerald-50/40 rounded border border-emerald-100/50 group transition-all hover:bg-emerald-50/60">
+                          <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shrink-0" />
+                          <div className="flex-1">
+                            <input
+                              type="text"
+                              value={split.componentType}
+                              readOnly
+                              className="w-full bg-transparent border-none focus:ring-0 text-[13px] font-bold text-foreground cursor-default"
+                              placeholder="Component Name"
+                            />
+                            <p className="text-[10px] text-emerald-600/70 font-medium px-0.5 mt-0.5">Salary Earning</p>
+                          </div>
+                          <div className="w-44 relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-500 text-xs font-bold">{currentSymbol}</span>
+                            <input
+                              type="number"
+                              value={split.amount}
+                              readOnly
+                              className={`w-full ${splitPaddingClass} pr-3 py-2 bg-emerald-50/50 border border-emerald-100/60 rounded text-sm text-right font-black text-emerald-700 cursor-default`}
+                              placeholder="0"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
 
-            {/* Deductions Section */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-rose-600 px-1">
-                <TrendingDown className="w-4 h-4" />
-                <span className="text-[11px] font-bold uppercase tracking-widest">Deductions</span>
-              </div>
-              <div className="space-y-2">
-                {compensationSplits
-                  .filter(s => s.type === 'deduction')
-                  .map((split, idx) => {
-                    const originalIndex = compensationSplits.findIndex(s => s === split);
-                    return (
-                      <div key={idx} className="flex items-center gap-3 p-3 bg-rose-50/30 rounded border border-rose-100/50 group transition-all hover:bg-rose-50/50">
-                        <div className="w-1.5 h-1.5 bg-rose-500 rounded-full shrink-0" />
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            value={split.componentType}
-                            readOnly
-                            className="w-full bg-transparent border-none focus:ring-0 text-[13px] font-bold text-foreground cursor-default"
-                            placeholder="Component Name"
-                          />
-                          <p className="text-[10px] text-rose-600/70 font-medium px-0.5 mt-0.5">Monthly Deduction</p>
+              {/* Deductions Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-rose-600 px-1">
+                  <TrendingDown className="w-4 h-4" />
+                  <span className="text-[11px] font-bold uppercase tracking-widest">Deductions</span>
+                </div>
+                <div className="space-y-2">
+                  {compensationSplits
+                    .filter(s => s.type === 'deduction')
+                    .map((split, idx) => {
+                      const originalIndex = compensationSplits.findIndex(s => s === split);
+                      return (
+                        <div key={idx} className="flex items-center gap-3 p-3 bg-rose-50/30 rounded border border-rose-100/50 group transition-all hover:bg-rose-50/50">
+                          <div className="w-1.5 h-1.5 bg-rose-500 rounded-full shrink-0" />
+                          <div className="flex-1">
+                            <input
+                              type="text"
+                              value={split.componentType}
+                              readOnly
+                              className="w-full bg-transparent border-none focus:ring-0 text-[13px] font-bold text-foreground cursor-default"
+                              placeholder="Component Name"
+                            />
+                            <p className="text-[10px] text-rose-600/70 font-medium px-0.5 mt-0.5">Monthly Deduction</p>
+                          </div>
+                          <div className="w-44 relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500 text-xs font-bold">{currentSymbol}</span>
+                            <input
+                              type="number"
+                              value={split.amount}
+                              readOnly
+                              className={`w-full ${splitPaddingClass} pr-3 py-2 bg-rose-50/50 border border-rose-100/60 rounded text-sm text-right font-black text-rose-700 cursor-default`}
+                              placeholder="0"
+                            />
+                          </div>
                         </div>
-                        <div className="w-44 relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500 text-xs font-bold">{currentSymbol}</span>
-                          <input
-                            type="number"
-                            value={split.amount}
-                            readOnly
-                            className="w-full pl-7 pr-3 py-2 bg-rose-50/50 border border-rose-100/60 rounded text-sm text-right font-black text-rose-700 cursor-default"
-                            placeholder="0"
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                {compensationSplits.filter(s => s.type === 'deduction').length === 0 && (
-                   <p className="text-center py-4 text-xs text-muted-foreground italic bg-muted/50 rounded border border-dashed border-border">No deductions assigned to this group</p>
-                )}
+                      );
+                    })}
+                  {compensationSplits.filter(s => s.type === 'deduction').length === 0 && (
+                     <p className="text-center py-4 text-xs text-muted-foreground italic bg-muted/50 rounded border border-dashed border-border">No deductions assigned to this group</p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="mt-8 p-6 bg-primary rounded shadow-sm shadow-primary-100 flex flex-col sm:flex-row items-center justify-between text-white overflow-hidden relative gap-4">
             <div className="absolute right-0 top-0 translate-x-1/4 -translate-y-1/4 opacity-10">

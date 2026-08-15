@@ -35,6 +35,7 @@ import { HRManagerDashboard } from '../components/HRManagerDashboard';
 import { HRHeadDashboard } from '../components/HRHeadDashboard';
 import { HRExecutiveDashboard } from '../components/HRExecutiveDashboard';
 import { MyJourney } from '../components/MyJourney';
+import { PortalSetupPlaceholder } from '../components/PortalSetupPlaceholder';
 import { getNews } from '@/features/news/services/news';
 
 const getGreeting = () => {
@@ -483,7 +484,8 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 pb-5 pr-5 pl-0 rounded-lg relative overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4 pt-2 pb-5 pr-5 pl-0 rounded-lg relative overflow-hidden">
+        {false && (
         <div className="relative z-10 flex items-center gap-4">
           <div className="w-12 h-12 rounded-full flex items-center justify-center text-primary text-[16px] font-medium leading-6 bg-primary/10 dark:bg-transparent border border-primary/20 flex-shrink-0">
             {avatarInitials}
@@ -497,6 +499,7 @@ export function Dashboard() {
             </p>
           </div>
         </div>
+        )}
         <div className="relative z-10 flex items-center gap-5">
           <div className="flex items-center gap-3.5 text-right sm:block">
             <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground">
@@ -619,26 +622,7 @@ export function Dashboard() {
         const isEmployee = !isAdmin && !isManager && !isHR && !isFinance && !isFinanceExecutive && !isHRManager && !isHRHead && !isHRExecutive;
         return (
           <>
-            {isAdmin && <AdminDashboard />}
-            {isManager && <ManagerDashboard />}
-            {isHRHead && <HRHeadDashboard />}
-            {isHRManager && <HRManagerDashboard />}
-            {isHRExecutive && <HRExecutiveDashboard />}
-            {isHR && <HRDashboard />}
-            {isFinanceExecutive && <FinanceExecutiveDashboard />}
-            {isFinance && <FinanceDashboard />}
-            {isEmployee && (
-              <DashboardOverview
-                upcomingEvents={dynamicUpcomingEvents}
-                attendanceLogs={attendanceLogs}
-                celebrations={dynamicCelebrations}
-                companyNews={companyNews}
-                teamStats={teamStats}
-                leaveBalance={leaveBalance}
-                lmsDashboard={lmsDashboard}
-                leaveRequests={leaveRequests}
-              />
-            )}
+            <PortalSetupPlaceholder />
           </>
         );
       })()}

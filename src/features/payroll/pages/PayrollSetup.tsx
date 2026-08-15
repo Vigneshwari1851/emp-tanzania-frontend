@@ -126,6 +126,16 @@ export function PayrollSetup() {
   const [addingComponents, setAddingComponents] = useState<Record<string, boolean>>({});
   const [isPopulatingDefaults, setIsPopulatingDefaults] = useState(false);
 
+  const [draftCycle, setDraftCycle] = useState(payCycle);
+  useEffect(() => {
+    setDraftCycle(payCycle);
+  }, [payCycle]);
+
+  const now = new Date();
+  const cycleMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const maxCycleDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const clampCycleDay = (raw: string) => Math.min(Number(raw.replace(/\D/g, '').slice(0, 2)) || 0, maxCycleDay);
+
   const COUNTRY_DEFAULTS: Record<string, { name: string; type: 'earning' | 'deduction'; calculationType: 'fixed' | 'percentage'; value: number; isTaxable: boolean; isStatutory: boolean }[]> = {
     'india': [
       { name: 'Basic Salary', type: 'earning', calculationType: 'percentage', value: 50, isTaxable: true, isStatutory: true },
@@ -1636,7 +1646,7 @@ export function PayrollSetup() {
               </div>
               <Button
                 onClick={async () => {
-                  try { await updatePayCycle(payCycle); toast.success('Pay cycle configuration updated'); } catch { toast.error('Failed to update pay cycle'); }
+                  try { await updatePayCycle(draftCycle); toast.success('Pay cycle configuration updated'); } catch { toast.error('Failed to update pay cycle'); }
                 }}
                 className="bg-primary hover:bg-primary/95 shadow-sm gap-2 h-11 px-8 font-bold">
                 <Save className="size-4" /> Save Schedule
@@ -1646,7 +1656,7 @@ export function PayrollSetup() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="space-y-3 p-4 rounded-lg border border-gray-50 dark:border-border dark:border-border bg-muted/30">
                   <Label className="text-xs font-black text-primary uppercase tracking-widest">Pay Frequency</Label>
-                  <PayrollSelect value={payCycle.frequency} onValueChange={(val) => updatePayCycle({ ...payCycle, frequency: val })}>
+                  <PayrollSelect value={draftCycle.frequency} onValueChange={(val) => setDraftCycle((c) => ({ ...c, frequency: val }))}>
                     <SelectTrigger className="bg-card border-border"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="monthly">Monthly</SelectItem>
@@ -1658,7 +1668,7 @@ export function PayrollSetup() {
                 </div>
                 <div className="space-y-3 p-4 rounded-lg border border-gray-50 dark:border-border dark:border-border bg-muted/30">
                   <Label className="text-xs font-black text-primary uppercase tracking-widest">Default Pay Day</Label>
-                  <PayrollSelect value={payCycle.payDay} onValueChange={(val) => updatePayCycle({ ...payCycle, payDay: val })}>
+                  <PayrollSelect value={draftCycle.payDay} onValueChange={(val) => setDraftCycle((c) => ({ ...c, payDay: val }))}>
                     <SelectTrigger className="bg-card border-border"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="1st">1st of Month</SelectItem>
@@ -1671,9 +1681,9 @@ export function PayrollSetup() {
                 <div className="space-y-3 p-4 rounded-lg border border-gray-50 dark:border-border dark:border-border bg-muted/30 flex flex-col justify-center">
                   <Label className="text-xs font-black text-primary uppercase tracking-widest whitespace-nowrap truncate">Attendance Window</Label>
                   <div className="flex items-center gap-2 mt-3">
-                    <Input type="number" className="bg-card border-border" value={payCycle?.attendanceStart?.split('-')?.pop() || ''} onChange={(e) => updatePayCycle({ ...payCycle, attendanceStart: `2026-03-${e.target.value.padStart(2, '0')}` })} />
+                    <Input type="number" className="bg-card border-border" value={draftCycle?.attendanceStart ? Number(draftCycle.attendanceStart.split('-').pop()) || '' : ''} onChange={(e) => setDraftCycle((c) => ({ ...c, attendanceStart: `${cycleMonth}-${String(clampCycleDay(e.target.value)).padStart(2, '0')}` }))} />
                     <span className="text-muted-foreground font-bold">to</span>
-                    <Input type="number" className="bg-card border-border" value={payCycle?.attendanceEnd?.split('-')?.pop() || ''} onChange={(e) => updatePayCycle({ ...payCycle, attendanceEnd: `2026-03-${e.target.value.padStart(2, '0')}` })} />
+                    <Input type="number" className="bg-card border-border" value={draftCycle?.attendanceEnd ? Number(draftCycle.attendanceEnd.split('-').pop()) || '' : ''} onChange={(e) => setDraftCycle((c) => ({ ...c, attendanceEnd: `${cycleMonth}-${String(clampCycleDay(e.target.value)).padStart(2, '0')}` }))} />
                   </div>
                 </div>
               </div>
@@ -1699,7 +1709,7 @@ export function PayrollSetup() {
                   <CardContent className="pt-6 space-y-4 text-left">
                     <div className="space-y-2">
                       <Label>Category Name <span className="text-rose-500 dark:text-rose-400">*</span></Label>
-                      <Input placeholder="e.g., Performance Bonus, Travel Allowance" value={catForm.name} onChange={e => setCatForm({ ...catForm, name: e.target.value })} />
+                      <Input placeholder="e.g. All Departments , Engineering Department" value={catForm.name} onChange={e => setCatForm({ ...catForm, name: e.target.value })} />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">

@@ -180,8 +180,7 @@ export function useEmployees() {
       const empLoc = (emp.details?.work_location || "Remote").toLowerCase();
       const empStatus = (emp.details?.is_draft ? "Draft" : emp.status ? "Active" : "Inactive").toLowerCase();
 
-      // 0. Exclude Super Admin from the list
-      if (empRole === 'super_admin' || empRole === 'super admin') return false;
+      // 0. Exclude Super Admin from the list (removed to allow Super Admin display)
 
       // 3. Search Filter (matches name, email, or department) - Always a prerequisite
       const isSearchActive = searchStr.length > 0;

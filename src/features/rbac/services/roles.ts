@@ -6,6 +6,14 @@ export interface Role {
   description: string;
   status: boolean;
   user_count?: number;
+  employees?: Array<{
+    user_id: number;
+    first_name?: string;
+    last_name?: string;
+    profile_picture?: string | null;
+    employee_id?: string;
+    user?: { email: string; username: string };
+  }>;
   created_at: string;
   updated_at: string;
   permissions?: any[];

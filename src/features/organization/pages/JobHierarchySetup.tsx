@@ -247,7 +247,12 @@ export function JobHierarchySetup() {
       }
     }
     setIsSaving(false);
-    if (successCount > 0) toast.success(`${successCount} role${successCount > 1 ? "s" : ""} saved successfully!`);
+    if (successCount > 0) {
+      toast.success(`${successCount} role${successCount > 1 ? "s" : ""} saved successfully!`);
+      setTimeout(() => {
+        navigate("/org-setup/settings?tab=organizational");
+      }, 800);
+    }
   };
 
   const unsavedCount = roles.filter(r => !r.saved).length;
@@ -284,33 +289,7 @@ export function JobHierarchySetup() {
                 Save {unsavedCount} Role{unsavedCount > 1 ? "s" : ""}
               </Button>
             )}
-            <Button
-              onClick={() => navigate("/org-setup/add-department")}
-              className="bg-primary hover:bg-[#4548D4] text-white h-10 px-5 gap-2 font-bold rounded-[7px] border-none shadow-md"
-            >
-              Next: Add Departments <ArrowRight className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => navigate("/organisation-structure")}
-              className="h-10 px-5 gap-2 font-bold rounded-[7px] border-primary-200 text-primary-700 bg-primary-50 hover:bg-primary-100"
-            >
-              Manage Roles Later
-            </Button>
           </div>
-      </div>
-
-      {/* Progress Steps */}
-      <div className="flex items-center gap-2 text-[12px] font-semibold">
-        {["Define Executive Roles", "Create Departments", "Add Teams & Assign Managers"].map((step, i) => (
-          <React.Fragment key={step}>
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${i === 0 ? "bg-primary-600 text-white" : "bg-muted text-muted-foreground"}`}>
-              <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${i === 0 ? "bg-white text-primary-600" : "bg-border text-muted-foreground"}`}>{i + 1}</span>
-              {step}
-            </div>
-            {i < 2 && <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />}
-          </React.Fragment>
-        ))}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-6 items-start">

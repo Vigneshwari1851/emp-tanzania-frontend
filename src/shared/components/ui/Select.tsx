@@ -80,10 +80,17 @@ const Select: React.FC<SelectProps> = ({
     setHighlightedIndex(-1);
   }, []);
 
-  const measure = useCallback(() => {
+  const measure = useCallback((e?: Event) => {
+    if (e && panelRef.current && panelRef.current.contains(e.target as Node)) {
+      return;
+    }
     const rect = buttonRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const openUp = direction === "top" ? true : false;
+    
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const dropdownHeight = 250; // max height of dropdown + padding
+    const openUp = direction === "top" || (spaceBelow < dropdownHeight && rect.top > spaceBelow);
+    
     setCoords({ top: rect.top, bottom: rect.bottom, left: rect.left, width: rect.width, openUp });
   }, [direction]);
 

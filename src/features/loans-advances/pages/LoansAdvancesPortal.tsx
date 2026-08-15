@@ -121,8 +121,8 @@ export function LoansAdvancesPortal({ userId, payslips = [], refresh }: LoansAdv
     }, [principal, duration, activePolicy]);
 
     const handleRequestSubmit = async () => {
-        if (!selectedPolicyId || !principal || !duration || !reason) {
-            toast.error('Please select a policy and fill in all fields');
+        if (!selectedPolicyId || !principal || !duration) {
+            toast.error('Please select a policy and enter the required amount and recovery duration.');
             return;
         }
 

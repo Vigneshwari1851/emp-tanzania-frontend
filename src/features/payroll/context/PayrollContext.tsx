@@ -186,6 +186,22 @@ interface PayrollContextType {
 
 const PayrollContext = createContext<PayrollContextType | undefined>(undefined);
 
+const normalizeFrequency = (freq: any): string => {
+  const v = (freq || 'monthly').toString().toLowerCase().trim();
+  if (['bi-monthly', 'bi_weekly', 'bi-weekly', 'biweekly', 'bi monthly'].includes(v)) return 'bi-monthly';
+  if (['quarterly', 'annually', 'daily'].includes(v)) return v;
+  return ['monthly', 'weekly'].includes(v) ? v : 'monthly';
+};
+
+const normalizePayDay = (payDay: any): string => {
+  const v = (payDay || 'last').toString().toLowerCase().trim();
+  if (v === '1st of month') return '1st';
+  if (v === '5th of month') return '5th';
+  if (v === '10th of month') return '10th';
+  if (['last day of month', 'last-day-of-month', 'month end'].includes(v)) return 'last';
+  return ['1st', '5th', '10th', 'last'].includes(v) ? v : v;
+};
+
 export const usePayroll = () => {
   const context = useContext(PayrollContext);
   if (!context) {
@@ -395,8 +411,8 @@ export const PayrollProvider: React.FC<{ children: ReactNode }> = ({ children })
         // Map Pay Cycle
         if (payCycleData) {
           setPayCycle({
-            frequency: payCycleData.frequency,
-            payDay: payCycleData.pay_day,
+            frequency: normalizeFrequency(payCycleData.frequency),
+            payDay: normalizePayDay(payCycleData.pay_day),
             attendanceStart: `2026-03-${(payCycleData.attendance_start_day || 1).toString().padStart(2, '0')}`,
             attendanceEnd: `2026-03-${(payCycleData.attendance_end_day || 31).toString().padStart(2, '0')}`,
             cutoffDate: payCycleData.cutoff_day
@@ -561,13 +577,20 @@ export const PayrollProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const updatePayCycle = async (updates: any) => {
     try {
-      const res = await payrollService.updatePayCycle(updates);
+      const payload = {
+        frequency: updates.frequency,
+        payDay: updates.payDay,
+        attendanceStartDay: updates.attendanceStart ? Number(updates.attendanceStart.split('-')?.[2]) || undefined : undefined,
+        attendanceEndDay: updates.attendanceEnd ? Number(updates.attendanceEnd.split('-')?.[2]) || undefined : undefined,
+        cutoffDay: updates.cutoffDate,
+      };
+      const res = await payrollService.updatePayCycle(payload);
       setPayCycle({
-            frequency: res.frequency || 'monthly',
-            payDay: res.pay_day || 'last',
-            attendanceStart: `2026-03-${(res.attendance_start_day || 1).toString().padStart(2, '0')}`,
-            attendanceEnd: `2026-03-${(res.attendance_end_day || 31).toString().padStart(2, '0')}`,
-            cutoffDate: res.cutoff_day || 25
+            frequency: normalizeFrequency(res.frequency || updates.frequency),
+            payDay: normalizePayDay(res.pay_day || updates.payDay),
+            attendanceStart: `2026-03-${(res.attendance_start_day || updates.attendanceStart?.split('-')?.[2] || 1).toString().padStart(2, '0')}`,
+            attendanceEnd: `2026-03-${(res.attendance_end_day || updates.attendanceEnd?.split('-')?.[2] || 31).toString().padStart(2, '0')}`,
+            cutoffDate: res.cutoff_day || updates.cutoffDate || 25
       });
     } catch (error) {
       console.error("Error updating pay cycle:", error);
