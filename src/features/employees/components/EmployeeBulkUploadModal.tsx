@@ -216,7 +216,7 @@ export function EmployeeBulkUploadModal({ isOpen, onClose, onSuccess }: Employee
             const payload = {
               username: row["Email"]?.split("@")[0] || `user${Math.floor(Math.random() * 10000)}`,
               email: row["Email"],
-              password: "Password@123", // Default password
+              password: "password123", // Default password
               employee_id: row["Employee ID"],
               first_name: row["First Name"],
               middle_name: row["Middle Name"],

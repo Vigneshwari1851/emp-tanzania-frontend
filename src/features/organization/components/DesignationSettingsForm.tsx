@@ -970,6 +970,24 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
             />
           </div>
 
+            {!isReadOnly && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                if (selectedNode) {
+                  handleEditClick(selectedNode);
+                } else {
+                  toast.error("Please select a designation node to edit");
+                }
+              }}
+              className="h-[36px] gap-2 font-bold border-border rounded-lg text-foreground hover:bg-muted hover:text-primary hover:border-primary-300 shadow-sm shrink-0"
+            >
+              <Pencil className="w-4 h-4 text-muted-foreground" />
+              Edit
+            </Button>
+          )}
+
           {!isReadOnly && !showForm && (
             <Button
               type="button"
@@ -987,23 +1005,7 @@ export const DesignationSettingsForm: React.FC<DesignationSettingsFormProps> = (
           )}
 
           {/* Edit button to toggle/enter edit mode for the organization structure data */}
-          {isReadOnly && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                if (selectedNode) {
-                  handleEditClick(selectedNode);
-                } else {
-                  toast.error("Please select a designation node to edit");
-                }
-              }}
-              className="h-[36px] gap-2 font-bold border-border rounded-lg text-foreground hover:bg-muted hover:text-primary hover:border-primary-300 shadow-sm shrink-0"
-            >
-              <Pencil className="w-4 h-4 text-muted-foreground" />
-              Edit Settings
-            </Button>
-          )}
+        
         </div>
       </div>
 
