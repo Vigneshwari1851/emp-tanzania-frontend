@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useOrgNavigate } from '@/shared/hooks/useOrgNavigate';
 import { useParams } from 'react-router-dom';
 import { Input } from '@/shared/components/ui/payroll-lib/input';
@@ -49,11 +49,18 @@ export default function PayrollGroupForm() {
         locations: [] as any[]
     });
 
+    const allRolesRef = useRef<any[]>([]);
+
     useEffect(() => {
         const loadOptions = async () => {
             try {
                 const [r, d, l] = await Promise.all([getRoles(), getDepartments(), getLocations()]);
-                setOptions({ roles: r || [], departments: d || [], locations: l || [] });
+                allRolesRef.current = r || [];
+                const uniqueRolesList = (r || []).filter((role: any, idx: number, self: any[]) => {
+                    const name = (role.role_name || role.name || '').toLowerCase().trim();
+                    return self.findIndex(x => (x.role_name || x.name || '').toLowerCase().trim() === name) === idx;
+                });
+                setOptions({ roles: uniqueRolesList, departments: d || [], locations: l || [] });
             } catch (err) {
                 console.error("Failed to load options", err);
             }
@@ -74,9 +81,21 @@ export default function PayrollGroupForm() {
                     }
                 } catch (e) { console.error("JSON Parse Error", e); }
 
+                let mappedRoleId = criteria.roleId?.toString() || 'all';
+                if (mappedRoleId !== 'all' && !options.roles.some(r => r.id.toString() === mappedRoleId)) {
+                    const originalRoleName = allRolesRef.current.find(o => o.id.toString() === mappedRoleId)?.name 
+                        || allRolesRef.current.find(o => o.id.toString() === mappedRoleId)?.role_name;
+                    if (originalRoleName) {
+                        const match = options.roles.find(r => (r.name || r.role_name || '').toLowerCase().trim() === originalRoleName.toLowerCase().trim());
+                        if (match) {
+                            mappedRoleId = match.id.toString();
+                        }
+                    }
+                }
+
                 setForm({
                     name: group.name,
-                    roleId: criteria.roleId?.toString() || 'all',
+                    roleId: mappedRoleId,
                     deptId: criteria.deptId?.toString() || 'all',
                     locationId: criteria.locationId?.toString() || 'all',
                     gender: criteria.gender || 'all',

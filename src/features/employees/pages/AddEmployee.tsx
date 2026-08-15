@@ -997,6 +997,15 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
         return;
       }
 
+      // Check if selected role is CEO
+      const selectedRoleObj = rolesList.find(r => r.id.toString() === formData.role.toString());
+      const isCEO = selectedRoleObj && (selectedRoleObj.name || selectedRoleObj.role_name || '').toLowerCase().trim() === 'ceo';
+      if (isCEO) {
+        setManagersList([]);
+        setFormData(prev => ({ ...prev, manager: "" }));
+        return;
+      }
+
       setLoadingStates(prev => ({ ...prev, managers: true }));
       try {
         const assignedManager = await getDepartmentManager(parseInt(formData.department, 10));
@@ -1011,10 +1020,13 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
               role: { role_name: "Manager" }
             }
           };
-          setManagersList([managerObj]);
-          // Only update if not in edit mode OR if department was manually changed
-          if (!id || originalData?.formData.department !== formData.department) {
+          const isSelf = id && assignedManager.id.toString() === id.toString();
+          if (isSelf) {
+            setFormData(prev => ({ ...prev, manager: "" }));
+            setManagersList([]);
+          } else {
             setFormData(prev => ({ ...prev, manager: assignedManager.id.toString() }));
+            setManagersList([managerObj]);
           }
         } else {
           setManagersList([]);
@@ -1028,7 +1040,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
     };
 
     fetchManagersByDepartment();
-  }, [formData.department]);
+  }, [formData.department, formData.role, rolesList]);
 
   // Automated Payroll Group Matching & Calculation Engine
   useEffect(() => {
@@ -3791,6 +3803,14 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
                                 const key = (role.name || "").toLowerCase();
                                 if (seen.has(key)) return false;
                                 seen.add(key);
+
+                                // Hide "Manager" role if another manager is already assigned to this department
+                                if (key === 'manager' && formData.department && managersList.length > 0) {
+                                  const isCurrentEmployeeManager = id && (managersList[0].id.toString() === id.toString());
+                                  if (!isCurrentEmployeeManager) {
+                                    return false; // Hide from dropdown
+                                  }
+                                }
                                 return true;
                               })
                               .map((role: any) => ({

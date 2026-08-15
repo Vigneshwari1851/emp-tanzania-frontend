@@ -240,7 +240,7 @@ export default function TaxSectionForm() {
                                     <Input
                                         type="number"
                                         placeholder="0"
-                                        className="pl-8 bg-muted border-border focus:bg-card transition-all"
+                                        className={`${currencySymbol.length > 2 ? 'pl-14' : currencySymbol.length > 1 ? 'pl-10' : 'pl-8'} bg-muted border-border focus:bg-card transition-all`}
                                         value={form.limit === 0 ? '' : form.limit}
                                         onChange={(e) => setForm({ ...form, limit: e.target.value === '' ? 0 : Number(e.target.value) })}
                                     />

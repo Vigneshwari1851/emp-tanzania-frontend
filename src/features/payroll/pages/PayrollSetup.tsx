@@ -179,6 +179,7 @@ export function PayrollSetup() {
   const [roleId, setRoleId] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [roles, setRoles] = useState<Role[]>([]);
+  const allRolesRef = React.useRef<Role[]>([]);
   const [structureLevel, setStructureLevel] = useState<'role' | 'employee'>('role');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [grade, setGrade] = useState('');
@@ -275,7 +276,11 @@ export function PayrollSetup() {
     if (groupOptionsLoaded) return;
     try {
       const [r, d, l] = await Promise.all([getRoles(), getDepartments(), getLocations()]);
-      setGroupOptions({ roles: r || [], departments: d || [], locations: l || [] });
+      const uniqueRolesList = (r || []).filter((role: any, idx: number, self: any[]) => {
+        const name = (role.role_name || role.name || '').toLowerCase().trim();
+        return self.findIndex(x => (x.role_name || x.name || '').toLowerCase().trim() === name) === idx;
+      });
+      setGroupOptions({ roles: uniqueRolesList, departments: d || [], locations: l || [] });
       setGroupOptionsLoaded(true);
     } catch (err) {
       console.error("Failed to load group options", err);
@@ -656,7 +661,13 @@ export function PayrollSetup() {
     const fetchData = async () => {
       try {
         const rolesData = await getRoles();
-        setRoles(rolesData);
+        allRolesRef.current = rolesData || [];
+        const unique = (rolesData || []).filter((role, idx, self) => {
+          if (!role.name) return false;
+          const nameLower = role.name.toLowerCase().trim();
+          return self.findIndex(x => x.name?.toLowerCase().trim() === nameLower) === idx;
+        });
+        setRoles(unique);
       } catch (err) {
         toast.error('Failed to fetch criteria data');
       }
@@ -720,7 +731,12 @@ export function PayrollSetup() {
     setStructureName(structure.name);
     setStructureLevel(structure.level);
     if (structure.level === 'role') {
-      setRoleId(structure.roleId || '');
+      const matchingUniqueRole = roles.find(r => r.id.toString() === structure.roleId?.toString()) 
+        || roles.find(r => {
+             const originalRoleName = allRolesRef.current.find(o => o.id.toString() === structure.roleId?.toString())?.name;
+             return originalRoleName && r.name.toLowerCase().trim() === originalRoleName.toLowerCase().trim();
+           });
+      setRoleId(matchingUniqueRole?.id.toString() || structure.roleId || '');
       setSelectedEmployee('');
     } else {
       setSelectedEmployee(structure.employeeId || '');
@@ -912,7 +928,7 @@ export function PayrollSetup() {
               </TabsList>
             </div>
 
-            <div className="space-y-1">
+            {/* <div className="space-y-1">
               <span className="text-[10px] font-bold text-primary/70 uppercase tracking-wider px-3 block mb-2">Phase 4: Policies & Reports</span>
               <TabsList className="flex flex-col items-stretch bg-transparent h-auto p-0 gap-1 border-none">
                 <TabsTrigger 
@@ -922,7 +938,7 @@ export function PayrollSetup() {
                   <BarChart3 className="size-4 mr-2" /> 8. Reports & Exports
                 </TabsTrigger>
               </TabsList>
-            </div>
+            </div> */}
           </div>
         </div>
 
@@ -1016,7 +1032,7 @@ export function PayrollSetup() {
                           </TableCell>
                           <TableCell className="text-muted-foreground font-medium text-sm">
                             {structure.level === 'role'
-                              ? roles?.find(r => r.id?.toString() === structure.roleId?.toString())?.name || structure.roleId || 'N/A'
+                              ? allRolesRef.current?.find(r => r.id?.toString() === structure.roleId?.toString())?.name || structure.roleId || 'N/A'
                               : employees?.find(e => e.id === structure.employeeId)?.name || structure.employeeId || 'N/A'}
                           </TableCell>
                           <TableCell>
@@ -2189,7 +2205,7 @@ export function PayrollSetup() {
                         <Label>Annual Limit ({currencySymbol})</Label>
                         <div className="relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 font-medium text-muted-foreground">{currencySymbol}</span>
-                          <Input type="number" placeholder="0" className="pl-8 bg-muted border-border focus:bg-card transition-all" value={taxForm.limit === 0 ? '' : taxForm.limit} onChange={(e) => setTaxForm({ ...taxForm, limit: e.target.value === '' ? 0 : Number(e.target.value) })} />
+                          <Input type="number" placeholder="0" className={`${currencySymbol.length > 2 ? 'pl-14' : currencySymbol.length > 1 ? 'pl-10' : 'pl-8'} bg-muted border-border focus:bg-card transition-all`} value={taxForm.limit === 0 ? '' : taxForm.limit} onChange={(e) => setTaxForm({ ...taxForm, limit: e.target.value === '' ? 0 : Number(e.target.value) })} />
                         </div>
                       </div>
                     </div>
@@ -3317,9 +3333,9 @@ export function PayrollSetup() {
           <TaxDeclarationApprovalHub />
         </TabsContent>
 
-        <TabsContent value="reports" className="space-y-4">
+        {/* <TabsContent value="reports" className="space-y-4">
           <PayrollReportsTab payrollGroups={payrollGroups} salaryStructures={salaryStructures} employees={employees} currencySymbol={currencySymbol} />
-        </TabsContent>
+        </TabsContent> */}
 
       </div>
     </Tabs>
@@ -3397,7 +3413,7 @@ export function PayrollSetup() {
                             <span className="text-xs font-bold text-muted-foreground uppercase block">Target</span>
                             <span className="text-sm font-semibold text-foreground block pt-0.5">
                               {activeStructure.level === 'role'
-                                ? roles?.find(r => r.id?.toString() === activeStructure.roleId?.toString())?.name || activeStructure.roleId || 'N/A'
+                                ? allRolesRef.current?.find(r => r.id?.toString() === activeStructure.roleId?.toString())?.name || activeStructure.roleId || 'N/A'
                                 : employees?.find(e => e.id === activeStructure.employeeId)?.name || activeStructure.employeeId || 'N/A'}
                             </span>
                           </div>

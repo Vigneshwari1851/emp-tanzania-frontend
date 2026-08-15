@@ -56,7 +56,7 @@ const navItems = [
     children: [
       { path: "/employee-management", label: "Employee Directory" },
       { path: "/employee-management/change-requests", label: "Change Requests" },
-      { path: "/employee-exit", label: "Employee Exit" }
+      // { path: "/employee-exit", label: "Employee Exit" }
     ]
   },
   {
