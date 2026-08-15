@@ -281,7 +281,7 @@ const TeamFormDetail: React.FC<TeamFormDetailProps> = ({
                       return (
                         <div 
                           key={idx} 
-                          onClick={() => member.user_id && navigate(`/eep/employee-management/profile/${member.user_id}`)}
+                          onClick={() => member.user_id && navigate(`/employee-management/profile/${member.user_id}`)}
                           className="flex items-center justify-between p-4 hover:bg-primary/95/80 transition-all group cursor-pointer"
                         >
                           <div className="flex items-center gap-4">

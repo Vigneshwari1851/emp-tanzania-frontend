@@ -10,7 +10,7 @@ import { Toaster } from "sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import './App.css'
 
-const router = createBrowserRouter(routes, { basename: "/eep/" });
+const router = createBrowserRouter(routes, { basename: "/rafiki/" });
 const queryClient = new QueryClient();
 
 function App() {

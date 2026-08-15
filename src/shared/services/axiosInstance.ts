@@ -61,7 +61,7 @@ axiosInstance.interceptors.response.use(
             }
           } catch {}
 
-          // Added: Resolve loginUrl relative to the app base path (e.g. /eep/)
+          // Added: Resolve loginUrl relative to the app base path (e.g. /rafiki/)
           const baseUrl = import.meta.env.BASE_URL || '/';
           const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
           const cleanLoginPath = loginUrl.startsWith('/') ? loginUrl.slice(1) : loginUrl;
