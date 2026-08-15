@@ -999,7 +999,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
 
       // Check if selected role is CEO
       const selectedRoleObj = rolesList.find(r => r.id.toString() === formData.role.toString());
-      const isCEO = selectedRoleObj && (selectedRoleObj.name || selectedRoleObj.role_name || '').toLowerCase().trim() === 'ceo';
+      const isCEO = selectedRoleObj && ((selectedRoleObj as any).name || (selectedRoleObj as any).role_name || '').toLowerCase().trim() === 'ceo';
       if (isCEO) {
         setManagersList([]);
         setFormData(prev => ({ ...prev, manager: "" }));
@@ -1283,8 +1283,14 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
         break;
 
       case "education": {
-        if (educationHistory.length < 3) {
-          errors.education = "Minimum 3 education records are required (SSLC, PUC / Diploma, and 1st Degree).";
+        const levels = educationHistory.map(edu => normalizeQualificationLabel(edu.level));
+        const missingLevels: string[] = [];
+        if (!levels.includes("O-Level")) missingLevels.push("O-Level");
+        if (!levels.includes("A-Level")) missingLevels.push("A-Level");
+        if (!levels.includes("UG")) missingLevels.push("UG");
+
+        if (missingLevels.length > 0) {
+          errors.education = `Minimum 3 education records are required (O-Level, A-Level, and UG). Missing: ${missingLevels.join(", ")}`;
         }
         educationHistory.forEach((edu, index) => {
           const isHigherEd = ["Diploma", "Undergraduate (UG)", "Postgraduate (PG)", "Doctorate (PhD)", "UG", "PG", "PhD"].includes(edu.level);
@@ -1456,9 +1462,15 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
         if (!formData.designationId) missing.push("Designation");
         break;
 
-      case "education":
-        if (educationHistory.length < 3) {
-          missing.push(`3 Education Records required (currently ${educationHistory.length}/3: SSLC, PUC / Diploma, and 1st Degree)`);
+      case "education": {
+        const levels = educationHistory.map(edu => normalizeQualificationLabel(edu.level));
+        const missingLevels: string[] = [];
+        if (!levels.includes("O-Level")) missingLevels.push("O-Level");
+        if (!levels.includes("A-Level")) missingLevels.push("A-Level");
+        if (!levels.includes("UG")) missingLevels.push("UG");
+
+        if (missingLevels.length > 0) {
+          missing.push(`3 Education Records required (Missing: ${missingLevels.join(", ")})`);
         }
         educationHistory.forEach((edu, index) => {
           const levelName = edu.level || `Record #${index + 1}`;
@@ -1472,6 +1484,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
           if (!edu.currentlyStudying && !edu.endDate) missing.push(`End Date (${levelName})`);
         });
         break;
+      }
 
       case "employment":
         employmentHistory.forEach((emp, index) => {
@@ -4673,7 +4686,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
                     Cancel
                   </Button>
 
-                  {!isFirstStep && (
+                  {!isFirstStep && !isEdit && (
                     <Button
                       type="button"
                       variant="outline"
@@ -4682,6 +4695,19 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
                     >
                       <ArrowLeft className="w-4 h-4" />
                       Previous Step
+                    </Button>
+                  )}
+
+                  {isEdit && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleSaveDraft(true)}
+                      disabled={isSavingDraft || isSubmitting}
+                      className="text-sm font-bold h-10 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900 bg-amber-50/20 dark:bg-amber-950/30 hover:bg-amber-50 dark:hover:bg-amber-950/50 hover:text-amber-700 dark:hover:text-amber-300 hover:border-amber-200 dark:hover:border-amber-800 transition-all duration-300 gap-2 px-4 shadow-sm shadow-amber-50/50 dark:shadow-none"
+                    >
+                      {isSavingDraft ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                      Save as Draft
                     </Button>
                   )}
                 </div>

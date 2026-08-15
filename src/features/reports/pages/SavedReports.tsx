@@ -8,6 +8,7 @@ import { Button } from '@/shared/components/ui/button';
 import { PageHeader } from '@/shared/components/ui/PageHeader';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/shared/components/ui/table";
 import { toast } from 'sonner';
+import api from '@/shared/services/axiosInstance';
 import { maskSensitiveValue } from '../utils/masking';
 import { useAuth } from '@/shared/context/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -77,6 +78,11 @@ export const SavedReports: React.FC = () => {
       if (selectedInstance?.id === id) {
         setPreviewOpen(false);
       }
+      api.post('/notifications', {
+        title: 'Report Snapshot Deleted',
+        message: `Saved report snapshot has been deleted.`,
+        type: 'REPORT_BUILDER'
+      }).catch(err => console.error('Failed to save notification:', err));
     }
   };
 

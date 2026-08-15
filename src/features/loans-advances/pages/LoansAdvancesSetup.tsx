@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { usePayroll } from '@/features/payroll/context/PayrollContext';
 import {
   CheckCircle2, XCircle, Clock, FileText, Plus,
-  DollarSign, TrendingUp, Banknote, Layers, Landmark, Shield, LayoutDashboard, HandCoins, Settings
+  DollarSign, TrendingUp, Banknote, Layers, Landmark, Shield, LayoutDashboard, HandCoins, Settings, Edit
 } from 'lucide-react';
 import { LoanTypeConfig } from './LoanTypeConfig';
 import * as loansAdvancesService from '../services/loans-advances';
@@ -38,6 +38,7 @@ export function LoansAdvancesSetup() {
         return 'dashboard';
     });
     const [remarksMap, setRemarksMap] = useState<Record<string, string>>({});
+    const [isEditing, setIsEditing] = useState(false);
 
     const [settings, setSettings] = useState({
         autoRequestNumberPrefix: 'LA-',
@@ -53,8 +54,12 @@ export function LoansAdvancesSetup() {
     const handleSaveSettings = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await loansAdvancesService.saveSettings(settings);
+            const data = await loansAdvancesService.saveSettings(settings);
+            if (data) {
+                setSettings(data);
+            }
             toast.success('Settings updated successfully!');
+            setIsEditing(false);
         } catch {
             toast.error('Failed to save settings');
         }
@@ -519,9 +524,40 @@ export function LoansAdvancesSetup() {
                 {/* Settings Tab */}
                 {activeTab === 'settings' && (
                     <form onSubmit={handleSaveSettings} className="bg-card p-6 rounded-lg border border-border shadow-sm max-w-4xl space-y-6 animate-in fade-in duration-300">
-                        <div>
-                            <h3 className="font-extrabold text-lg text-foreground">Loan & Advance Module Settings</h3>
-                            <p className="text-xs text-muted-foreground">Configure request prefix, maximum tenure limits, and default interest rate configurations</p>
+                        <div className="flex justify-between items-center border-b border-border pb-4">
+                            <div>
+                                <h3 className="font-extrabold text-lg text-foreground">Loan & Advance Module Settings</h3>
+                                <p className="text-xs text-muted-foreground">Configure request prefix, maximum tenure limits, and default interest rate configurations</p>
+                            </div>
+                            {!isEditing ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEditing(true)}
+                                    className="flex items-center gap-1.5 px-4 py-2 bg-muted hover:bg-muted/80 text-foreground text-xs font-bold rounded-lg border border-border transition-all cursor-pointer shadow-sm"
+                                >
+                                    <Edit className="w-3.5 h-3.5 text-primary" />
+                                    Edit Settings
+                                </button>
+                            ) : (
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsEditing(false);
+                                            fetchSettings();
+                                        }}
+                                        className="px-3.5 py-2 border border-border hover:bg-muted text-foreground text-xs font-bold rounded-lg transition cursor-pointer"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-primary hover:bg-primary/95 text-white text-xs font-bold rounded-lg transition-all shadow-sm cursor-pointer"
+                                    >
+                                        Save Settings
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -529,9 +565,10 @@ export function LoansAdvancesSetup() {
                                 <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Request Auto-Number Prefix</label>
                                 <input
                                     type="text"
+                                    disabled={!isEditing}
                                     value={settings.autoRequestNumberPrefix}
                                     onChange={e => setSettings(prev => ({ ...prev, autoRequestNumberPrefix: e.target.value }))}
-                                    className="w-full px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                                    className="w-full px-3 py-2 bg-card disabled:bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:cursor-not-allowed transition"
                                 />
                             </div>
 
@@ -539,9 +576,10 @@ export function LoansAdvancesSetup() {
                                 <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Financial Year Range</label>
                                 <input
                                     type="text"
+                                    disabled={!isEditing}
                                     value={settings.financialYear}
                                     onChange={e => setSettings(prev => ({ ...prev, financialYear: e.target.value }))}
-                                    className="w-full px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                                    className="w-full px-3 py-2 bg-card disabled:bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:cursor-not-allowed transition"
                                 />
                             </div>
 
@@ -549,9 +587,10 @@ export function LoansAdvancesSetup() {
                                 <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Max Loan Amount Limit</label>
                                 <input
                                     type="number"
+                                    disabled={!isEditing}
                                     value={settings.maxLoanAmount}
                                     onChange={e => setSettings(prev => ({ ...prev, maxLoanAmount: parseInt(e.target.value) || 0 }))}
-                                    className="w-full px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                                    className="w-full px-3 py-2 bg-card disabled:bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:cursor-not-allowed transition"
                                 />
                             </div>
 
@@ -559,9 +598,10 @@ export function LoansAdvancesSetup() {
                                 <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Max Advance Amount Limit</label>
                                 <input
                                     type="number"
+                                    disabled={!isEditing}
                                     value={settings.maxAdvanceAmount}
                                     onChange={e => setSettings(prev => ({ ...prev, maxAdvanceAmount: parseInt(e.target.value) || 0 }))}
-                                    className="w-full px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                                    className="w-full px-3 py-2 bg-card disabled:bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:cursor-not-allowed transition"
                                 />
                             </div>
 
@@ -569,9 +609,10 @@ export function LoansAdvancesSetup() {
                                 <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Maximum Loan Tenure (Months)</label>
                                 <input
                                     type="number"
+                                    disabled={!isEditing}
                                     value={settings.maxLoanTenure}
                                     onChange={e => setSettings(prev => ({ ...prev, maxLoanTenure: parseInt(e.target.value) || 0 }))}
-                                    className="w-full px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                                    className="w-full px-3 py-2 bg-card disabled:bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:cursor-not-allowed transition"
                                 />
                             </div>
 
@@ -580,21 +621,14 @@ export function LoansAdvancesSetup() {
                                 <input
                                     type="number"
                                     step="0.01"
+                                    disabled={!isEditing}
                                     value={settings.defaultInterestRate}
                                     onChange={e => setSettings(prev => ({ ...prev, defaultInterestRate: parseFloat(e.target.value) || 0 }))}
-                                    className="w-full px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                                    className="w-full px-3 py-2 bg-card disabled:bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:cursor-not-allowed transition"
                                 />
                             </div>
                         </div>
 
-                        <div className="flex justify-end pt-4 border-t border-border">
-                            <button
-                                type="submit"
-                                className="px-6 py-2.5 bg-primary hover:bg-primary/95 text-white font-semibold rounded-lg text-sm transition-all shadow-sm"
-                            >
-                                Save Settings
-                            </button>
-                        </div>
                     </form>
                 )}
             </div>

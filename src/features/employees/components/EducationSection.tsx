@@ -17,7 +17,6 @@ interface EducationSectionProps {
 }
 
 const EDUCATION_LEVELS = [
-  "Primary",
   "O-Level",
   "A-Level",
   "Diploma",
@@ -30,8 +29,8 @@ const getNormalizedLevel = (level: string) => {
   if (!level) return "";
   const l = level.toLowerCase();
   if (l.includes("primary")) return "Primary";
-  if (l.includes("10th") || l.includes("sslc") || l.includes("sse") || l.includes("o-level") || l.includes("ordinary")) return "SSLC";
-  if (l.includes("12th") || l.includes("puc") || l.includes("hsc") || l.includes("a-level") || l.includes("advanced")) return "PUC";
+  if (l.includes("10th") || l.includes("sslc") || l.includes("sse") || l.includes("o-level") || l.includes("ordinary")) return "O-Level";
+  if (l.includes("12th") || l.includes("puc") || l.includes("hsc") || l.includes("a-level") || l.includes("advanced")) return "A-Level";
   if (l.includes("diploma")) return "Diploma";
   if (l.includes("undergraduate") || l.includes("ug") || l.includes("bachelor")) return "UG";
   if (l.includes("postgraduate") || l.includes("pg") || l.includes("master")) return "PG";
@@ -41,7 +40,7 @@ const getNormalizedLevel = (level: string) => {
 
 const checkDuplicate = (record: Education, history: Education[], excludeIndex: number = -1) => {
   const normalizedLvl = getNormalizedLevel(record.level);
-  if (normalizedLvl === "SSLC" || normalizedLvl === "PUC") {
+  if (normalizedLvl === "O-Level" || normalizedLvl === "A-Level") {
     const duplicateExists = history.some((edu, idx) => {
       if (idx === excludeIndex) return false;
       return getNormalizedLevel(edu.level) === normalizedLvl;
@@ -71,8 +70,8 @@ const checkChronology = (record: Education, history: Education[], currentIndex: 
     fullHistory[currentIndex] = record;
   }
 
-  let sslcYear: number | null = null;
-  let pucYear: number | null = null;
+  let oLevelYear: number | null = null;
+  let aLevelYear: number | null = null;
   let degreeYear: number | null = null;
 
   fullHistory.forEach(edu => {
@@ -81,10 +80,10 @@ const checkChronology = (record: Education, history: Education[], currentIndex: 
     const year = new Date(edu.endDate).getFullYear();
     if (isNaN(year)) return;
 
-    if (normLevel === "SSLC") {
-      sslcYear = year;
-    } else if (normLevel === "PUC") {
-      pucYear = year;
+    if (normLevel === "O-Level") {
+      oLevelYear = year;
+    } else if (normLevel === "A-Level") {
+      aLevelYear = year;
     } else if (["Diploma", "UG", "PG", "PhD"].includes(normLevel)) {
       if (normLevel === "UG" || normLevel === "Diploma") {
         degreeYear = year;
@@ -92,20 +91,20 @@ const checkChronology = (record: Education, history: Education[], currentIndex: 
     }
   });
 
-  if (sslcYear !== null && pucYear !== null) {
-    if (pucYear < sslcYear + 2) {
+  if (oLevelYear !== null && aLevelYear !== null) {
+    if (aLevelYear < oLevelYear + 2) {
       return "A-Level / Form VI completion year must be at least 2 years after O-Level / Form IV completion year.";
     }
   }
 
-  if (pucYear !== null && degreeYear !== null) {
-    if (degreeYear <= pucYear) {
+  if (aLevelYear !== null && degreeYear !== null) {
+    if (degreeYear <= aLevelYear) {
       return "Degree/Diploma completion year must be strictly greater than A-Level / Form VI completion year.";
     }
   }
 
-  if (sslcYear !== null && degreeYear !== null) {
-    if (degreeYear <= sslcYear) {
+  if (oLevelYear !== null && degreeYear !== null) {
+    if (degreeYear <= oLevelYear) {
       return "Degree/Diploma completion year must be strictly greater than O-Level / Form IV completion year.";
     }
   }
@@ -229,7 +228,8 @@ const EducationSection: React.FC<EducationSectionProps> = ({
     const newHistory = [...educationHistory, pendingEduRecord];
     setEducationHistory(newHistory);
     
-    if (newHistory.length >= 3) {
+    const levels = newHistory.map(edu => getNormalizedLevel(edu.level));
+    if (levels.includes("O-Level") && levels.includes("A-Level") && levels.includes("UG")) {
       setFormErrors(prev => {
         const { education, ...rest } = prev;
         return rest;
@@ -286,16 +286,31 @@ const EducationSection: React.FC<EducationSectionProps> = ({
       return;
     }
 
+    const savedLevels = educationHistory.map(edu => getNormalizedLevel(edu.level));
+    if (savedLevels.includes("O-Level") && savedLevels.includes("A-Level") && savedLevels.includes("UG")) {
+      setFormErrors(prev => {
+        const { education, ...rest } = prev;
+        return rest;
+      });
+    }
+
     setEditingEduIndex(null);
   };
 
   const removeEducation = (index: number) => {
     const newHistory = educationHistory.filter((_, i) => i !== index);
     setEducationHistory(newHistory);
-    if (newHistory.length < 3) {
+    
+    const levels = newHistory.map(edu => getNormalizedLevel(edu.level));
+    const missingLevels: string[] = [];
+    if (!levels.includes("O-Level")) missingLevels.push("O-Level");
+    if (!levels.includes("A-Level")) missingLevels.push("A-Level");
+    if (!levels.includes("UG")) missingLevels.push("UG");
+
+    if (missingLevels.length > 0) {
       setFormErrors(prev => ({
         ...prev,
-        education: "Minimum 3 education records are required (SSLC, PUC / Diploma, and 1st Degree)."
+        education: "Minimum 3 education records are required (O-Level, A-Level, and UG)."
       }));
     } else {
       setFormErrors(prev => {
@@ -431,9 +446,9 @@ const EducationSection: React.FC<EducationSectionProps> = ({
               const year = new Date(edu.endDate).getFullYear();
               if (isNaN(year)) return;
 
-              if (normLevel === "SSLC") {
+              if (normLevel === "O-Level") {
                 sslcYear = year;
-              } else if (normLevel === "PUC") {
+              } else if (normLevel === "A-Level") {
                 pucYear = year;
               }
             });
@@ -441,7 +456,7 @@ const EducationSection: React.FC<EducationSectionProps> = ({
             const currentNormLevel = getNormalizedLevel(currentEdu.level);
             let minEndDate: string | undefined = undefined;
 
-            if (currentNormLevel === "PUC" && sslcYear !== null) {
+            if (currentNormLevel === "A-Level" && sslcYear !== null) {
               minEndDate = `${sslcYear + 2}-01-01`;
             } else if (["Diploma", "UG", "PG", "PhD"].includes(currentNormLevel)) {
               if (pucYear !== null) {
@@ -452,7 +467,7 @@ const EducationSection: React.FC<EducationSectionProps> = ({
             }
             
             const isHigherEd = ["Diploma", "Undergraduate (UG)", "Postgraduate (PG)", "Doctorate (PhD)", "UG", "PG", "PhD"].includes(currentEdu.level);
-            const isSchooling = ["SSLC", "PUC"].includes(getNormalizedLevel(currentEdu.level));
+            const isSchooling = ["O-Level", "A-Level"].includes(getNormalizedLevel(currentEdu.level));
             const existingLevels = educationHistory.map(edu => getNormalizedLevel(edu.level)).filter(Boolean);
             const availableLevels = EDUCATION_LEVELS.filter(lvl => 
               !existingLevels.includes(getNormalizedLevel(lvl)) || getNormalizedLevel(lvl) === getNormalizedLevel(currentEdu.level)
