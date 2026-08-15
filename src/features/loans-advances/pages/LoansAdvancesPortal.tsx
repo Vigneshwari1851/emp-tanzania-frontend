@@ -1,6 +1,6 @@
 import { useCurrency } from "@/shared/hooks/useCurrency";
+import { useOrgNavigate } from '@/shared/hooks/useOrgNavigate';
 import React, { useState, useEffect, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/components/ui/payroll-lib/card';
 import { Button } from '@/shared/components/ui/payroll-lib/button';
 import { Input } from '@/shared/components/ui/payroll-lib/input';
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/payroll-lib/table';
 import { toast } from 'sonner';
 import {
-  Plus, Clock, CheckCircle2, Sparkles, Banknote, TrendingUp,
+  Plus, CheckCircle2, Sparkles, Banknote, TrendingUp,
   HandCoins, Activity, Layers, CircleDollarSign, ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '@/shared/context/AuthContext';
@@ -18,13 +18,13 @@ import * as loanConfig from '../services/loan-config';
 
 interface LoansAdvancesPortalProps {
     userId?: number;
-    payslips?: any[];
     refresh?: () => void;
 }
 
-export function LoansAdvancesPortal({ userId, payslips = [], refresh }: LoansAdvancesPortalProps) {
+export function LoansAdvancesPortal({ userId, refresh }: LoansAdvancesPortalProps) {
     const { currencySymbol } = useCurrency();
     const { user } = useAuth();
+    const navigate = useOrgNavigate();
     const resolvedUserId = userId || (user?.id ? Number(user.id) : 0);
     const [activeLoans, setActiveLoans] = useState<any[]>([]);
     const [activeAdvances, setActiveAdvances] = useState<any[]>([]);
@@ -51,15 +51,36 @@ export function LoansAdvancesPortal({ userId, payslips = [], refresh }: LoansAdv
         fetchPolicies();
     }, []);
 
-    const [selectedItem, setSelectedItem] = useState<any>(null);
-    const [itemType, setItemType] = useState<'loan' | 'advance'>('loan');
-
     const fetchData = async () => {
         try {
             setLoading(true);
-            const portalData = await (await import('@/features/payroll/services/payroll')).getEmployeePortalData();
-            setActiveLoans(portalData?.activeLoans || []);
-            setActiveAdvances(portalData?.activeAdvances || []);
+            const [portalData, myApps] = await Promise.all([
+                (await import('@/features/payroll/services/payroll')).getEmployeePortalData(),
+                loanConfig.getMyApplications()
+            ]);
+            const apps = (myApps || []).filter((a: any) => a.isActive !== false && a.status !== 'WITHDRAWN');
+            const appLoans = apps
+                .filter((a: any) => a.loanType?.category?.toUpperCase() !== 'ADVANCE')
+                .map((a: any) => ({
+                    ...a,
+                    id: `app-${a.id}`,
+                    applicationId: a.id,
+                    isApplication: true,
+                    principalAmount: a.approvedAmount ?? a.requestedAmount,
+                    monthlyRecovery: a.monthlyEmi,
+                }));
+            const appAdvances = apps
+                .filter((a: any) => a.loanType?.category?.toUpperCase() === 'ADVANCE')
+                .map((a: any) => ({
+                    ...a,
+                    id: `app-${a.id}`,
+                    applicationId: a.id,
+                    isApplication: true,
+                    principalAmount: a.approvedAmount ?? a.requestedAmount,
+                    monthlyRecovery: a.monthlyEmi,
+                }));
+            setActiveLoans([...appLoans, ...(portalData?.activeLoans || [])]);
+            setActiveAdvances([...appAdvances, ...(portalData?.activeAdvances || [])]);
         } catch {
             setActiveLoans([]);
             setActiveAdvances([]);
@@ -69,28 +90,6 @@ export function LoansAdvancesPortal({ userId, payslips = [], refresh }: LoansAdv
     };
 
     useEffect(() => { fetchData(); }, [resolvedUserId]);
-
-    const history = useMemo(() => {
-        if (!selectedItem) return [];
-        const sorted = [...payslips].sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
-        const deductionLabel = itemType === 'loan' ? 'Loan Recovery' : 'Advance Recovery';
-        return sorted.filter(p => {
-            const hasDeduction = p.deductionDetails?.find((d: any) => d.label === deductionLabel);
-            return hasDeduction && hasDeduction.value > 0;
-        }).map(p => ({
-            month: p.month,
-            amount: p.deductionDetails?.find((d: any) => d.label === deductionLabel)?.value || 0
-        }));
-    }, [selectedItem, itemType, payslips]);
-
-    const formatMonthName = (monthStr: string) => {
-        if (!monthStr) return '';
-        try {
-            const [year, month] = monthStr.split('-');
-            const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-            return date.toLocaleString('default', { month: 'long', year: 'numeric' });
-        } catch { return monthStr; }
-    };
 
     const activePolicy = useMemo(() => {
         return policies.find(p => String(p.id) === selectedPolicyId);
@@ -515,7 +514,7 @@ export function LoansAdvancesPortal({ userId, payslips = [], refresh }: LoansAdv
                                                 <TableCell className="px-6 py-4 text-right">
                                                     {item.status === 'APPROVED' && (
                                                         <Button variant="ghost" size="sm" className="text-primary font-bold hover:bg-primary/10 rounded-xl gap-1.5"
-                                                            onClick={() => { setSelectedItem(item); setItemType(item._type); }}>
+                                                            onClick={() => navigate(`/employee/loans-advances/repayment/${item.applicationId || item.id}?kind=${item.isApplication ? 'app' : item._type}`)}>
                                                             <Activity className="size-3.5" /> View History
                                                         </Button>
                                                     )}
@@ -529,65 +528,6 @@ export function LoansAdvancesPortal({ userId, payslips = [], refresh }: LoansAdv
                     </div>
                 </div>
             </div>
-
-            {/* Repayment History Modal */}
-            {selectedItem && createPortal(
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="relative bg-card rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
-                        {/* Modal Header */}
-                        <div className="bg-gradient-to-r from-blue-700 via-primary-700 to-primary-800 text-white px-6 py-4">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <h3 className="text-lg font-bold">Repayment History</h3>
-                                    <p className="text-primary-200/80 text-xs mt-0.5">{itemType === 'loan' ? 'Company Loan' : 'Salary Advance'} &middot; {currencySymbol}{Number(selectedItem.principalAmount).toLocaleString()}</p>
-                                </div>
-                                <button onClick={() => setSelectedItem(null)} className="size-8 rounded-xl hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-white">&times;</button>
-                            </div>
-                        </div>
-
-                        <div className="p-6">
-                            {/* Summary Cards */}
-                            <div className="grid grid-cols-2 gap-3 mb-6">
-                                <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-xl p-4 border border-emerald-100 dark:border-emerald-900/50">
-                                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Total Paid</p>
-                                    <p className="font-black text-emerald-700 dark:text-emerald-300 text-xl mt-1">{currencySymbol}{Number(selectedItem.principalAmount - selectedItem.outstandingBalance).toLocaleString()}</p>
-                                </div>
-                                <div className="bg-rose-50 dark:bg-rose-950/30 rounded-xl p-4 border border-rose-100 dark:border-rose-900/50">
-                                    <p className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">Remaining</p>
-                                    <p className="font-black text-rose-700 dark:text-rose-300 text-xl mt-1">{currencySymbol}{Number(selectedItem.outstandingBalance).toLocaleString()}</p>
-                                </div>
-                            </div>
-
-                            {/* History List */}
-                            {history.length === 0 ? (
-                                <div className="text-center py-10">
-                                    <Clock className="mx-auto size-8 text-muted-foreground/40 mb-3" />
-                                    <p className="text-sm font-bold text-foreground">No deductions yet</p>
-                                    <p className="text-xs text-muted-foreground mt-1">Repayment deductions will appear here</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
-                                    {history.map((h, i) => (
-                                        <div key={i} className="flex justify-between items-center p-3 bg-muted/50 border border-border rounded-xl">
-                                            <div className="flex items-center gap-3">
-                                                <div className="size-8 rounded-lg text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                                                    <CheckCircle2 className="size-3.5" />
-                                                </div>
-                                                <span className="font-bold text-sm text-foreground">{formatMonthName(h.month)}</span>
-                                            </div>
-                                            <span className="font-black font-mono text-sm text-foreground">{currencySymbol}{h.amount.toLocaleString()}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            <Button onClick={() => setSelectedItem(null)} className="w-full bg-muted hover:bg-muted/80 text-foreground py-6 mt-6 rounded-xl font-bold">Close</Button>
-                        </div>
-                    </div>
-                </div>,
-                document.body
-            )}
-
         </div>
     );
 }

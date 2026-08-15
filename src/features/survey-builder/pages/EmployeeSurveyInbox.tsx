@@ -98,7 +98,23 @@ export default function EmployeeSurveyInbox() {
       if (!q.parent_question_id || !q.trigger_option_id) return true;
       const parentAnswer = answers[q.parent_question_id];
       if (!parentAnswer) return false;
-      return parentAnswer.selectedOptionId === q.trigger_option_id;
+
+      const parentQ = activeSurvey.questions.find((pq: any) => pq.id === q.parent_question_id);
+      if (!parentQ) return true;
+
+      const triggerOpt = (parentQ.options || []).find((o: any) => o.id === q.trigger_option_id);
+      if (!triggerOpt) return false;
+
+      if (parentQ.type === "MULTIPLE_CHOICE") {
+        try {
+          const selectedLabels = JSON.parse(parentAnswer.valueText || "[]");
+          return Array.isArray(selectedLabels) && selectedLabels.includes(triggerOpt.label);
+        } catch {
+          return false;
+        }
+      }
+
+      return parentAnswer.selectedOptionId === q.trigger_option_id || parentAnswer.valueText === triggerOpt.label;
     });
   }, [activeSurvey, answers]);
 

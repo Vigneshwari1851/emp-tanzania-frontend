@@ -82,7 +82,8 @@ export default function PreviewViewPage() {
     if (parentAnswer === undefined) return false;
     if (!q.trigger_option_id) return true;
     const triggerOpt = (parentQ.options || []).find((o: any) => o.id === q.trigger_option_id);
-    return triggerOpt ? parentAnswer === triggerOpt.label : false;
+    if (!triggerOpt) return false;
+    return Array.isArray(parentAnswer) ? parentAnswer.includes(triggerOpt.label) : parentAnswer === triggerOpt.label;
   }
 
   function resetSurvey() {

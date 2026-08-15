@@ -758,7 +758,7 @@ const RecruiterDashboard: React.FC = () => {
                     value={offerData.base_salary}
                     onChange={e => setOfferData({ ...offerData, base_salary: e.target.value })}
                     placeholder="e.g. 1200000"
-                    className="pl-7 bg-muted/50 border-border"
+                    className={`${currencySymbol.length > 2 ? 'pl-14' : currencySymbol.length > 1 ? 'pl-10' : 'pl-8'} bg-muted/50 border-border`}
                   />
                 </div>
               </div>

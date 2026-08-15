@@ -46,14 +46,6 @@ export function ReimbursementPayout() {
                  id.includes(bcIdStr);
         }) : null;
 
-        if (!found) {
-          const localStr = localStorage.getItem('reimb_claims');
-          if (localStr) {
-            const localClaims = JSON.parse(localStr);
-            found = localClaims.find((c: any) => String(c.id) === id || String(c.dbId) === id || c.claimNumber === id);
-          }
-        }
-
         if (found) {
           const deptName = found.user?.details?.department?.department_name || found.department || 'General';
           const firstName = found.user?.details?.first_name || '';

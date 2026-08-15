@@ -22,6 +22,8 @@ const PERMISSION_MAPPING: Record<string, string | string[]> = {
   [Permission.VIEW_ALL_PAYROLL]: 'payroll.view',
   [Permission.MANAGE_PAYROLL]: 'payroll.manage',
   [Permission.PROCESS_PAYROLL]: 'payroll.process',
+  [Permission.VIEW_LOANS_ADVANCES]: 'loans-advances.view',
+  [Permission.MANAGE_LOANS_ADVANCES]: 'loans-advances.manage',
   [Permission.VIEW_ALL_CANDIDATES]: 'recruitment.view',
   [Permission.MANAGE_JOB_POSTINGS]: 'recruitment.manage',
   [Permission.VIEW_ASSETS]: 'assets.view',

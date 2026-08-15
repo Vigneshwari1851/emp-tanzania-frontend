@@ -31,6 +31,7 @@ export function LoansAdvancesSetup() {
     const [pendingLoans, setPendingLoans] = useState<any[]>([]);
     const [pendingAdvances, setPendingAdvances] = useState<any[]>([]);
     const [pendingApps, setPendingApps] = useState<any[]>([]);
+    const [applications, setApplications] = useState<any[]>([]);
     const [activeTab, setActiveTab] = useState(() => {
         const tab = searchParams.get('tab');
         if (tab) return tab;
@@ -68,18 +69,20 @@ export function LoansAdvancesSetup() {
 
     const fetchRecords = async () => {
         try {
-            const [loanRes, advRes, pendingLoanRes, pendingAdvRes, pendingAppRes] = await Promise.all([
+            const [loanRes, advRes, pendingLoanRes, pendingAdvRes, pendingAppRes, appRes] = await Promise.all([
                 loansAdvancesService.getLoans().catch(() => []),
                 loansAdvancesService.getAdvances().catch(() => []),
                 loansAdvancesService.getLoansForApproval().catch(() => []),
                 loansAdvancesService.getAdvancesForApproval().catch(() => []),
-                loanConfig.getPendingApprovals().catch(() => [])
+                loanConfig.getPendingApprovals().catch(() => []),
+                loanConfig.getApplications().catch(() => [])
             ]);
             setLoans(loanRes || []);
             setAdvances(advRes || []);
             setPendingLoans(pendingLoanRes || []);
             setPendingAdvances(pendingAdvRes || []);
             setPendingApps(pendingAppRes || []);
+            setApplications(appRes || []);
         } catch {
             toast.error('Failed to load loans and advances');
         }
@@ -164,12 +167,24 @@ export function LoansAdvancesSetup() {
         isApplication: true
     }));
 
+    const mappedApplications = applications.map(app => ({
+        ...app,
+        _type: app.loanType?.category?.toLowerCase() === 'advance' ? 'advance' : 'loan',
+        principalAmount: app.approvedAmount ?? app.requestedAmount,
+        monthlyRecovery: app.monthlyEmi,
+        isApplication: true
+    }));
+
     const allPending = [
         ...pendingLoans.map(l => ({ ...l, _type: 'loan' })),
         ...pendingAdvances.map(a => ({ ...a, _type: 'advance' })),
         ...mappedApps
     ];
-    const allRecords = [...loans.map(l => ({ ...l, _type: 'loan' })), ...advances.map(a => ({ ...a, _type: 'advance' }))];
+    const allRecords = [
+        ...loans.map(l => ({ ...l, _type: 'loan' })),
+        ...advances.map(a => ({ ...a, _type: 'advance' })),
+        ...mappedApplications
+    ];
 
     const stats = useMemo(() => {
         const totalLoanAmount = loans.reduce((s, l) => s + Number(l.principalAmount || 0), 0);
@@ -309,7 +324,7 @@ export function LoansAdvancesSetup() {
                                 ) : (
                                     <div className="divide-y divide-border">
                                         {allRecords.slice(0, 5).map((item: any) => (
-                                            <div key={`recent-${item._type}-${item.id}`} className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
+                                            <div key={`recent-${item._type}-${item.isApplication ? 'app-' : ''}${item.id}`} className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
                                                 <div className="flex items-center gap-3">
                                                     <div className={`size-9 rounded-xl flex items-center justify-center ${item._type === 'loan' ? 'text-blue-600 dark:text-blue-400' : 'text-purple-600 dark:text-purple-400'}`}>
                                                         {item._type === 'loan' ? <Banknote className="size-4" /> : <TrendingUp className="size-4" />}
@@ -471,7 +486,7 @@ export function LoansAdvancesSetup() {
                                                 </TableCell>
                                             </TableRow>
                                         ) : allRecords.map((item: any) => (
-                                            <TableRow key={`${item._type}-all-${item.id}`} className="hover:bg-muted/50 transition-colors">
+                                            <TableRow key={`${item._type}-all-${item.isApplication ? 'app-' : ''}${item.id}`} className="hover:bg-muted/50 transition-colors">
                                                 <TableCell className="px-6 py-4">
                                                     <p className="text-sm font-semibold text-foreground">{item.userDetail?.first_name} {item.userDetail?.last_name}</p>
                                                 </TableCell>
@@ -490,7 +505,7 @@ export function LoansAdvancesSetup() {
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="px-6 py-4 text-right">
-                                                    {item.status === 'APPROVED' && (
+                                                    {item.status === 'APPROVED' && !item.isApplication && (
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
