@@ -63,6 +63,7 @@ import { LoanTypeConfig } from "../features/loans-advances/pages/LoanTypeConfig"
 import { LoanDashboard } from "../features/loans-advances/pages/LoanDashboard";
 import { LoanApply } from "../features/loans-advances/pages/LoanApply";
 import { MyApplications } from "../features/loans-advances/pages/MyApplications";
+import { RepaymentHistory } from "../features/loans-advances/pages/RepaymentHistory";
 import { CreateLoanType } from "../features/loans-advances/pages/CreateLoanType";
 import { IssueLoan } from "../features/loans-advances/pages/IssueLoan";
 import { CreateLoanAdvance } from "../features/loans-advances/pages/CreateLoanAdvance";
@@ -211,7 +212,7 @@ export const routes = createRoutesFromElements(
       <Route path="employee-exit" element={<EmployeeExit />} />
 
       {/* Payroll Routes */}
-      <Route element={<ProtectedRoute requiredPermissions={[Permission.VIEW_ALL_PAYROLL]} />}>
+      <Route element={<ProtectedRoute requiredPermissions={[Permission.VIEW_ALL_PAYROLL, Permission.VIEW_TEAM_PAYROLL]} />}>
         <Route path="payroll" element={<PayrollSetup />} />
         <Route path="payroll/setup" element={<PayrollSetup />} />
         <Route path="payroll/components/add" element={<div /> /* Removed standalone component route */} />
@@ -235,7 +236,7 @@ export const routes = createRoutesFromElements(
       <Route path="reimbursements/payout" element={<ReimbursementPayout />} />
 
       {/* Loans & Advances Routes */}
-      <Route element={<ProtectedRoute requiredPermissions={[Permission.VIEW_ALL_PAYROLL]} />}>
+      <Route element={<ProtectedRoute requiredPermissions={[Permission.VIEW_LOANS_ADVANCES, Permission.VIEW_ALL_PAYROLL, Permission.VIEW_TEAM_PAYROLL]} />}>
         <Route path="loans-advances" element={<LoansAdvancesSetup />} />
         <Route path="loans-advances/:id" element={<LoansAdvancesSetup />} />
         <Route path="loans-advances/module" element={<LoanAdvanceModule />} />
@@ -249,6 +250,7 @@ export const routes = createRoutesFromElements(
       <Route path="employee/loans-advances" element={<LoansAdvancesPortalPage />} />
       <Route path="employee/loans-advances/:id" element={<LoansAdvancesPortalPage />} />
       <Route path="employee/loans-advances/apply" element={<LoanApply />} />
+      <Route path="employee/loans-advances/repayment/:id" element={<RepaymentHistory />} />
       <Route path="employee/loans-advances/my-applications" element={<MyApplications />} />
 
       <Route element={<AssetProtectedRoute />}>

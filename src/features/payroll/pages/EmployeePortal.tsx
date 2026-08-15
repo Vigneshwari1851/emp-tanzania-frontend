@@ -51,6 +51,9 @@ interface ExpenseClaim {
   submittedOn: string;
 }
 
+const currencyInputPad = (symbol: string) =>
+  symbol.length > 2 ? 'pl-14' : symbol.length > 1 ? 'pl-10' : 'pl-8';
+
 function FilePreviewModal({ file, fileUrl, onClose }: { file?: File | null; fileUrl?: string | null; onClose: () => void }) {
   let isImage = false;
   let isPdf = false;
@@ -760,7 +763,7 @@ function TaxDeclarationsTab({ taxSections, savedRegime, regimeChangedAt }: { tax
                   <Input
                     type="number" min={1} placeholder="e.g. 50000"
                     value={fAmount} onChange={e => setFAmount(e.target.value)}
-                    className={`pl-7 rounded-xl text-sm ${exceedsLimit ? 'border-rose-400 ring-1 ring-rose-300' : 'border-border'}`}
+                    className={`${currencyInputPad(currencySymbol)} rounded-xl text-sm ${exceedsLimit ? 'border-rose-400 ring-1 ring-rose-300' : 'border-border'}`}
                   />
                 </div>
                 {fSection && sectionLimit > 0 && fAmount && (
@@ -827,7 +830,7 @@ function TaxDeclarationsTab({ taxSections, savedRegime, regimeChangedAt }: { tax
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{currencySymbol}</span>
                   <Input type="number" placeholder="15,000" value={hRent}
                     onChange={e => setHRent(e.target.value)}
-                    className="pl-7 rounded-xl border-border text-sm" />
+                    className={`${currencyInputPad(currencySymbol)} rounded-xl border-border text-sm`} />
                 </div>
               </div>
 
@@ -1188,7 +1191,7 @@ function ReimbursementsTab({ reimbursementTypes }: { reimbursementTypes: PortalR
                     placeholder="0.00"
                     value={fAmount}
                     onChange={e => setFAmount(e.target.value)}
-                    className={`pl-7 rounded-xl text-sm font-bold ${exceedsLimit ? 'border-rose-400 ring-1 ring-rose-300' : 'border-border'}`}
+                    className={`${currencyInputPad(currencySymbol)} rounded-xl text-sm font-bold ${exceedsLimit ? 'border-rose-400 ring-1 ring-rose-300' : 'border-border'}`}
                   />
                 </div>
                 {fType && typeLimit > 0 && (
@@ -1328,7 +1331,7 @@ function Form12BTab() {
             <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Gross Salary Paid ({currencySymbol}) *</Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{currencySymbol}</span>
-              <Input type="number" placeholder="450000" value={grossSalary} onChange={e => setGrossSalary(e.target.value)} className="pl-7 rounded-xl border-border text-sm" />
+              <Input type="number" placeholder="450000" value={grossSalary} onChange={e => setGrossSalary(e.target.value)} className={`${currencyInputPad(currencySymbol)} rounded-xl border-border text-sm`} />
             </div>
             <p className="text-[11px] text-muted-foreground">Total salary before any tax deductions by previous employer</p>
           </div>
@@ -1336,7 +1339,7 @@ function Form12BTab() {
             <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">TDS Deducted ({currencySymbol}) *</Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{currencySymbol}</span>
-              <Input type="number" placeholder="15000" value={tdsDeducted} onChange={e => setTdsDeducted(e.target.value)} className="pl-7 rounded-xl border-border text-sm" />
+              <Input type="number" placeholder="15000" value={tdsDeducted} onChange={e => setTdsDeducted(e.target.value)} className={`${currencyInputPad(currencySymbol)} rounded-xl border-border text-sm`} />
             </div>
             <p className="text-[11px] text-muted-foreground">Total tax already deposited by previous employer</p>
           </div>

@@ -141,15 +141,16 @@ export default function TakeSurveyPage() {
     if (parentAnswer === undefined) return false;
     if (!q.trigger_option_id) return true;
     const triggerOpt = (parentQ.options || []).find((o: any) => o.id === q.trigger_option_id);
+    if (!triggerOpt) return false;
     console.log('[TakeSurvey] visibility check:', {
       childId: q.id, childLabel: q.label?.slice(0, 30),
       parentId: parentQ.id, parentAnswer,
       triggerOptId: q.trigger_option_id,
       triggerOptFound: !!triggerOpt,
       triggerOptLabel: triggerOpt?.label,
-      match: triggerOpt ? parentAnswer === triggerOpt.label : 'N/A'
+      match: Array.isArray(parentAnswer) ? parentAnswer.includes(triggerOpt.label) : parentAnswer === triggerOpt.label
     });
-    return triggerOpt ? parentAnswer === triggerOpt.label : false;
+    return Array.isArray(parentAnswer) ? parentAnswer.includes(triggerOpt.label) : parentAnswer === triggerOpt.label;
   }
 
   async function handleSubmit() {

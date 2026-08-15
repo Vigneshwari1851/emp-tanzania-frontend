@@ -243,89 +243,6 @@ const defaultPolicies: ReimbursementPolicy[] = [
   }
 ];
 
-const defaultClaims: EmployeeClaim[] = [
-  {
-    id: 'clm-1',
-    claimNumber: 'CLM-2026-001',
-    employeeId: 'EMP-002',
-    employeeName: 'Vignesh K',
-    department: 'Engineering',
-    policyId: 'pol-2',
-    policyName: 'Remote Broadband Allowance',
-    submitDate: '2026-07-10',
-    amount: 1500,
-    currency: 'INR',
-    status: 'Submitted',
-    items: [
-      { id: 'item-1', date: '2026-07-01', category: 'Internet & Broadband', amount: 1500, description: 'ACT Fibernet monthly broadband bill payment', receiptName: 'internet_broadband_bill.pdf' }
-    ],
-    comments: [
-      { user: 'Vignesh K', role: 'Employee', comment: 'Submitting internet bill for July 2026.', date: '2026-07-10' }
-    ],
-    history: [
-      { action: 'Created Draft', user: 'Vignesh K', role: 'Employee', date: '2026-07-10' },
-      { action: 'Submitted Claim', user: 'Vignesh K', role: 'Employee', date: '2026-07-10', details: 'Awaiting manager approval' }
-    ]
-  },
-  {
-    id: 'clm-2',
-    claimNumber: 'CLM-2026-002',
-    employeeId: 'EMP-003',
-    employeeName: 'Shalini Sharma',
-    department: 'Sales',
-    policyId: 'pol-3',
-    policyName: 'Field Sales Mileage Plan',
-    submitDate: '2026-07-11',
-    amount: 3200,
-    currency: 'INR',
-    status: 'Pending Finance Approval',
-    items: [
-      { id: 'item-2', date: '2026-07-05', category: 'Fuel & Mileage Allowance', amount: 3200, description: 'Client meeting travel to TechPark, 160 kms overall.', receiptName: 'mileage_log.pdf' }
-    ],
-    comments: [
-      { user: 'Shalini Sharma', role: 'Employee', comment: 'Added mileage calculation sheet for regional visits.', date: '2026-07-11' },
-      { user: 'Amit Patel', role: 'Manager', comment: 'Travel verified and approved.', date: '2026-07-12' }
-    ],
-    history: [
-      { action: 'Submitted Claim', user: 'Shalini Sharma', role: 'Employee', date: '2026-07-11' },
-      { action: 'Manager Approved', user: 'Amit Patel', role: 'Manager', date: '2026-07-12', details: 'Sent to Finance for payment validation' }
-    ]
-  },
-  {
-    id: 'clm-3',
-    claimNumber: 'CLM-2026-003',
-    employeeId: 'EMP-004',
-    employeeName: 'Rohan Mehta',
-    department: 'Marketing',
-    policyId: 'pol-1',
-    policyName: 'Executive Travel Reimbursement',
-    submitDate: '2026-07-05',
-    amount: 14500,
-    currency: 'INR',
-    status: 'Paid',
-    items: [
-      { id: 'item-3', date: '2026-07-02', category: 'Travel & Local Conveyance', amount: 8500, description: 'primary Flight to Mumbai', receiptName: 'flight_ticket.pdf' },
-      { id: 'item-4', date: '2026-07-03', category: 'Hotel & Lodging', amount: 6000, description: 'Taj Vivanta 1 Night Stay', receiptName: 'hotel_bill.pdf' }
-    ],
-    comments: [
-      { user: 'Rohan Mehta', role: 'Employee', comment: 'Travel for Annual Partner Conference.', date: '2026-07-05' },
-      { user: 'Finance Admin', role: 'Finance', comment: 'Verified receipts and flight PNR. Initiating bank payout.', date: '2026-07-08' }
-    ],
-    history: [
-      { action: 'Submitted Claim', user: 'Rohan Mehta', role: 'Employee', date: '2026-07-05' },
-      { action: 'Manager Approved', user: 'Preeti Deshmukh', role: 'Manager', date: '2026-07-06' },
-      { action: 'Finance Verified & Approved', user: 'Finance Team', role: 'Finance', date: '2026-07-08' },
-      { action: 'Marked as Paid', user: 'Finance Team', role: 'Finance', date: '2026-07-08', details: 'Ref: Bank Transfer #TXN93821039' }
-    ],
-    paymentDetails: {
-      method: 'Bank Transfer',
-      reference: 'TXN93821039',
-      paidDate: '2026-07-08',
-      month: 'July 2026'
-    }
-  }
-];
-
 const defaultSettings: ModuleSettings = {
   autoClaimNumberPrefix: 'CLM-2026-',
   financialYear: '2026-2027',
@@ -494,6 +411,68 @@ const getActiveWorkflowStep = (claim: EmployeeClaim, workflowSteps: string[]): s
   return null;
 };
 
+const backendStatusToClaimStatus = (status: string, currentAssignedRole?: string | null): EmployeeClaim['status'] => {
+  const map: Record<string, EmployeeClaim['status']> = {
+    'Submitted': 'Submitted',
+    'approved': 'Approved',
+    'pending': 'Pending Manager Approval',
+    'pending_hr': 'Pending HR Approval',
+    'pending_finance': 'Pending Finance Approval',
+    'waiting_payout': 'Waiting for Payout',
+    'Rejected': 'Rejected',
+    'Paid': 'Paid',
+    'Cancelled': 'Cancelled',
+    'REJECTED': 'Rejected',
+    'READY_FOR_PAYROLL_REVIEW': 'Waiting for Payout',
+    'INCLUDED_IN_PAYROLL': 'Pending Payroll',
+    'PAID': 'Paid',
+  };
+  if (map[status]) return map[status];
+  if (status === 'PENDING_APPROVAL') {
+    return currentAssignedRole === 'HR' ? 'Pending HR Approval' : (currentAssignedRole === 'FINANCE' ? 'Pending Finance Approval' : 'Pending Manager Approval');
+  }
+  return status as EmployeeClaim['status'];
+};
+
+const mapBackendClaimToEmployeeClaim = (bc: any, user: any): EmployeeClaim => {
+  const managerId = bc.user?.details?.reporting_manager_id ? Number(bc.user.details.reporting_manager_id) : undefined;
+  const resolvedEmpId = bc.user?.details?.employee_id ||
+    (bc.user_id === user?.id ? user?.employeeId : undefined) ||
+    String(bc.user_id);
+  const deptName = bc.user?.details?.department?.department_name || 'General';
+  const firstName = bc.user?.details?.first_name || '';
+  const lastName = bc.user?.details?.last_name || '';
+  const proofUrl = resolveFileUrl(bc.proof_url);
+  const receiptName = bc.proof_url && !bc.proof_url.startsWith('data:')
+    ? (bc.proof_url.split('/').pop() || 'Receipt')
+    : undefined;
+  const expenseDate = bc.expense_date ? new Date(bc.expense_date).toISOString().split('T')[0] : '';
+  return {
+    id: `clm-db-${bc.id}`,
+    dbId: bc.id,
+    claimNumber: `CLM-${String(bc.id).padStart(4, '0')}`,
+    employeeId: resolvedEmpId,
+    employeeName: `${firstName} ${lastName}`.trim() || bc.user?.username || 'Unknown',
+    department: deptName,
+    policyId: '',
+    policyName: bc.type || 'General',
+    submitDate: expenseDate || new Date().toISOString().split('T')[0],
+    amount: Number(bc.amount),
+    currency: 'INR',
+    status: backendStatusToClaimStatus(bc.status, bc.current_assigned_role),
+    reportingManagerId: managerId,
+    approval_sequence: bc.approval_sequence,
+    workflow_sequence: bc.workflow_sequence || bc.approval_sequence,
+    current_step_index: bc.current_step_index,
+    current_assigned_role: bc.current_assigned_role,
+    approval_logs: bc.approval_logs,
+    payroll_batch_id: bc.payroll_batch_id,
+    items: [{ id: `item-${bc.id}`, description: bc.description || '', category: bc.type || '', amount: Number(bc.amount), date: expenseDate, receiptUrl: proofUrl, receiptName }],
+    comments: bc.remarks ? [{ user: 'System', role: 'Backend', comment: bc.remarks, date: new Date().toISOString().split('T')[0] }] : [],
+    history: [{ action: 'Synced from Backend', user: 'System', role: 'Backend', date: new Date().toISOString().split('T')[0], details: `Status: ${bc.status}, Payment: ${bc.payment_status || 'N/A'}` }]
+  };
+};
+
 // ==========================================
 // CORE REIMBURSEMENT PAGE COMPONENT
 // ==========================================
@@ -540,9 +519,15 @@ export function ReimbursementModule() {
     return data ? JSON.parse(data) : defaultPolicies;
   });
 
+  // Claims come from the backend DB. Only local drafts (claims without a dbId)
+  // are persisted to localStorage so they survive reloads.
   const [claims, setClaims] = useState<EmployeeClaim[]>(() => {
-    const data = localStorage.getItem('reimb_claims');
-    return data ? JSON.parse(data) : defaultClaims;
+    try {
+      const data = localStorage.getItem('reimb_local_claims');
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
   });
 
   const [settings, setSettings] = useState<ModuleSettings>(() => {
@@ -564,106 +549,30 @@ export function ReimbursementModule() {
     localStorage.setItem('reimb_policies', JSON.stringify(policies));
   }, [policies]);
 
+  // Persist only local-only claims (drafts / not yet synced to backend) so the
+  // backend remains the single source of truth and stale/mock data never returns.
   useEffect(() => {
-    localStorage.setItem('reimb_claims', JSON.stringify(claims));
+    localStorage.setItem('reimb_local_claims', JSON.stringify(claims.filter(c => !c.dbId)));
   }, [claims]);
 
-  // Sync claims from backend DB (replaces stale localStorage status)
+  // Drop any legacy mock/cached claim data from earlier versions
+  useEffect(() => {
+    try { localStorage.removeItem('reimb_claims'); } catch { /* ignore */ }
+  }, []);
+
+  // Load claims from the backend DB — the single source of truth. Local drafts
+  // (claims without a dbId) are preserved on top of the backend list.
   const syncFromBackend = useCallback(async () => {
       try {
         const backendClaims = (isManagement || userRole === 'MANAGER')
           ? await payrollService.getAllClaims() 
           : await payrollService.getMyClaims();
-        if (!Array.isArray(backendClaims) || backendClaims.length === 0) return;
+        const list = Array.isArray(backendClaims) ? backendClaims : [];
 
         setClaims(prevClaims => {
-          const merged = [...prevClaims];
-          for (const bc of backendClaims) {
-            const backendStatusMap: Record<string, EmployeeClaim['status']> = {
-              'Submitted': 'Submitted',
-              'approved': 'Approved',
-              'pending': 'Pending Manager Approval',
-              'pending_hr': 'Pending HR Approval',
-              'pending_finance': 'Pending Finance Approval',
-              'waiting_payout': 'Waiting for Payout',
-              'Rejected': 'Rejected',
-              'Paid': 'Paid',
-              'Cancelled': 'Cancelled',
-              'REJECTED': 'Rejected',
-              'READY_FOR_PAYROLL_REVIEW': 'Waiting for Payout',
-              'INCLUDED_IN_PAYROLL': 'Pending Payroll',
-              'PAID': 'Paid',
-            };
-            let mappedStatus = backendStatusMap[bc.status];
-            if (!mappedStatus) {
-              if (bc.status === 'PENDING_APPROVAL') {
-                mappedStatus = bc.current_assigned_role === 'HR' ? 'Pending HR Approval' : (bc.current_assigned_role === 'FINANCE' ? 'Pending Finance Approval' : 'Pending Manager Approval');
-              } else {
-                mappedStatus = bc.status as EmployeeClaim['status'];
-              }
-            }
-
-            const existingIdx = merged.findIndex(c => c.dbId === bc.id);
-            const managerId = bc.user?.details?.reporting_manager_id ? Number(bc.user.details.reporting_manager_id) : undefined;
-            const resolvedEmpId = bc.user?.details?.employee_id || 
-                                  (bc.user_id === user?.id ? user?.employeeId : undefined) || 
-                                  bc.user_id.toString();
-
-            if (existingIdx >= 0) {
-              const existingItem = merged[existingIdx].items[0];
-              merged[existingIdx] = {
-                ...merged[existingIdx],
-                status: mappedStatus,
-                dbId: bc.id,
-                reportingManagerId: managerId,
-                employeeId: resolvedEmpId,
-                approval_sequence: bc.approval_sequence,
-                workflow_sequence: bc.workflow_sequence || bc.approval_sequence,
-                current_step_index: bc.current_step_index,
-                current_assigned_role: bc.current_assigned_role,
-                approval_logs: bc.approval_logs,
-                payroll_batch_id: bc.payroll_batch_id,
-                items: existingItem
-                  ? [{
-                      ...existingItem,
-                      receiptUrl: resolveFileUrl(bc.proof_url) || existingItem.receiptUrl,
-                      receiptName: bc.proof_url && !bc.proof_url.startsWith('data:')
-                        ? (bc.proof_url.split('/').pop() || existingItem.receiptName || 'Receipt')
-                        : existingItem.receiptName,
-                    }]
-                  : merged[existingIdx].items,
-              };
-            } else {
-              const deptName = bc.user?.details?.department?.department_name || 'General';
-              const firstName = bc.user?.details?.first_name || '';
-              const lastName = bc.user?.details?.last_name || '';
-              merged.push({
-                id: `clm-db-${bc.id}`,
-                dbId: bc.id,
-                claimNumber: `CLM-${String(bc.id).padStart(4, '0')}`,
-                employeeId: resolvedEmpId,
-                employeeName: `${firstName} ${lastName}`.trim() || bc.user?.username || 'Unknown',
-                department: deptName,
-                policyId: '',
-                policyName: bc.type || 'General',
-                submitDate: bc.expense_date ? new Date(bc.expense_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-                amount: Number(bc.amount),
-                currency: 'INR',
-                status: mappedStatus,
-                reportingManagerId: managerId,
-                approval_sequence: bc.approval_sequence,
-                workflow_sequence: bc.workflow_sequence || bc.approval_sequence,
-                current_step_index: bc.current_step_index,
-                current_assigned_role: bc.current_assigned_role,
-                approval_logs: bc.approval_logs,
-                payroll_batch_id: bc.payroll_batch_id,
-                items: [{ id: `item-${bc.id}`, description: bc.description || '', category: bc.type || '', amount: Number(bc.amount), date: bc.expense_date ? new Date(bc.expense_date).toISOString().split('T')[0] : '', receiptUrl: resolveFileUrl(bc.proof_url) || undefined, receiptName: bc.proof_url && !bc.proof_url.startsWith('data:') ? (bc.proof_url.split('/').pop() || 'Receipt') : undefined }],
-                comments: bc.remarks ? [{ user: 'System', role: 'Backend', comment: bc.remarks, date: new Date().toISOString().split('T')[0] }] : [],
-                history: [{ action: 'Synced from Backend', user: 'System', role: 'Backend', date: new Date().toISOString().split('T')[0], details: `Status: ${bc.status}, Payment: ${bc.payment_status || 'N/A'}` }]
-              });
-            }
-          }
-          return merged;
+          const localOnly = prevClaims.filter(c => !c.dbId);
+          const backendMapped = list.map(bc => mapBackendClaimToEmployeeClaim(bc, user));
+          return [...localOnly, ...backendMapped];
         });
       } catch (err) {
         console.error('Failed to sync claims from backend:', err);
@@ -3697,7 +3606,7 @@ dotColor = 'bg-blue-500'; labelColor = 'text-blue-700 dark:text-blue-300'; bgCol
                           className="w-4 h-4 text-foreground"
                         >
                           <path d="M15.8,2H6.9C6.7,0.7,5.4-0.2,4,0.1C3,0.3,2.2,1,2,2H0.2C0.1,2,0,2.1,0,2.3v0.5 C0,2.9,0.1,3,0.2,3H2C2.3,4.4,3.6,5.2,5,5c1-0.2,1.8-1,1.9-2h8.8C15.9,3,16,2.9,16,2.8V2.3C16,2.1,15.9,2,15.8,2z M4.5,4 C3.7,4,3,3.3,3,2.5S3.7,1,4.5,1S6,1.7,6,2.5S5.3,4,4.5,4z" />
-                          <path d="M15.8,12H8.9C8.7,10.7,7.4,9.8,6,10.1c-1,0.2-1.8,1-1.9,1.9H0.2C0.1,12,0,12.1,0,12.3v0.5 C0,12.9,0.1,13,0.2,13h3.8C4.3,14.4,5.6,15.2,7,15c1-0.2,1.8-1,1.9-1.9h6.8c0.1,0,0.2-0.1,0.2-0.2v-0.5C16,12.1,15.9,12,15.8,12z M6.5,14C5.7,14,5,13.3,5,12.5S5.7,11,6.5,11S8,12.5S7.3,14,6.5,14z" />
+                          <path d="M15.8,12H8.9C8.7,10.7,7.4,9.8,6,10.1c-1,0.2-1.8,1-1.9,1.9H0.2C0.1,12,0,12.1,0,12.3v0.5 C0,12.9,0.1,13,0.2,13h3.8C4.3,14.4,5.6,15.2,7,15c1-0.2,1.8-1,1.9-1.9h6.8c0.1,0,0.2-0.1,0.2-0.2v-0.5C16,12.1,15.9,12,15.8,12z M6.5,14C5.7,14,5,13.3,5,12.5S5.7,11,6.5,11S7.3,11,7.3,12.5S7.3,14,6.5,14z" />
                           <path d="M0,7.3v0.5C0,7.9,0.1,8,0.2,8h8.8c0.3,1.4,1.6,2.2,2.9,1.9c1-0.2,1.8-1,1.9-1.9h1.8 C15.9,8,16,7.9,16,7.8V7.3C16,7.1,15.9,7,15.8,7h-1.8c-0.3-1.3-1.6-2.2-2.9-1.9C10,5.3,9.2,6,9.1,7H0.2C0.1,7,0,7.1,0,7.3z M10,7.5 C10,6.7,10.7,6,11.5,6S13,6.7,13,7.5S12.3,9,11.5,9S10,8.3,10,7.5z" />
                         </svg>
                       )}

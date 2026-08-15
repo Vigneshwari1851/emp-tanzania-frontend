@@ -208,7 +208,7 @@ const CompensationSection: React.FC<CompensationSectionProps> = ({
             {formErrors.baseSalary && <p className="text-xs text-red-500 mt-1">{formErrors.baseSalary}</p>}
           </div>
 
-          {!formData.payrollGroupId ? (
+          {!formData.payrollGroupId && payrollGroups.length === 0 ? (
             <div className="pt-6 text-center">
               <p className="text-[13px] font-bold text-foreground">Salary Breakdown Not Set Up</p>
               <p className="text-[12px] text-muted-foreground mt-1">Configure your Payroll Groups and structures to automatically display the earnings and deductions breakdown here.</p>

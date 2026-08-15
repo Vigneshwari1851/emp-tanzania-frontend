@@ -2,15 +2,17 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { useCurrency } from '@/shared/hooks/useCurrency';
+import { useOrgNavigate } from '@/shared/hooks/useOrgNavigate';
 import {
   Sparkles, Banknote, TrendingUp, Clock, CheckCircle2, XCircle, Eye,
-  Calendar, ArrowUpRight, FileText, Layers
+  Calendar, ArrowUpRight, FileText, Layers, CalendarRange
 } from 'lucide-react';
 import * as loanConfig from '../services/loan-config';
 import { ApprovalTimeline, getStatusLabel, getStatusColor } from '../components/ApprovalTimeline';
 
 export function MyApplications() {
   const { currencySymbol } = useCurrency();
+  const navigate = useOrgNavigate();
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
@@ -128,6 +130,12 @@ export function MyApplications() {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className={`px-2.5 py-1 text-[10px] font-bold rounded-lg ${getStatusColor(app.status)}`}>{getStatusLabel(app.status)}</span>
+                    {(app.status === 'APPROVED' || app.status === 'DISBURSED' || app.status === 'SETTLED') && app.repaymentSchedule?.length > 0 && (
+                      <button onClick={() => navigate(`/employee/loans-advances/repayment/${app.id}?kind=app`)}
+                        className="text-primary text-xs font-bold hover:bg-primary/10 px-3 py-2 rounded-lg transition-colors flex items-center gap-1.5">
+                        <CalendarRange className="size-3.5" /> Schedule
+                      </button>
+                    )}
                     <button onClick={() => setSelectedApp(app)}
                       className="text-primary text-xs font-bold hover:bg-primary/10 px-3 py-2 rounded-lg transition-colors flex items-center gap-1.5">
                       <Eye className="size-3.5" /> View
