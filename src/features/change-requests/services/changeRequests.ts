@@ -1,7 +1,7 @@
 import axiosInstance from '@/shared/services/axiosInstance';
 import { parseBackendError } from '@/features/employees/services/employees';
 
-export type ChangeRequestStatus = 'PENDING_MANAGER' | 'PENDING_HR' | 'APPROVED' | 'REJECTED';
+export type ChangeRequestStatus = 'PENDING_MANAGER' | 'PENDING_HR' | 'PENDING_HR_APPROVAL' | 'PENDING_FINANCE_APPROVAL' | 'APPROVED' | 'REJECTED';
 
 export interface ChangeRequest {
   id: number;
@@ -62,7 +62,7 @@ export const getChangeRequestInbox = async (): Promise<ChangeRequest[]> => {
 
 export const decideChangeRequest = async (
   id: number,
-  payload: { action: 'approve' | 'reject'; role: 'manager' | 'hr'; note?: string }
+  payload: { action: 'approve' | 'reject'; role: 'manager' | 'hr' | 'finance'; note?: string }
 ): Promise<ChangeRequest> => {
   try {
     const response = await axiosInstance.put(`/change-requests/${id}/decision`, payload);
