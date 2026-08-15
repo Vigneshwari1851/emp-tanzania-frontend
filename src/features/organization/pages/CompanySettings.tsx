@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useOrgNavigate } from '@/shared/hooks/useOrgNavigate';
 import { useLocation } from "react-router";
 import { capitalizeFirstLetter } from '@/shared/utils/stringUtils';
-import { ArrowLeft, Building2, Save, MapPin, Briefcase, ChevronRight, Loader2, Calendar, Network, DollarSign } from "lucide-react";
+import { ArrowLeft, Building2, Save, MapPin, Briefcase, ChevronRight, Loader2, Calendar, Network, DollarSign, Edit } from "lucide-react";
 import { Button } from '@/shared/components/ui/button';
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/shared/components/common/ConfirmDialog";
@@ -149,6 +149,12 @@ export function CompanySettings() {
   const navigate = useOrgNavigate();
   const location = useLocation();
   const [editMode, setEditMode] = useState(() => new URLSearchParams(location.search).get("edit") === "true");
+
+  useEffect(() => {
+    const editParam = new URLSearchParams(location.search).get("edit") === "true";
+    setEditMode(editParam);
+  }, [location.search]);
+
   const [companyData, setCompanyData] = useState<CompanyData>(initialCompanyData);
   const [errors, setErrors] = useState<Record<string, any>>({});
 
@@ -619,8 +625,8 @@ export function CompanySettings() {
   const tabs = [
     { id: "legal", label: "Legal Entity & Tax", icon: Building2 },
     { id: "geographical", label: "Geographical/Location", icon: MapPin },
-    { id: "organizational", label: "Organizational Structure", icon: Briefcase },
     { id: "cost-centers", label: "Cost Centres", icon: DollarSign },
+    { id: "organizational", label: "Organizational Structure", icon: Briefcase },
     { id: "calendar", label: "Working Calendar & Schedule", icon: Calendar },
   ];
 
@@ -649,29 +655,44 @@ export function CompanySettings() {
         <div className="flex items-center gap-4">
           {!isLoading && <ProgressBar percentage={completionPercentage} />}
 
-          {!isReadOnly && editMode && (
-            <div className="flex items-center gap-2">
+          {!isReadOnly && (
+            editMode ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  className="h-10 font-bold px-5 text-gray-600 hover:text-foreground shadow-sm border-border"
+                  onClick={() => setShowCancelCompanyConfirm(true)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    const success = await handleSave(false);
+                    if (success) {
+                      setEditMode(false);
+                    }
+                  }}
+                  disabled={isSaving}
+                  className="h-10 gap-2 bg-primary hover:bg-primary/95 min-w-[100px] font-bold shadow-sm border-none"
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Save
+                </Button>
+              </div>
+            ) : (
               <Button
-                variant="outline"
-                className="h-10 font-bold px-5 text-gray-600 hover:text-foreground shadow-sm border-border"
-                onClick={() => setShowCancelCompanyConfirm(true)}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={async () => {
-                  const success = await handleSave(true);
-                  if (success) {
-                    setEditMode(false);
-                  }
+                onClick={() => {
+                  setEditMode(true);
+                  const params = new URLSearchParams(window.location.search);
+                  params.set("edit", "true");
+                  navigate(`${location.pathname}?${params.toString()}`, { replace: true });
                 }}
-                disabled={isSaving}
                 className="h-10 gap-2 bg-primary hover:bg-primary/95 min-w-[100px] font-bold shadow-sm border-none"
               >
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Save
+                <Edit className="w-4 h-4" />
+                Edit Settings
               </Button>
-            </div>
+            )
           )}
         </div>
       </div>

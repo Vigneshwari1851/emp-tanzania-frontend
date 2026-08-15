@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowLeft, Save, Plus, Users, ChevronDown, Check, Pencil, Loader2, Search, User } from "lucide-react";
+import { ArrowLeft, Save, Plus, Users, ChevronDown, Check, Pencil, Loader2 } from "lucide-react";
 import { Card, CardHeader, CardContent, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
 import { capitalizeFirstLetter } from '@/shared/utils/stringUtils';
@@ -41,16 +41,6 @@ interface DepartmentFormDetailProps {
   isFormValid: boolean;
   setIsDeptView: (val: boolean) => void;
   handlePendingDesignationsChange?: (items: PendingDesignation[]) => void;
-  // Manager search props
-  manager: any | null;
-  setManager: (val: any | null) => void;
-  showManagerSearch: boolean;
-  setShowManagerSearch: (val: boolean) => void;
-  managerSearchQuery: string;
-  setManagerSearchQuery: (val: string) => void;
-  filteredManagers: any[];
-  managerSearchRef: React.RefObject<HTMLDivElement | null>;
-  isSearchingManagers: boolean;
 }
 
 const DepartmentFormDetail: React.FC<DepartmentFormDetailProps> = ({
@@ -85,15 +75,6 @@ const DepartmentFormDetail: React.FC<DepartmentFormDetailProps> = ({
   isFormValid,
   setIsDeptView,
   handlePendingDesignationsChange,
-  manager,
-  setManager,
-  showManagerSearch,
-  setShowManagerSearch,
-  managerSearchQuery,
-  setManagerSearchQuery,
-  filteredManagers,
-  managerSearchRef,
-  isSearchingManagers,
 }) => {
   return (
     <div className="space-y-6">
@@ -192,20 +173,27 @@ const DepartmentFormDetail: React.FC<DepartmentFormDetailProps> = ({
                   />
                 </div>
 
-                <Select
-                  value={String(parentDepartment)}
-                  onChange={(val) => setParentDepartment(val)}
-                  label="Parent Department"
-                  placeholder="None (Root Department)"
-                  disabled={isDeptView}
-                  options={[
-                    { value: "None", label: "None (Root Department)" },
-                    ...filteredDepartments.map((dept) => ({
-                      value: String(dept.id),
-                      label: dept.department_name,
-                    })),
-                  ]}
-                />
+                <div className="space-y-1">
+                  <Select
+                    value={String(parentDepartment)}
+                    onChange={(val) => setParentDepartment(val)}
+                    label="Parent Department"
+                    placeholder="None (Root Department)"
+                    disabled={isDeptView}
+                    options={[
+                      { value: "None", label: "None (Root Department)" },
+                      ...filteredDepartments.map((dept) => ({
+                        value: String(dept.id),
+                        label: dept.department_name,
+                      })),
+                    ]}
+                  />
+                  {!isDeptView && (
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Select <strong>None (Root Department)</strong> if this department reports directly to the <strong>CEO / Managing Director</strong>.
+                    </p>
+                  )}
+                </div>
                  <div className="space-y-2">
                    <label className="text-[14px] leading-5 font-medium text-foreground">Annual Budget</label>
                    <div className="relative">
@@ -218,85 +206,6 @@ const DepartmentFormDetail: React.FC<DepartmentFormDetailProps> = ({
                        placeholder="0.00"
                        disabled={isDeptView}
                      />
-                   </div>
-                 </div>
-
-                 <div className="space-y-2">
-                   <label className="text-[14px] leading-5 font-medium text-foreground">Department Manager</label>
-                   <div className="relative" ref={managerSearchRef}>
-                     <div 
-                       onClick={() => !isDeptView && setShowManagerSearch(!showManagerSearch)}
-                       className={`w-full px-3 h-10 border border-gray-300 dark:border-border rounded-sm flex items-center justify-between transition-all ${isDeptView ? 'bg-muted border-border' : 'cursor-pointer focus-within:ring-2 focus-within:ring-primary bg-card hover:border-primary-300 shadow-sm'}`}
-                     >
-                       <div className="flex items-center gap-2 overflow-hidden">
-                         {manager ? (
-                           <>
-                             <User className="w-4 h-4 text-primary-500 shrink-0" />
-                             <span className="text-[14px] leading-5 text-foreground font-normal truncate">
-                               {manager.name}
-                             </span>
-                           </>
-                         ) : (
-                           <span className="text-[14px] leading-5 text-muted-foreground font-normal">Select Department Manager</span>
-                         )}
-                       </div>
-                       {!isDeptView && <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-300 ${showManagerSearch ? 'rotate-180' : ''}`} />}
-                     </div>
-
-                     {showManagerSearch && !isDeptView && (
-                       <div className="absolute top-[calc(100%+8px)] left-0 right-0 bg-card border border-border rounded-lg shadow-sm z-[70] max-h-80 overflow-hidden flex flex-col animate-in slide-in-from-top-2 duration-300 ring-1 ring-black/5">
-                         <div className="p-3 border-b border-border bg-muted/50 sticky top-0">
-                           <div className="relative">
-                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                             <input
-                               type="text"
-                               value={managerSearchQuery}
-                               onChange={(e) => setManagerSearchQuery(e.target.value)}
-                               placeholder="Search managers..."
-                               className="w-full pl-10 pr-3 h-10 text-[14px] leading-5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-card shadow-inner"
-                               autoFocus
-                             />
-                             {isSearchingManagers && (
-                               <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-primary-500" />
-                             )}
-                           </div>
-                         </div>
-                         <div className="overflow-y-auto custom-scrollbar py-1">
-                           {filteredManagers.map((emp) => (
-                             <div
-                               key={emp.id}
-                               onClick={() => {
-                                 setManager(emp);
-                                 setShowManagerSearch(false);
-                                 setManagerSearchQuery("");
-                               }}
-                               className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/50 cursor-pointer transition-all border-b border-slate-50 dark:border-border/20 last:border-0 group"
-                             >
-                               <div className="min-w-0">
-                                 <p className="text-[14px] leading-5 font-medium text-foreground truncate">
-                                   {emp.name}
-                                 </p>
-                                 <p className="text-[11px] text-muted-foreground truncate tracking-wider font-medium">
-                                   {emp.title}
-                                 </p>
-                               </div>
-                               {manager?.id === emp.id && (
-                                 <Check className="w-4 h-4 text-primary" />
-                               )}
-                             </div>
-                           ))}
-                           {filteredManagers.length === 0 && (
-                             <div className="py-12 text-center">
-                               <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-dashed border-border">
-                                 <Search className="w-8 h-8 text-gray-200" />
-                               </div>
-                               <p className="text-[14px] leading-5 font-medium text-muted-foreground">No managers found</p>
-                               <p className="text-[10px] text-gray-300 font-medium">Try a different search term</p>
-                             </div>
-                           )}
-                         </div>
-                       </div>
-                     )}
                    </div>
                  </div>
 

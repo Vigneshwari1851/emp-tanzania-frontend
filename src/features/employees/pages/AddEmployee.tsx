@@ -237,7 +237,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
   const [createdEmployeeId, setCreatedEmployeeId] = useState<number | null>(null);
   const activeEmployeeId = id ? Number(id) : createdEmployeeId;
   const { user } = useAuth();
-  const isSuperAdmin = user?.role === UserRole.SUPER_ADMIN;
+  const isSuperAdmin = user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.ADMIN;
   const isEmployee = user?.role === UserRole.EMPLOYEE || (typeof user?.role === 'string' && user.role.toLowerCase() === 'employee');
   const isEdit = !!activeEmployeeId;
   const isSelfEdit = isEdit && !!user?.id && user.id.toString() === id?.toString() && !isSuperAdmin;
@@ -336,6 +336,8 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
     accountHolderName: "",
     accountNumber: "",
     ifscCode: "",
+    bankBranchCode: "",
+    swiftCode: "",
 
     skills: "",
     certifications: [] as any[],
@@ -526,10 +528,14 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
         const isContactValid = !!(formData.primaryEmail && formData.primaryPhone && formData.primaryAddress && formData.primaryCity && formData.primaryState && formData.primaryZip && formData.primaryCountry) && !duplicateFlags.email && !duplicateFlags.phone;
         const isEmergencyValid = !!(formData.emergencyContactName && formData.emergencyContactRelationship && formData.emergencyContactPhone);
         return isBasicValid && isContactValid && isEmergencyValid;
-      case "compensation":
+      case "compensation": {
+        const isTanzania = formData?.primaryCountry === 'Tanzania';
         const isCompValid = !!(formData.baseSalary && compensationSplits.length > 0);
-        const isBankValid = !!(formData.bankName && formData.branchName && formData.accountHolderName && formData.accountNumber && formData.ifscCode);
+        const isBankValid = isTanzania
+          ? !!(formData.bankName && formData.branchName && formData.accountHolderName && formData.accountNumber)
+          : !!(formData.bankName && formData.branchName && formData.accountHolderName && formData.accountNumber && formData.ifscCode);
         return isCompValid && isBankValid;
+      }
       case "family":
         // Family is optional, but if any entry is present, it should be valid
         return familyMembers.every(m => !!(m.name && m.relationship && m.phone && m.dateOfBirth));
@@ -549,6 +555,13 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
         return employmentHistory.every(emp => !!(emp.company && emp.position && emp.startDate && (emp.currentlyWorking || (emp.endDate && emp.reasonForLeaving)) && (emp.file || emp.fileUrl)));
       case "documents": {
         const isIndia = formData?.primaryCountry === 'India';
+        const isTanzania = formData?.primaryCountry === 'Tanzania';
+        if (isTanzania) {
+          const hasNIDA = !!(formData.aadhaarNumber && aadhaarFile);
+          const hasTIN = !!(formData.panNumber && panFile);
+          const hasResume = !!resumeFile;
+          return hasNIDA && hasTIN && hasResume;
+        }
         const hasPassport = !!(formData.passportNumber && formData.passportExpiry && passportFile);
         const hasLicense = !!(formData.drivingLicense && formData.licenseExpiry && dlFile);
         const hasTaxId = !!(formData.panNumber && panFile);
@@ -751,6 +764,8 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
         accountHolderName: details.account_holder_name || "",
         accountNumber: details.account_number || "",
         ifscCode: details.ifsc_code || "",
+        bankBranchCode: details.ifsc_code && details.ifsc_code.includes(' | ') ? details.ifsc_code.split(' | ')[0] : (details.ifsc_code || ""),
+        swiftCode: details.ifsc_code && details.ifsc_code.includes(' | ') ? details.ifsc_code.split(' | ')[1] : "",
         skills: Array.isArray(details.skills) ? details.skills.join(', ') : (details.skills || ""),
         certifications: Array.isArray(details.certifications) 
           ? details.certifications.map((c: any) => {
@@ -1250,7 +1265,9 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
         if (!formData.branchName) errors.branchName = "This field is required";
         if (!formData.accountHolderName) errors.accountHolderName = "This field is required";
         if (!formData.accountNumber) errors.accountNumber = "This field is required";
-        if (!formData.ifscCode) errors.ifscCode = "This field is required";
+        if (formData?.primaryCountry !== 'Tanzania') {
+          if (!formData.ifscCode) errors.ifscCode = "This field is required";
+        }
         break;
 
       case "education": {
@@ -1694,13 +1711,16 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
       }
     }
     if (name === "aadhaarNumber" && typeof value === 'string' && value) {
+      const isTanzania = formData?.primaryCountry === 'Tanzania';
       if (/[^0-9\s]/.test(value)) {
-        return "Special characters are not allowed in Aadhaar number.";
+        return isTanzania ? "Special characters are not allowed in NIDA / NIN." : "Special characters are not allowed in Aadhaar number.";
       }
       const cleanValue = value.replace(/\s/g, '');
       const isIndia = formData?.primaryCountry === 'India';
       if (isIndia) {
         if (!/^\d{12}$/.test(cleanValue)) return "Aadhaar must be a 12 digit number";
+      } else if (isTanzania) {
+        if (!/^\d{20}$/.test(cleanValue)) return "NIDA / NIN must be a 20 digit number";
       } else {
         if (!/^\d+$/.test(cleanValue)) return "Only numbers allowed";
       }
@@ -1750,11 +1770,17 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
       }
 
       if (name === "aadhaarNumber" && value) {
+        const isTanzania = formData?.primaryCountry === 'Tanzania';
         if (/[^0-9\s]/.test(value)) {
-          return "Special characters are not allowed in Aadhaar number.";
+          return isTanzania ? "Special characters are not allowed in NIDA / NIN." : "Special characters are not allowed in Aadhaar number.";
         }
         const digits = value.replace(/\s/g, "");
-        if (digits.length !== 12) return "Aadhaar must be 12 digits";
+        const isIndia = formData?.primaryCountry === 'India';
+        if (isTanzania) {
+          if (digits.length !== 20) return "NIDA / NIN must be 20 digits";
+        } else if (isIndia) {
+          if (digits.length !== 12) return "Aadhaar must be 12 digits";
+        }
       }
 
       if ((fieldCategory === "emp_file" || fieldCategory === "edu_file") && value instanceof File) {
@@ -1850,6 +1876,10 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
   const updateField = (name: string, value: any) => {
     setFormData(prev => {
       const nextData = { ...prev, [name]: value };
+      if (name === "department") {
+        nextData.designationId = "";
+        nextData.teamId = "";
+      }
       if (sameAsPrimary) {
         if (name === "primaryAddress") nextData.secondaryAddress = value;
         if (name === "primaryCity") nextData.secondaryCity = value;
@@ -2072,7 +2102,9 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
       branch_name: formData.branchName || null,
       account_holder_name: formData.accountHolderName || null,
       account_number: formData.accountNumber || null,
-      ifsc_code: formData.ifscCode || null,
+      ifsc_code: formData?.primaryCountry === 'Tanzania'
+        ? (`${formData.bankBranchCode || ''} | ${formData.swiftCode || ''}`)
+        : (formData.ifscCode || null),
       
       // Documents
       passport_number: formData.passportNumber || null,
@@ -2273,7 +2305,9 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
       branch_name: formData.branchName || null,
       account_holder_name: formData.accountHolderName || null,
       account_number: formData.accountNumber || null,
-      ifsc_code: formData.ifscCode || null,
+      ifsc_code: formData?.primaryCountry === 'Tanzania'
+        ? (`${formData.bankBranchCode || ''} | ${formData.swiftCode || ''}`)
+        : (formData.ifscCode || null),
     };
 
     const skillsArray = formData.skills ? formData.skills.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
@@ -3746,16 +3780,24 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
                           onChange={(val) => updateField("role", val)}
                           label="Role"
                           required
+                          searchable={true}
                           error={formErrors.role || errorStates.roles}
                           disabled={(lockJobAndPayroll && !canEditJob) || loadingStates.roles}
                           placeholder={loadingStates.roles ? "Loading Roles..." : "Select Role"}
-                          options={rolesList
-                            .filter(role => (user?.role === UserRole.SUPER_ADMIN || !role.name.toLowerCase().includes('super admin')) && role.name.toLowerCase() !== 'employee')
-                            .map((role: any) => ({
-                              value: String(role.id),
-                              label: toTitleCase(role.name || role.role_name)
-                            }))
-                          }
+                          options={(() => {
+                            const seen = new Set<string>();
+                            return rolesList
+                              .filter((role: any) => {
+                                const key = (role.name || "").toLowerCase();
+                                if (seen.has(key)) return false;
+                                seen.add(key);
+                                return true;
+                              })
+                              .map((role: any) => ({
+                                value: String(role.id),
+                                label: toTitleCase(role.name || role.role_name)
+                              }));
+                          })()}
                         />
                       </div>
                     </div>
@@ -3885,22 +3927,59 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
                         />
                         {formErrors.accountNumber && <p className="text-xs text-red-500 mt-1">{formErrors.accountNumber}</p>}
                       </div>
-                      <div>
-                        <label className="block text-[12px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider mb-2">
-                          IFSC Code <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          name="ifscCode"
-                          value={formData.ifscCode}
-                          onChange={handleInputChange}
-                          onBlur={handleInputChange}
-                          disabled={lockJobAndPayroll && !canEditBank}
-                          className={`w-full px-3 py-2 border rounded bg-card focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 ${formErrors.ifscCode ? 'border-red-500' : 'border-border'}`}
-                          placeholder="SBIN0001234"
-                        />
-                        {formErrors.ifscCode && <p className="text-xs text-red-500 mt-1">{formErrors.ifscCode}</p>}
-                      </div>
+                      {formData?.primaryCountry === 'Tanzania' ? (
+                        <>
+                          <div>
+                            <label className="block text-[12px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider mb-2">
+                              Bank/Branch Code
+                            </label>
+                            <input
+                              type="text"
+                              name="bankBranchCode"
+                              value={formData.bankBranchCode}
+                              onChange={handleInputChange}
+                              onBlur={handleInputChange}
+                              disabled={lockJobAndPayroll && !canEditBank}
+                              className={`w-full px-3 py-2 border rounded bg-card focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 ${formErrors.bankBranchCode ? 'border-red-500' : 'border-border'}`}
+                              placeholder="Enter Bank/Branch Code"
+                            />
+                            {formErrors.bankBranchCode && <p className="text-xs text-red-500 mt-1">{formErrors.bankBranchCode}</p>}
+                          </div>
+                          <div>
+                            <label className="block text-[12px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider mb-2">
+                              SWIFT/BIC Code
+                            </label>
+                            <input
+                              type="text"
+                              name="swiftCode"
+                              value={formData.swiftCode}
+                              onChange={handleInputChange}
+                              onBlur={handleInputChange}
+                              disabled={lockJobAndPayroll && !canEditBank}
+                              className={`w-full px-3 py-2 border rounded bg-card focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 ${formErrors.swiftCode ? 'border-red-500' : 'border-border'}`}
+                              placeholder="Enter SWIFT/BIC Code"
+                            />
+                            {formErrors.swiftCode && <p className="text-xs text-red-500 mt-1">{formErrors.swiftCode}</p>}
+                          </div>
+                        </>
+                      ) : (
+                        <div>
+                          <label className="block text-[12px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider mb-2">
+                            IFSC Code <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="ifscCode"
+                            value={formData.ifscCode}
+                            onChange={handleInputChange}
+                            onBlur={handleInputChange}
+                            disabled={lockJobAndPayroll && !canEditBank}
+                            className={`w-full px-3 py-2 border rounded bg-card focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 ${formErrors.ifscCode ? 'border-red-500' : 'border-border'}`}
+                            placeholder="SBIN0001234"
+                          />
+                          {formErrors.ifscCode && <p className="text-xs text-red-500 mt-1">{formErrors.ifscCode}</p>}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

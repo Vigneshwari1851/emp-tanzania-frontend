@@ -135,7 +135,7 @@ export const getPayCycle = async () => {
 };
 
 export const updatePayCycle = async (data: any) => {
-    const response = await axiosInstance.post(`${API_URL}/pay-cycle`, data);
+    const response = await axiosInstance.put(`${API_URL}/pay-cycle`, data);
     return response.data.data;
 };
 

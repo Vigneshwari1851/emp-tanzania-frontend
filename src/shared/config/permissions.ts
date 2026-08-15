@@ -48,13 +48,18 @@ export const rolePermissions: PermissionMap = {
   ],
   
   [UserRoleVal.ADMIN]: [
-    // Admin has broad access but cannot edit company structure
+    // Full admin access equivalent to superadmin
     PermissionVal.VIEW_COMPANY_STRUCTURE,
+    PermissionVal.EDIT_COMPANY_STRUCTURE,
     PermissionVal.MANAGE_DEPARTMENTS,
     PermissionVal.VIEW_DESIGNATIONS,
+    PermissionVal.EDIT_DESIGNATIONS,
+    PermissionVal.CREATE_DESIGNATIONS,
+    PermissionVal.DELETE_DESIGNATIONS,
     PermissionVal.VIEW_ALL_EMPLOYEES,
     PermissionVal.ADD_EMPLOYEE,
     PermissionVal.EDIT_EMPLOYEE,
+    PermissionVal.DELETE_EMPLOYEE,
     PermissionVal.VIEW_ALL_LEAVES,
     PermissionVal.APPROVE_LEAVES,
     PermissionVal.MANAGE_LEAVE_POLICIES,
@@ -68,14 +73,22 @@ export const rolePermissions: PermissionMap = {
     PermissionVal.MANAGE_JOB_POSTINGS,
     PermissionVal.SCREEN_APPLICATIONS,
     PermissionVal.SCHEDULE_INTERVIEWS,
+    PermissionVal.APPROVE_OFFERS,
     PermissionVal.VIEW_ALL_PAYROLL,
     PermissionVal.MANAGE_PAYROLL,
     PermissionVal.PROCESS_PAYROLL,
     PermissionVal.VIEW_CRM,
+    PermissionVal.MANAGE_CRM,
+    PermissionVal.VIEW_EMAIL_MANAGEMENT,
+    PermissionVal.VIEW_NOTIFY_MANAGEMENT,
+    PermissionVal.MANAGE_SYSTEM_SETTINGS,
     PermissionVal.VIEW_NEWS,
     PermissionVal.MANAGE_NEWS,
-    PermissionVal.VIEW_SYSTEM_SETTINGS,
     PermissionVal.VIEW_OWN_PROFILE,
+    PermissionVal.VIEW_DOCUMENTS,
+    PermissionVal.MANAGE_DOCUMENTS,
+    PermissionVal.UPLOAD_DOCUMENTS,
+    PermissionVal.DELETE_DOCUMENTS,
   ],
 
   [UserRoleVal.HR]: [

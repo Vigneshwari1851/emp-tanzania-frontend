@@ -31,7 +31,7 @@ const normalizeUserRole = (userObj: any): string => {
   if (roles.includes('SUPER_ADMIN') || roles.includes('CEO') || jobRole === 'superadmin' || uTypeName === 'SUPERADMIN') {
     return 'SUPER_ADMIN';
   }
-  if (roles.includes('ADMIN') || roles.includes('SYSTEM_ADMINISTRATOR') || roles.includes('SYSTEM_ADMIN') || jobRole === 'admin' || uTypeName === 'ADMIN') {
+  if (roles.includes('ADMIN') || roles.includes('SYSTEM_ADMINISTRATOR') || roles.includes('SYSTEM_ADMIN') || roles.includes('ITADMIN') || roles.includes('IT_ADMIN') || jobRole === 'admin' || jobRole === 'itadmin' || uTypeName === 'ADMIN' || uTypeName === 'ITADMIN') {
     return 'ADMIN';
   }
   if (roles.includes('HR_MANAGER') || roles.includes('HR_EXECUTIVE') || roles.includes('HR') || uTypeName === 'HR_MANAGER' || uTypeName === 'HR_EXECUTIVE' || uTypeName === 'HRMANAGER' || uTypeName === 'HREXECUTIVE' || jobRole === 'hrmanager' || jobRole === 'hrexecutive' || jobRole === 'hr') {

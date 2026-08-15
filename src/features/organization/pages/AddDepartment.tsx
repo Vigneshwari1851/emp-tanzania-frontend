@@ -71,7 +71,6 @@ export function AddDepartment() {
   const [departmentName, setDepartmentName] = useState("");
   const [departmentCode, setDepartmentCode] = useState("");
   const [description, setDescription] = useState("");
-  const [manager, setManager] = useState<UIEmployee | null>(null);
   const [parentDepartment, setParentDepartment] = useState<string | number>(() => {
     if (location.state && (location.state as any).defaultParentId) {
       return (location.state as any).defaultParentId.toString();
@@ -87,15 +86,11 @@ export function AddDepartment() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [pendingDesignations, setPendingDesignations] = useState<PendingDesignation[]>([]);
 
-  const [showManagerSearch, setShowManagerSearch] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSearchingManagers, setIsSearchingManagers] = useState(false);
-  const [managerSearchQuery, setManagerSearchQuery] = useState("");
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [isTeamEdit, setIsTeamEdit] = useState(false);
   const [isTeamView, setIsTeamView] = useState(false);
   const [showTeamForm, setShowTeamForm] = useState(false);
-  const managerSearchRef = useRef<HTMLDivElement>(null);
   const teamLeadSearchRef = useRef<HTMLDivElement>(null);
 
   // Team modal state
@@ -110,7 +105,6 @@ export function AddDepartment() {
 
   const [employees, setEmployees] = useState<UIEmployee[]>([]);
   const [teamEmployees, setTeamEmployees] = useState<UIEmployee[]>([]);
-  const [availableManagers, setAvailableManagers] = useState<UIEmployee[]>([]);
   const [departmentsList, setDepartmentsList] = useState<Array<{ id: number, department_name: string, branch_id?: number }>>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingTeam, setIsSavingTeam] = useState(false);
@@ -127,12 +121,10 @@ export function AddDepartment() {
   }, [departmentName, departmentCode, selectedBranchIds]);
 
   const filteredDepartments = useMemo(() => {
-    if (selectedBranchIds.length === 0) return [];
-    return departmentsList.filter(dep => 
-      selectedBranchIds.some(id => String(dep.branch_id) === String(id)) && 
+    return departmentsList.filter(dep =>
       (!id || String(dep.id) !== String(id))
     );
-  }, [departmentsList, selectedBranchIds, id]);
+  }, [departmentsList, id]);
 
   const fetchById = async () => {
     try {
@@ -142,17 +134,10 @@ export function AddDepartment() {
         getDepartments(),
         getOrganizations(),
       ]);
-      console.log("AddDepartment: fetchById data received", { empCount: empData?.length, depCount: depData?.length });
 
       const mappedEmployees: UIEmployee[] = empData.map(mapToUIEmployee);
-      // For managers, we can use the full employee list as a pool
-      const mappedAvailableManagers: UIEmployee[] = mappedEmployees.filter(emp => {
-        const role = emp.role.toUpperCase();
-        return role.includes('MANAGER') || role.includes('ADMIN') || role.includes('DIRECTOR') || role.includes('HEAD');
-      });
-      
+
       setEmployees(mappedEmployees);
-      setAvailableManagers(mappedAvailableManagers);
       setDepartmentsList(depData);
 
       const mainOrg = Array.isArray(orgResponse) ? orgResponse[0] : orgResponse;
@@ -179,25 +164,6 @@ export function AddDepartment() {
           setParentDepartment(departmentData.parent_department_id?.toString() || "None");
           setBudget(departmentData.annual_budget?.toString() || "");
           setCostCenter((departmentData as any).cost_center || "");
-
-          if (departmentData.manager_id) {
-            const mId = departmentData.manager_id.toString();
-            let managerData = mappedEmployees.find(emp => emp.id === mId);
-            
-            // If not found in the initial list, use the formatted manager object from the response
-            if (!managerData && departmentData.manager) {
-              managerData = {
-                id: departmentData.manager.id.toString(),
-                name: departmentData.manager.name || departmentData.manager.username,
-                title: "Department Manager",
-                department: id || "",
-                avatar: departmentData.manager.avatar || "",
-                role: "MANAGER"
-              };
-            }
-            
-            if (managerData) setManager(managerData);
-          }
 
           const teamsList = (departmentData as any).team || (departmentData as any).teams;
           if (teamsList) {
@@ -249,9 +215,6 @@ export function AddDepartment() {
   // Click outside handlers
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (managerSearchRef.current && !managerSearchRef.current.contains(event.target as Node)) {
-        setShowManagerSearch(false);
-      }
       if (teamLeadSearchRef.current && !teamLeadSearchRef.current.contains(event.target as Node)) {
         setShowTeamLeadSearch(false);
       }
@@ -260,40 +223,6 @@ export function AddDepartment() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const filteredManagers = (availableManagers || []).filter((emp: UIEmployee) =>
-    emp.name.toLowerCase().includes(managerSearchQuery.toLowerCase()) || 
-    emp.title.toLowerCase().includes(managerSearchQuery.toLowerCase())
-  );
-
-  // Server-side Manager Search Effect
-  useEffect(() => {
-    if (!managerSearchQuery || managerSearchQuery.length < 2) return;
-
-    const delayDebounceFn = setTimeout(async () => {
-      setIsSearchingManagers(true);
-      try {
-        const searchResults = await getEmployees({ search: managerSearchQuery, limit: 20 });
-        const mappedResults = searchResults.map(mapToUIEmployee).filter(emp => {
-          const role = emp.role.toUpperCase();
-          return role.includes('MANAGER') || role.includes('ADMIN') || role.includes('DIRECTOR') || role.includes('HEAD');
-        });
-
-        // Merge with existing managers, avoiding duplicates
-        setAvailableManagers(prev => {
-          const existingIds = new Set(prev.map(m => m.id));
-          const newManagers = mappedResults.filter(m => !existingIds.has(m.id));
-          return [...prev, ...newManagers];
-        });
-      } catch (error) {
-        console.error("Manager search failed", error);
-      } finally {
-        setIsSearchingManagers(false);
-      }
-    }, 500);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [managerSearchQuery]);
 
   const filteredLeads = (teamEmployees.length > 0 ? teamEmployees : employees || []).filter((emp: UIEmployee) => {
     // Match search query
@@ -343,7 +272,6 @@ export function AddDepartment() {
           department_code: departmentCode.trim(),
           description: description.trim(),
           branch_id: selectedBranchIds.length > 0 ? parseInt(selectedBranchIds[0], 10) : null,
-          manager_id: manager?.id ? parseInt(manager.id, 10) : null,
           parent_department_id: parentDepartment !== "None" ? parseInt(parentDepartment as string, 10) : null,
           annual_budget: budget ? parseFloat(budget) : 0,
           cost_center: costCenter || null,
@@ -365,7 +293,6 @@ export function AddDepartment() {
             department_code: departmentCode.trim(),
             description: description.trim(),
             branch_id: parseInt(branchId, 10),
-            manager_id: manager?.id ? parseInt(manager.id, 10) : null,
             parent_department_id: parentDepartment !== "None" ? parseInt(parentDepartment as string, 10) : null,
             annual_budget: budget ? parseFloat(budget) : 0,
             cost_center: costCenter || null,
@@ -824,15 +751,6 @@ export function AddDepartment() {
           isFormValid={isFormValid}
           setIsDeptView={setIsDeptView}
           handlePendingDesignationsChange={setPendingDesignations}
-          manager={manager}
-          setManager={setManager}
-          showManagerSearch={showManagerSearch}
-          setShowManagerSearch={setShowManagerSearch}
-          managerSearchQuery={managerSearchQuery}
-          setManagerSearchQuery={setManagerSearchQuery}
-          filteredManagers={filteredManagers}
-          managerSearchRef={managerSearchRef}
-          isSearchingManagers={isSearchingManagers}
         />
       )}
 

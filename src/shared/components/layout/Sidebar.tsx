@@ -97,16 +97,16 @@ const navItems = [
   { path: "/documents", label: "Document Hub", icon: Folder },
   { path: "/news", label: "Company News", icon: Newspaper },
   { path: "/report-builder", label: "Report Builder", icon: FileSpreadsheet },
-  {
-    path: "/system-group",
-    label: "System",
-    icon: Settings,
-    children: [
-      { path: "/system-settings", label: "System Settings" },
-      { path: "/audit", label: "Audit Logs", module: "AUDIT" },
-      { path: "/design-system", label: "Design System" }
-    ]
-  },
+  // {
+  //   path: "/system-group",
+  //   label: "System",
+  //   icon: Settings,
+  //   children: [
+  //     { path: "/system-settings", label: "System Settings" },
+  //     { path: "/audit", label: "Audit Logs", module: "AUDIT" },
+  //     { path: "/design-system", label: "Design System" }
+  //   ]
+  // },
 ];
 
 const selfNavItems = [

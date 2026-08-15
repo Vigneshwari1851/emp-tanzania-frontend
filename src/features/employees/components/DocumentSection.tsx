@@ -97,7 +97,7 @@ const DocumentCategoryDropdown: React.FC<DocumentCategoryDropdownProps> = ({
     { value: "pan", label: country === 'India' ? 'PAN Card' : country === 'United States' || country === 'USA' ? 'SSN Document' : country === 'Tanzania' ? 'TIN Document' : country === 'United Kingdom' ? 'NINO Document' : 'Tax ID Document' },
     { value: "passport", label: "Passport Copy" },
     { value: "driving_license", label: "Driving License" },
-    ...(country === 'India' ? [{ value: "aadhaar", label: "Aadhaar Card" }] : []),
+    ...(country === 'India' ? [{ value: "aadhaar", label: "Aadhaar Card" }] : country === 'Tanzania' ? [{ value: "aadhaar", label: "NIDA / NIN Document" }] : []),
     { value: "certificates", label: "Educational Certificates" },
     { value: "other", label: "Other: General Document" },
   ];
@@ -371,28 +371,41 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
       }
     }
 
+    const isIndia = formData?.primaryCountry === 'India';
+    const isTanzania = formData?.primaryCountry === 'Tanzania';
+
     if (selectedDocType === 'pan') {
       if (!localFormData.panNumber) {
-        errors.panNumber = "PAN Number is required";
-      } else {
+        errors.panNumber = isTanzania ? "TIN Number is required" : "PAN Number is required";
+      } else if (isIndia) {
         const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
         if (!PAN_REGEX.test(localFormData.panNumber.toUpperCase())) {
           errors.panNumber = "Invalid PAN format (e.g., ABCDE1234F)";
         }
+      } else if (isTanzania) {
+        const cleanTin = localFormData.panNumber.replace(/\D/g, '');
+        if (cleanTin.length !== 9) {
+          errors.panNumber = "Tanzania TIN must be a 9 digit number";
+        }
       }
-      if (!localPanFile) errors.panFile = "PAN Card Copy is required";
+      if (!localPanFile) errors.panFile = isTanzania ? "TIN Document Copy is required" : "PAN Card Copy is required";
     }
 
     if (selectedDocType === 'aadhaar') {
       if (!localFormData.aadhaarNumber) {
-        errors.aadhaarNumber = "Aadhaar Number is required";
-      } else {
+        errors.aadhaarNumber = isTanzania ? "NIDA / NIN is required" : "Aadhaar Number is required";
+      } else if (isIndia) {
         const cleanAadhaar = localFormData.aadhaarNumber.replace(/\s/g, '');
         if (!/^\d{12}$/.test(cleanAadhaar)) {
           errors.aadhaarNumber = "Aadhaar must be a 12 digit number";
         }
+      } else if (isTanzania) {
+        const cleanNida = localFormData.aadhaarNumber.replace(/\D/g, '');
+        if (cleanNida.length !== 20) {
+          errors.aadhaarNumber = "NIDA / NIN must be a 20 digit number";
+        }
       }
-      if (!localAadhaarFile) errors.aadhaarFile = "Aadhaar Copy is required";
+      if (!localAadhaarFile) errors.aadhaarFile = isTanzania ? "NIDA / NIN Document Copy is required" : "Aadhaar Copy is required";
     }
 
     if (selectedDocType === 'resume') {
@@ -467,7 +480,7 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
               { label: 'Passport', file: passportFile, type: 'passport' },
               { label: 'Driving License', file: dlFile, type: 'driving_license' },
               { label: formData?.primaryCountry === 'India' ? 'PAN Card' : formData?.primaryCountry === 'United States' || formData?.primaryCountry === 'USA' ? 'SSN Document' : formData?.primaryCountry === 'Tanzania' ? 'TIN Document' : formData?.primaryCountry === 'United Kingdom' ? 'NINO Document' : 'Tax ID Copy', file: panFile, type: 'pan' },
-              ...(formData?.primaryCountry === 'India' ? [{ label: 'Aadhaar Card', file: aadhaarFile, type: 'aadhaar' }] : []),
+              ...(formData?.primaryCountry === 'India' ? [{ label: 'Aadhaar Card', file: aadhaarFile, type: 'aadhaar' }] : formData?.primaryCountry === 'Tanzania' ? [{ label: 'NIDA / NIN', file: aadhaarFile, type: 'aadhaar' }] : []),
               { label: 'Resume', file: resumeFile, type: 'resume' },
               ...certificateFiles.map((f, i) => ({ label: `Certificate ${i+1}`, file: f, type: 'certificate' })),
               ...otherDocuments.map((f, i) => ({ label: `Other Doc ${i+1}`, file: f, type: 'other' }))
@@ -732,35 +745,42 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
                 </>
               )})()}
 
-              {selectedDocType === 'aadhaar' && formData?.primaryCountry === 'India' && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Aadhaar Number <span className="text-red-500">*</span></label>
-                    <input 
-                      type="text" 
-                      name="aadhaarNumber" 
-                      value={localFormData.aadhaarNumber} 
-                      onChange={(e) => setLocalFormData(prev => ({ ...prev, aadhaarNumber: e.target.value }))} 
-                      className={`w-full h-10 px-3 bg-card border rounded text-[12px] focus:outline-none focus:ring-2 transition-all ${localErrors.aadhaarNumber ? 'border-red-500 focus:ring-red-400/20' : 'border-gray-300 focus:ring-blue-500'}`}
-                      placeholder="Enter Aadhaar Number"
-                    />
-                    {localErrors.aadhaarNumber && <p className="text-xs text-red-500 mt-1">{localErrors.aadhaarNumber}</p>}
-                  </div>
-                  <div className="col-span-full">
-                    <FileUpload
-                      id="aadhaarFile"
-                      label="Aadhaar Copy"
-                      required
-                      files={localAadhaarFile ? [localAadhaarFile] : []}
-                      onFilesChange={(files) => setLocalAadhaarFile(files[0] || null)}
-                      allowedFormats={['PDF', 'JPG', 'PNG', 'JPEG']}
-                      onPreview={handlePreview}
-                      showViewEdit={true}
-                    />
-                    {localErrors.aadhaarFile && <p className="text-xs text-red-500 mt-1">{localErrors.aadhaarFile}</p>}
-                  </div>
-                </>
-              )}
+              {selectedDocType === 'aadhaar' && (formData?.primaryCountry === 'India' || formData?.primaryCountry === 'Tanzania') && (() => {
+                const isIndia = formData?.primaryCountry === 'India';
+                const idLabel = isIndia ? 'Aadhaar Number' : 'NIDA / NIN Number';
+                const idPlaceholder = isIndia ? 'Enter Aadhaar Number' : 'Enter NIDA or National ID Number';
+                const docLabel = isIndia ? 'Aadhaar Copy' : 'NIDA / NIN Document Copy';
+
+                return (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">{idLabel} <span className="text-red-500">*</span></label>
+                      <input 
+                        type="text" 
+                        name="aadhaarNumber" 
+                        value={localFormData.aadhaarNumber} 
+                        onChange={(e) => setLocalFormData(prev => ({ ...prev, aadhaarNumber: e.target.value }))} 
+                        className={`w-full h-10 px-3 bg-card border rounded text-[12px] focus:outline-none focus:ring-2 transition-all ${localErrors.aadhaarNumber ? 'border-red-500 focus:ring-red-400/20' : 'border-gray-300 focus:ring-blue-500'}`}
+                        placeholder={idPlaceholder}
+                      />
+                      {localErrors.aadhaarNumber && <p className="text-xs text-red-500 mt-1">{localErrors.aadhaarNumber}</p>}
+                    </div>
+                    <div className="col-span-full">
+                      <FileUpload
+                        id="aadhaarFile"
+                        label={docLabel}
+                        required
+                        files={localAadhaarFile ? [localAadhaarFile] : []}
+                        onFilesChange={(files) => setLocalAadhaarFile(files[0] || null)}
+                        allowedFormats={['PDF', 'JPG', 'PNG', 'JPEG']}
+                        onPreview={handlePreview}
+                        showViewEdit={true}
+                      />
+                      {localErrors.aadhaarFile && <p className="text-xs text-red-500 mt-1">{localErrors.aadhaarFile}</p>}
+                    </div>
+                  </>
+                );
+              })()}
 
               {selectedDocType === 'resume' && (
                 <>

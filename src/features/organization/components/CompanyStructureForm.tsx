@@ -30,7 +30,8 @@ import {
   UserCheck,
   Upload,
   Network,
-  Info
+  Info,
+  ShieldCheck
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { ConfirmationDialog } from "@/shared/components/ui/ConfirmationDialog";
@@ -39,6 +40,7 @@ import { capitalizeFirstLetter } from '@/shared/utils/stringUtils';
 import { UserRole } from "@/shared/types/rbac";
 import { DesignationSettingsForm } from "./DesignationSettingsForm";
 import { DepartmentHierarchyView } from "./DepartmentHierarchyView";
+import { RoleHierarchyView } from "./RoleHierarchyView";
 import Select from "@/shared/components/ui/Select";
 
 const timeOptions = Array.from({ length: 48 }, (_, i) => {
@@ -294,7 +296,7 @@ export const CompanyStructureForm: React.FC<CompanyStructureFormProps> = ({
   const [countrySearch, setCountrySearch] = React.useState("");
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const [hasSeenHierarchyPrompt, setHasSeenHierarchyPrompt] = React.useState(false);
-  const [orgSubTab, setOrgSubTab] = React.useState<"departments" | "designations">("departments");
+  const [orgSubTab, setOrgSubTab] = React.useState<"departments" | "designations" | "roles">("roles");
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -903,6 +905,16 @@ export const CompanyStructureForm: React.FC<CompanyStructureFormProps> = ({
         {/* Sub-tab Navigation */}
         <div className="flex items-center gap-1 border-b border-border/60">
           <button
+            onClick={() => setOrgSubTab("roles")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium border-b-2 transition-all whitespace-nowrap ${orgSubTab === "roles"
+              ? "border-primary text-primary-600"
+              : "border-transparent text-gray-400 hover:text-gray-500 hover:border-gray-200"
+              }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Role Hierarchy
+          </button>
+          <button
             onClick={() => setOrgSubTab("departments")}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium border-b-2 transition-all whitespace-nowrap ${orgSubTab === "departments"
               ? "border-primary text-primary-600"
@@ -924,11 +936,11 @@ export const CompanyStructureForm: React.FC<CompanyStructureFormProps> = ({
           </button>
         </div>
 
-        {orgSubTab === "departments" ? (
+        {orgSubTab === "roles" ? (
           <div className="space-y-5">
-            <DepartmentHierarchyView isReadOnly={isReadOnly} />
+            <RoleHierarchyView isReadOnly={isReadOnly} />
           </div>
-        ) : (
+        ) : orgSubTab === "designations" ? (
           <div className="space-y-5">
             {/* Setup Wizard shortcut */}
             {!isReadOnly && (
@@ -961,6 +973,10 @@ export const CompanyStructureForm: React.FC<CompanyStructureFormProps> = ({
             <div className="bg-white dark:bg-card rounded-2xl border border-border shadow-sm min-h-[400px]">
               <DesignationSettingsForm isReadOnly={isReadOnly} isGlobal={true} />
             </div>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            <DepartmentHierarchyView isReadOnly={isReadOnly} />
           </div>
         )}
       </div>
