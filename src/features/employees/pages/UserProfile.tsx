@@ -1099,36 +1099,7 @@ export function UserProfile() {
               </div>
 
               {/* Form Actions (Navigation Parity) */}
-              <div className="bg-muted/30 border-t border-border px-6 py-5 sm:px-8 flex items-center justify-between rounded-b-[14px] mt-8 -mx-6 sm:-mx-8 -mb-6 sm:-mb-8">
-                <div className="flex items-center gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      if (location.state?.from) {
-                        navigate(location.state.from);
-                      } else {
-                        navigate("/employee-management");
-                      }
-                    }}
-                    className="text-sm font-bold h-10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 bg-rose-50/40 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 hover:text-rose-700 dark:hover:text-rose-300 transition-all duration-300 gap-2 px-4 shadow-sm"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    Back to List
-                  </Button>
-
-                  {!isFirstStep && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handlePrevious}
-                      className="gap-2 px-6 h-10 border-border hover:bg-card hover:border-primary/20 hover:text-primary transition-all font-semibold"
-                    >
-                      <ArrowLeft className="w-4 h-4" />
-                      Previous Step
-                    </Button>
-                  )}
-                </div>
+              <div className="bg-muted/30 border-t border-border px-6 py-5 sm:px-8 flex items-center justify-end rounded-b-[14px] mt-8 -mx-6 sm:-mx-8 -mb-6 sm:-mb-8">
 
                 <div className="flex items-center gap-3">
                   {!isLastStep ? (

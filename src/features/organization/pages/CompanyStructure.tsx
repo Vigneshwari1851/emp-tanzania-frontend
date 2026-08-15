@@ -330,21 +330,57 @@ export function CompanyStructure() {
       ? companyDetails.pan
       : companyDetails.tin || companyDetails.ein || companyDetails.siret || companyDetails.otherTaxId;
 
-    const checks = [
-      { done: filled(companyDetails.EntityName), weight: 2 },
-      { done: filled(companyDetails.companyCode), weight: 2 },
-      { done: filled(companyDetails.companyType), weight: 2 },
-      { done: filled(companyDetails.legalAddress), weight: 2 },
-      { done: filled(companyDetails.city), weight: 2 },
-      { done: filled(companyDetails.state), weight: 2 },
-      { done: filled(companyDetails.zip), weight: 2 },
-      { done: filled(companyDetails.country), weight: 2 },
-      { done: filled(mainTaxId), weight: isIndia ? 2 : 1 },
-      { done: filled(companyDetails.jurisdiction), weight: 1 },
-      { done: filled(companyDetails.fiscalYearEnd), weight: 1 },
-      { done: (companyDetails.costCenter || '').trim() !== '', weight: 1 },
-      { done: (companyDetails.locations || []).some(loc => filled(loc.locationName)), weight: 2 },
-    ];
+    const checks: { done: boolean; weight: number }[] = [];
+
+    // 1. Legal Entity & Tax Tab
+    checks.push({ done: filled(companyDetails.EntityName), weight: 2 });
+    checks.push({ done: filled(companyDetails.companyCode), weight: 2 });
+    checks.push({ done: filled(companyDetails.companyType), weight: 1 });
+    checks.push({ done: filled(companyDetails.legalAddress), weight: 1 });
+    checks.push({ done: filled(companyDetails.city), weight: 1 });
+    checks.push({ done: filled(companyDetails.state), weight: 1 });
+    checks.push({ done: filled(companyDetails.zip), weight: 1 });
+    checks.push({ done: filled(companyDetails.country), weight: 1 });
+    checks.push({ done: filled(mainTaxId), weight: 2 });
+    checks.push({ done: filled(companyDetails.jurisdiction), weight: 1 });
+    checks.push({ done: filled(companyDetails.fiscalYearEnd), weight: 1 });
+
+    // 2. Geographical/Location Tab
+    const hasLocations = Array.isArray(companyDetails.locations) && companyDetails.locations.length > 0;
+    const locationsComplete = hasLocations && companyDetails.locations.every(loc => 
+      filled(loc.locationName) && 
+      filled(loc.locationCode) && 
+      filled(loc.address?.street) && 
+      filled(loc.address?.city) && 
+      filled(loc.timeZone)
+    );
+    checks.push({ done: hasLocations, weight: 1 });
+    checks.push({ done: locationsComplete, weight: 1 });
+
+    // 3. Organizational Structure Tab
+    const hasBusinessUnits = typeof companyDetails.businessUnit === 'string' && companyDetails.businessUnit.trim() !== '';
+    const hasDivisions = typeof (companyDetails as any).division === 'string' && (companyDetails as any).division.trim() !== '';
+    const hasCostCenters = typeof companyDetails.costCenter === 'string' && companyDetails.costCenter.trim() !== '';
+    checks.push({ done: hasBusinessUnits, weight: 1 });
+    checks.push({ done: hasDivisions, weight: 1 });
+    checks.push({ done: hasCostCenters, weight: 1 });
+    checks.push({ done: filled(companyDetails.payrollStatutoryUnit), weight: 1 });
+    checks.push({ done: filled(companyDetails.legalEmployer), weight: 1 });
+    checks.push({ done: filled(companyDetails.legislativeDataGroup), weight: 1 });
+
+    // 4. Working Calendar & Schedule Tab
+    const calendar = companyDetails.workingCalendar;
+    if (calendar) {
+      checks.push({ done: !!calendar.standardHours, weight: 1 });
+      checks.push({ done: Array.isArray(calendar.workingDays) && calendar.workingDays.length > 0, weight: 1 });
+      checks.push({ done: filled(calendar.scheduleType), weight: 1 });
+      
+      if (calendar.scheduleType === "fixed") {
+        checks.push({ done: filled(calendar.fixedStartTime) && filled(calendar.fixedEndTime), weight: 2 });
+      } else if (calendar.scheduleType === "flexible") {
+        checks.push({ done: !!calendar.flexRequiredHours && filled(calendar.flexCoreStartTime) && filled(calendar.flexCoreEndTime), weight: 2 });
+      }
+    }
 
     const totalWeight = checks.reduce((sum, item) => sum + item.weight, 0);
     const doneWeight = checks.reduce((sum, item) => sum + (item.done ? item.weight : 0), 0);
@@ -359,13 +395,15 @@ export function CompanyStructure() {
   const [showGuidedTour, setShowGuidedTour] = useState(false);
   const isFirstTimeSetup = isSetupView && !companyDetails;
 
-  // Auto-launch guided tour on first visit (empty state)
+  // Auto-launch guided tour on first visit (empty state) - disabled
+  /*
   useEffect(() => {
     if (isFirstTimeSetup && !localStorage.getItem('org_setup_tour_seen')) {
       const timer = setTimeout(() => setShowGuidedTour(true), 600);
       return () => clearTimeout(timer);
     }
   }, [isFirstTimeSetup]);
+  */
 
   // Designation Tree View States
   const [currentView, setCurrentView] = useState<"details" | "designations">("details");
@@ -718,14 +756,14 @@ export function CompanyStructure() {
               <div className="sm:hidden w-full">
                 <ProgressBar percentage={completionPercentage} />
               </div>
-              <Button
+              {/* <Button
                 variant="outline"
                 className="h-10 bg-amber-50 border-amber-200 hover:bg-amber-100 text-amber-700 font-bold px-4"
                 onClick={() => setShowGuidedTour(true)}
               >
                 <Sparkles className="w-4 h-4 mr-2" />
                 Guided Tour
-              </Button>
+              </Button> */}
               <RoleGate permissions={[Permission.MANAGE_SYSTEM_SETTINGS]}>
                 <Button
                   variant="outline"
@@ -784,7 +822,7 @@ export function CompanyStructure() {
                     </div>
 
                     {/* Combined Entity & Code */}
-                    <div className="bg-muted/50/50 border space-y-4 border-border rounded-lg p-5">
+                    <div className="bg-muted/50/50 space-y-4 rounded-lg p-5">
                       <div>
                         <label className="text-[11px] font-medium text-muted-foreground">Legal entity</label>
                         <p className="text-[14px] leading-5 font-normal text-foreground mt-1 leading-tight">
@@ -805,7 +843,7 @@ export function CompanyStructure() {
                       </div>
                       <div>
                         <label className="text-[11px] font-medium text-muted-foreground">Company logo</label>
-                        <div className="bg-muted/50/50 border border-border rounded-lg p-5 flex items-center justify-start min-h-[100px]">
+                        <div className="bg-muted/50/50 rounded-lg p-5 flex items-center justify-start min-h-[100px]">
                           {companyDetails?.logoUrl ? (
                             <div className="animate-in fade-in zoom-in duration-700">
                               <img

@@ -283,54 +283,76 @@ export function HRManagerDashboard() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-card rounded-lg border border-border/80 shadow-sm p-5 hover:shadow-sm transition-shadow duration-200">
-          <div className="flex items-center justify-between mb-2">
-            <Users className="w-5 h-5 text-primary" />
+        <div className="bg-card min-h-[112.85px] rounded-lg border border-border/80 shadow-sm p-5 hover:shadow-sm transition-shadow duration-200 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <Users className="w-5 h-5 text-primary shrink-0" />
             <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-0.5">
-              {teamHeadcount} total <TrendingUp className="w-3 h-3" />
+              {employees.filter((e: any) => {
+                const sd = e.details?.start_date;
+                return sd && new Date(sd) > new Date(Date.now() - 90 * 86400000);
+              }).length} joined <TrendingUp className="w-3 h-3" />
             </span>
           </div>
-          <p className="text-[11px] text-muted-foreground font-medium tracking-wide">Team headcount</p>
-          <p className="text-[24px] font-semibold text-foreground tabular-nums mt-1 tracking-tight">{teamHeadcount}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">
-            {employees.filter((e: any) => {
-              const sd = e.details?.start_date;
-              return sd && new Date(sd) > new Date(Date.now() - 90 * 86400000);
-            }).length} joined this quarter
-          </p>
+          <div className="my-1">
+            <p className="text-[24px] font-semibold text-foreground tabular-nums tracking-tight">{teamHeadcount}</p>
+          </div>
+          <div className="space-y-0.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block truncate">
+              Team headcount
+            </span>
+            <span className="text-[10px] text-muted-foreground block truncate">Active employees</span>
+          </div>
         </div>
-        <div className="bg-card rounded-lg border border-border/80 shadow-sm p-5 hover:shadow-sm transition-shadow duration-200">
-          <div className="flex items-center justify-between mb-2">
-            <Clock className="w-5 h-5 text-primary" />
+        <div className="bg-card min-h-[112.85px] rounded-lg border border-border/80 shadow-sm p-5 hover:shadow-sm transition-shadow duration-200 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <Clock className="w-5 h-5 text-primary shrink-0" />
             <span className="text-[11px] font-medium text-rose-600 flex items-center gap-0.5">
               {pendingCount} pending <AlertTriangle className="w-3 h-3" />
             </span>
           </div>
-          <p className="text-[11px] text-muted-foreground font-medium tracking-wide">Pending approvals</p>
-          <p className="text-[24px] font-semibold text-foreground tabular-nums mt-1 tracking-tight">{pendingCount}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Leaves · expenses · docs</p>
+          <div className="my-1">
+            <p className="text-[24px] font-semibold text-foreground tabular-nums tracking-tight">{pendingCount}</p>
+          </div>
+          <div className="space-y-0.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block truncate">
+              Pending approvals
+            </span>
+            <span className="text-[10px] text-muted-foreground block truncate">Leaves & expenses</span>
+          </div>
         </div>
-        <div className="bg-card rounded-lg border border-border/80 shadow-sm p-5 hover:shadow-sm transition-shadow duration-200">
-          <div className="flex items-center justify-between mb-2">
-            <CalendarCheck className="w-5 h-5 text-primary" />
+        <div className="bg-card min-h-[112.85px] rounded-lg border border-border/80 shadow-sm p-5 hover:shadow-sm transition-shadow duration-200 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <CalendarCheck className="w-5 h-5 text-primary shrink-0" />
             <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-0.5">
               {presentToday} present <CheckCircle2 className="w-3 h-3" />
             </span>
           </div>
-          <p className="text-[11px] text-muted-foreground font-medium tracking-wide">Attendance today</p>
-          <p className="text-[24px] font-semibold text-foreground tabular-nums mt-1 tracking-tight">{attendancePct}%</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Out of {totalToday} employees</p>
+          <div className="my-1">
+            <p className="text-[24px] font-semibold text-foreground tabular-nums tracking-tight">{attendancePct}%</p>
+          </div>
+          <div className="space-y-0.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block truncate">
+              Attendance today
+            </span>
+            <span className="text-[10px] text-muted-foreground block truncate">Out of {totalToday}</span>
+          </div>
         </div>
-        <div className="bg-card rounded-lg border border-border/80 shadow-sm p-5 hover:shadow-sm transition-shadow duration-200">
-          <div className="flex items-center justify-between mb-2">
-            <Star className="w-5 h-5 text-primary" />
+        <div className="bg-card min-h-[112.85px] rounded-lg border border-border/80 shadow-sm p-5 hover:shadow-sm transition-shadow duration-200 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <Star className="w-5 h-5 text-primary shrink-0" />
             <span className="text-[11px] font-medium text-rose-600 flex items-center gap-0.5">
               Q2 cycle <Clock className="w-3 h-3" />
             </span>
           </div>
-          <p className="text-[11px] text-muted-foreground font-medium tracking-wide">Reviews pending</p>
-          <p className="text-[24px] font-semibold text-foreground tabular-nums mt-1 tracking-tight">—</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Due this cycle</p>
+          <div className="my-1">
+            <p className="text-[24px] font-semibold text-foreground tabular-nums tracking-tight">-</p>
+          </div>
+          <div className="space-y-0.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block truncate">
+              Reviews pending
+            </span>
+            <span className="text-[10px] text-muted-foreground block truncate">Due this cycle</span>
+          </div>
         </div>
       </div>
 

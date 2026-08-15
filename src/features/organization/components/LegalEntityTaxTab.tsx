@@ -1,9 +1,104 @@
 import React from 'react';
 import { Building2, MapPin, Receipt, Image as ImageIcon, ChevronRight, Search, CheckCircle2, Info, AlertTriangle, Trash2, Upload } from 'lucide-react';
 import Select from "@/shared/components/ui/Select";
+import SearchableSelect from "@/shared/components/ui/SearchableSelect";
 import { capitalizeFirstLetter } from '@/shared/utils/stringUtils';
 import { toast } from 'sonner';
 import { ConfirmDialog } from "@/shared/components/common/ConfirmDialog";
+
+const indianStates = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", 
+  "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", 
+  "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", 
+  "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", 
+  "Uttar Pradesh", "Uttarakhand", "West Bengal", "Delhi", "Andaman and Nicobar Islands", 
+  "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", "Lakshadweep", "Puducherry", "Ladakh", "Jammu and Kashmir"
+];
+
+const usStates = [
+  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware", "Florida", "Georgia", 
+  "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", 
+  "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey", 
+  "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", 
+  "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"
+];
+
+const tanzaniaRegions = [
+  "Arusha", "Dar es Salaam", "Dodoma", "Geita", "Iringa", "Kagera", "Katavi", "Kigoma", 
+  "Kilimanjaro", "Lindi", "Manyara", "Mara", "Mbeya", "Morogoro", "Mtwara", "Mwanza", 
+  "Njombe", "Pemba North", "Pemba South", "Pwani", "Rukwa", "Ruvuma", "Shinyanga", 
+  "Simiyu", "Singida", "Songwe", "Tabora", "Tanga", "Zanzibar North", "Zanzibar South", "Zanzibar Urban/West"
+];
+
+const stateCities: Record<string, string[]> = {
+  "Andhra Pradesh": ["Visakhapatnam", "Vijayawada", "Guntur", "Nellore", "Kurnool", "Rajahmundry", "Tirupati", "Anantapur", "Kadapa", "Kakinada"],
+  "Arunachal Pradesh": ["Itanagar", "Naharlagun", "Pasighat"],
+  "Assam": ["Guwahati", "Silchar", "Dibrugarh", "Jorhat", "Nagaon", "Tinsukia"],
+  "Bihar": ["Patna", "Gaya", "Bhagalpur", "Muzaffarpur", "Purnia", "Darbhanga", "Bihar Sharif", "Arrah", "Begusarai"],
+  "Chhattisgarh": ["Raipur", "Bhilai", "Bilaspur", "Korba", "Rajnandgaon", "Jagdalpur", "Ambikapur"],
+  "Goa": ["Panaji", "Margao", "Vasco da Gama", "Mapusa", "Ponda"],
+  "Gujarat": ["Ahmedabad", "Surat", "Vadodara", "Rajkot", "Bhavnagar", "Jamnagar", "Gandhinagar", "Junagadh", "Morbi", "Anand", "Vapi"],
+  "Haryana": ["Gurugram", "Faridabad", "Panipat", "Ambala", "Yamunanagar", "Rohtak", "Hisar", "Karnal", "Sonipat", "Panchkula"],
+  "Himachal Pradesh": ["Shimla", "Dharamshala", "Solan", "Mandi", "Nahan", "Baddi"],
+  "Jharkhand": ["Ranchi", "Jamshedpur", "Dhanbad", "Bokaro Steel City", "Deoghar", "Hazaribagh", "Giridih"],
+  "Karnataka": ["Bengaluru", "Mysuru", "Hubballi-Dharwad", "Mangaluru", "Belagavi", "Davangere", "Ballari", "Shivamogga", "Tumakuru"],
+  "Kerala": ["Thiruvananthapuram", "Kochi", "Kozhikode", "Kollam", "Thrissur", "Alappuzha", "Palakkad", "Kannur", "Kottayam"],
+  "Madhya Pradesh": ["Indore", "Bhopal", "Jabalpur", "Gwalior", "Ujjain", "Sagar", "Dewas", "Satna", "Ratlam", "Rewa"],
+  "Maharashtra": ["Mumbai", "Pune", "Nagpur", "Thane", "Nashik", "Aurangabad", "Solapur", "Navi Mumbai", "Amravati", "Kolhapur", "Kalyan-Dombivli"],
+  "Manipur": ["Imphal", "Thoubal", "Kakching"],
+  "Meghalaya": ["Shillong", "Tura", "Jowai"],
+  "Mizoram": ["Aizawl", "Lunglei", "Champhai"],
+  "Nagaland": ["Dimapur", "Kohima", "Mokokchung"],
+  "Odisha": ["Bhubaneswar", "Cuttack", "Rourkela", "Berhampur", "Sambalpur", "Puri", "Balasore"],
+  "Punjab": ["Ludhiana", "Amritsar", "Jalandhar", "Patiala", "Bathinda", "Mohali", "Hoshiarpur", "Pathankot"],
+  "Rajasthan": ["Jaipur", "Jodhpur", "Kota", "Udaipur", "Bikaner", "Ajmer", "Bhilwara", "Alwar", "Sikar"],
+  "Sikkim": ["Gangtok", "Namchi", "Geyzing"],
+  "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem", "Tiruppur", "Erode", "Vellore", "Thoothukudi", "Nagercoil"],
+  "Telangana": ["Hyderabad", "Warangal", "Nizamabad", "Karimnagar", "Ramagundam", "Khammam", "Mahabubnagar"],
+  "Tripura": ["Agartala", "Dharmanagar", "Udaipur"],
+  "Uttar Pradesh": ["Middleton", "Lucknow", "Kanpur", "Noida", "Ghaziabad", "Agra", "Meerut", "Varanasi", "Allahabad", "Bareilly", "Aligarh", "Moradabad"],
+  "Uttarakhand": ["Dehradun", "Haridwar", "Haldwani", "Roorkee", "Rudrapur", "Kashipur"],
+  "West Bengal": ["Kolkata", "Howrah", "Siliguri", "Asansol", "Durgapur", "Bardhaman", "Kharagpur", "Darjeeling"],
+  "Delhi": ["New Delhi", "North Delhi", "South Delhi", "East Delhi", "West Delhi", "Dwarka"],
+  "Andaman and Nicobar Islands": ["Port Blair"],
+  "Chandigarh": ["Chandigarh"],
+  "Dadra and Nagar Haveli and Daman and Diu": ["Daman", "Diu", "Silvassa"],
+  "Lakshadweep": ["Kavaratti"],
+  "Puducherry": ["Puducherry", "Karaikal", "Mahe", "Yanam"],
+  "Ladakh": ["Leh", "Kargil"],
+  "Jammu and Kashmir": ["Srinagar", "Jammu", "Anantnag", "Baramulla"],
+  "Arusha": ["Arusha", "Karatu", "Mto wa Mbu", "Monduli"],
+  "Dar es Salaam": ["Dar es Salaam", "Kinondoni", "Ilala", "Temeke", "Ubungo", "Kigamboni"],
+  "Dodoma": ["Dodoma", "Kondoa", "Mpwapwa", "Kongwa"],
+  "Geita": ["Geita", "Chato"],
+  "Iringa": ["Iringa", "Mafinga", "Ruaha Mbuyuni"],
+  "Kagera": ["Bukoba", "Biharamulo", "Ngara"],
+  "Katavi": ["Mpanda"],
+  "Kigoma": ["Kigoma", "Kasulu", "Kibondo"],
+  "Kilimanjaro": ["Moshi", "Same", "Mwanga", "Hai"],
+  "Lindi": ["Lindi", "Ruangwa", "Nachingwea"],
+  "Manyara": ["Babati", "Mbulu", "Simanjiro"],
+  "Mara": ["Musoma", "Bunda", "Tarime"],
+  "Mbeya": ["Mbeya", "Tunduma", "Mbarali", "Chunya"],
+  "Morogoro": ["Morogoro", "Ifakara", "Kilosa", "Mikumi"],
+  "Mtwara": ["Mtwara", "Masasi", "Newala"],
+  "Mwanza": ["Mwanza", "Sengerema", "Nansio", "Geita"],
+  "Njombe": ["Njombe", "Makambako"],
+  "Pemba North": ["Wete"],
+  "Pemba South": ["Mkoani"],
+  "Pwani": ["Kibaha", "Bagamoyo", "Kisarawe", "Chalinze"],
+  "Rukwa": ["Sumbawanga"],
+  "Ruvuma": ["Songea", "Mbinga", "Tunduru"],
+  "Shinyanga": ["Shinyanga", "Kahama"],
+  "Simiyu": ["Bariadi", "Maswa"],
+  "Singida": ["Singida", "Manyoni"],
+  "Songwe": ["Vwawa", "Mlowo"],
+  "Tabora": ["Tabora", "Nzega", "Igunga"],
+  "Tanga": ["Tanga", "Korogwe", "Muheza", "Lushoto"],
+  "Zanzibar North": ["Mkokotoni"],
+  "Zanzibar South": ["Koani"],
+  "Zanzibar Urban/West": ["Zanzibar City", "Mwanakwerekwe"]
+};
 
 const countryToCurrencyMap: Record<string, string> = {
   "india": "INR",
@@ -147,70 +242,47 @@ export const LegalEntityTaxTab = ({
                 />
               </div>
               
-              <div className="mb-5 relative" ref={dropdownRef}>
-                <label className="flex items-center gap-[5px] text-[12.5px] font-medium text-[#5B5F6E] dark:text-muted-foreground mb-[7px] tracking-[0.01em]">
-                  Country of Incorporation <span className="text-[#E14B5A]">*</span>
-                </label>
-                <div 
-                  className="w-full bg-[#FFFFFF] dark:bg-card border border-[#D6DAE3] dark:border-border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none hover:border-[#B9BFCC] focus:border-primary cursor-pointer flex justify-between items-center"
-                  onClick={() => !isReadOnly && setIsCountryDropdownOpen(!isCountryDropdownOpen)}
-                >
-                  <span className={companyData.legalAddress.country ? "text-[#12131A] dark:text-foreground" : "text-[#9498A6]"}>
-                    {companyData.legalAddress.country || "Select Country"}
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-[#9498A6]" />
-                </div>
-                {isCountryDropdownOpen && (
-                  <div className="absolute z-50 mt-1 w-full bg-white dark:bg-card border border-[#D6DAE3] dark:border-border rounded-[8px] shadow-lg overflow-hidden">
-                    <div className="p-2">
-                      <input
-                        type="text"
-                        value={countrySearch}
-                        onChange={(e) => setCountrySearch(e.target.value)}
-                        placeholder="Search countries..."
-                        autoFocus
-                        className="w-full bg-[#F9FAFB] dark:bg-muted border border-[#D6DAE3] dark:border-border rounded-[6px] text-[#12131A] dark:text-foreground text-[13px] p-[8px_10px] outline-none focus:border-primary"
-                      />
-                    </div>
-                    <div className="max-h-[200px] overflow-y-auto">
-                      {filteredCountries.length > 0 ? (
-                        filteredCountries.map((country: string) => (
-                          <div
-                            key={country}
-                            onClick={() => {
-                              const normCountry = country.toLowerCase().trim();
-                              const mappedCurrency = countryToCurrencyMap[normCountry] || "USD";
-                              setCompanyData({
-                                ...companyData,
-                                currency: mappedCurrency,
-                                legalAddress: { ...companyData.legalAddress, country },
-                              });
-                              setIsCountryDropdownOpen(false);
-                              setCountrySearch("");
-                            }}
-                            className="px-3 py-2 text-[13px] text-[#12131A] dark:text-foreground hover:bg-[#F1F3F7] dark:hover:bg-muted cursor-pointer transition-colors"
-                          >
-                            {country}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="px-3 py-4 text-[13px] text-[#9498A6] text-center">
-                          No countries found
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+              <div className="mb-5">
+                <SearchableSelect
+                  value={companyData.legalAddress.country}
+                  onChange={(val: string) => {
+                    const normCountry = val.toLowerCase().trim();
+                    const mappedCurrency = countryToCurrencyMap[normCountry] || "USD";
+                    setCompanyData({
+                      ...companyData,
+                      currency: mappedCurrency,
+                      legalAddress: { 
+                        ...companyData.legalAddress, 
+                        country: val,
+                        state: "",
+                        city: ""
+                      },
+                    });
+                  }}
+                  label="Country of Incorporation"
+                  required
+                  disabled={isReadOnly}
+                  placeholder="Select Country"
+                  options={[
+                    "India", "United States", "United Kingdom", "United Arab Emirates",
+                    "Singapore", "Canada", "Australia", "Germany", "France",
+                    "Netherlands", "Saudi Arabia", "South Africa", "Japan",
+                    "China", "Brazil", "Mexico", "Italy", "Spain", "Malaysia", "Indonesia",
+                    "Israel", "Ireland", "New Zealand", "Tanzania", "Kenya", "Nigeria", "Other"
+                  ].map(c => ({ value: c, label: c }))}
+                />
               </div>
 
               <div className="mb-5">
+                <label className="flex items-center gap-[5px] text-[12.5px] font-medium text-[#5B5F6E] dark:text-muted-foreground mb-[7px] tracking-[0.01em]">
+                  Company Type <span className="text-[#E14B5A]">*</span>
+                </label>
                 <Select
                   value={companyData.companyType}
                   onChange={(val) => !isReadOnly && setCompanyData({ ...companyData, companyType: val })}
-                  label="Company Type"
                   placeholder="Select type"
-                  required
                   disabled={isReadOnly}
+                  buttonClassName="!h-[41px] text-[13.5px] rounded-[7px] border-[#D6DAE3] dark:border-border hover:border-[#B9BFCC] focus:border-primary px-3 text-[#12131A] dark:text-foreground font-normal shadow-none"
                   options={getCompanyTypesByCountry(companyData.legalAddress.country).map((t: string) => ({
                     value: t,
                     label: t,
@@ -219,13 +291,15 @@ export const LegalEntityTaxTab = ({
               </div>
 
               <div className="mb-5">
+                <label className="flex items-center gap-[5px] text-[12.5px] font-medium text-[#5B5F6E] dark:text-muted-foreground mb-[7px] tracking-[0.01em]">
+                  Base Currency <span className="text-[#E14B5A]">*</span>
+                </label>
                 <Select
                   value={companyData.currency || "USD"}
                   onChange={(val) => !isReadOnly && setCompanyData({ ...companyData, currency: val })}
-                  label="Base Currency"
                   placeholder="Select currency"
-                  required
                   disabled={isReadOnly}
+                  buttonClassName="!h-[41px] text-[13.5px] rounded-[7px] border-[#D6DAE3] dark:border-border hover:border-[#B9BFCC] focus:border-primary px-3 text-[#12131A] dark:text-foreground font-normal shadow-none"
                   options={[
                     { value: "INR", label: "INR (₹) - Indian Rupee" },
                     { value: "USD", label: "USD ($) - US Dollar" },
@@ -320,36 +394,138 @@ export const LegalEntityTaxTab = ({
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
               <div className="mb-5">
-                <label className="flex items-center gap-[5px] text-[12.5px] font-medium text-[#5B5F6E] dark:text-muted-foreground mb-[7px] tracking-[0.01em]">
-                  City <span className="text-[#E14B5A]">*</span>
-                </label>
-                <input
-                  value={companyData.legalAddress.city}
-                  onChange={(e) => !isReadOnly && updateField('legalAddress', 'city', e.target.value)}
-                  readOnly={isReadOnly}
-                  className="w-full bg-[#FFFFFF] dark:bg-card border border-[#D6DAE3] dark:border-border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none hover:border-[#B9BFCC] focus:border-primary"
-                />
+                {companyData.legalAddress.country === 'India' ? (
+                  <SearchableSelect
+                    value={companyData.legalAddress.state}
+                    onChange={(val: string) => {
+                      updateField('legalAddress', 'state', val);
+                      updateField('legalAddress', 'city', ''); // Reset city on state change
+                    }}
+                    label="State"
+                    required
+                    disabled={isReadOnly}
+                    placeholder="Select State"
+                    options={indianStates.map(state => ({ value: state, label: state }))}
+                  />
+                ) : companyData.legalAddress.country === 'United States' || companyData.legalAddress.country === 'USA' ? (
+                  <SearchableSelect
+                    value={companyData.legalAddress.state}
+                    onChange={(val: string) => {
+                      updateField('legalAddress', 'state', val);
+                      updateField('legalAddress', 'city', ''); // Reset city on state change
+                    }}
+                    label="State"
+                    required
+                    disabled={isReadOnly}
+                    placeholder="Select State"
+                    options={usStates.map(state => ({ value: state, label: state }))}
+                  />
+                ) : companyData.legalAddress.country === 'Tanzania' ? (
+                  <SearchableSelect
+                    value={companyData.legalAddress.state}
+                    onChange={(val: string) => {
+                      updateField('legalAddress', 'state', val);
+                      updateField('legalAddress', 'city', ''); // Reset city on state change
+                    }}
+                    label="Region"
+                    required
+                    disabled={isReadOnly}
+                    placeholder="Select Region"
+                    options={tanzaniaRegions.map(state => ({ value: state, label: state }))}
+                  />
+                ) : (
+                  <>
+                    <label className="flex items-center gap-[5px] text-[12.5px] font-medium text-[#5B5F6E] dark:text-muted-foreground mb-[7px] tracking-[0.01em]">
+                      {companyData.legalAddress.country === 'Tanzania' ? 'Region' : companyData.legalAddress.country === 'United Kingdom' ? 'County' : 'State/Province'} <span className="text-[#E14B5A]">*</span>
+                    </label>
+                    <input
+                      value={companyData.legalAddress.state}
+                      onChange={(e) => !isReadOnly && updateField('legalAddress', 'state', e.target.value)}
+                      readOnly={isReadOnly}
+                      className="w-full bg-[#FFFFFF] dark:bg-card border border-[#D6DAE3] dark:border-border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none hover:border-[#B9BFCC] focus:border-primary"
+                    />
+                  </>
+                )}
               </div>
               <div className="mb-5">
-                <label className="flex items-center gap-[5px] text-[12.5px] font-medium text-[#5B5F6E] dark:text-muted-foreground mb-[7px] tracking-[0.01em]">
-                  State <span className="text-[#E14B5A]">*</span>
-                </label>
-                <input
-                  value={companyData.legalAddress.state}
-                  onChange={(e) => !isReadOnly && updateField('legalAddress', 'state', e.target.value)}
-                  readOnly={isReadOnly}
-                  className="w-full bg-[#FFFFFF] dark:bg-card border border-[#D6DAE3] dark:border-border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none hover:border-[#B9BFCC] focus:border-primary"
-                />
+                {(() => {
+                  const state = companyData.legalAddress.state;
+                  const citiesForState = state ? stateCities[state] : null;
+                  const showCitySelect = citiesForState && citiesForState.length > 0;
+                  const isCustomCity = companyData.legalAddress.city && showCitySelect && !citiesForState.includes(companyData.legalAddress.city);
+
+                  return showCitySelect ? (
+                    <SearchableSelect
+                      value={isCustomCity || companyData.legalAddress.city === "Other" ? "Other" : companyData.legalAddress.city}
+                      onChange={(val: string) => {
+                        updateField('legalAddress', 'city', val);
+                      }}
+                      label="City"
+                      required
+                      disabled={isReadOnly || !companyData.legalAddress.state}
+                      placeholder="Select City"
+                      options={[
+                        ...citiesForState.map(c => ({ value: c, label: c })),
+                        { value: "Other", label: "Other (Enter Manually)" }
+                      ]}
+                    />
+                  ) : (
+                    <>
+                      <label className="flex items-center gap-[5px] text-[12.5px] font-medium text-[#5B5F6E] dark:text-muted-foreground mb-[7px] tracking-[0.01em]">
+                        City <span className="text-[#E14B5A]">*</span>
+                      </label>
+                      <input
+                        value={companyData.legalAddress.city}
+                        onChange={(e) => !isReadOnly && updateField('legalAddress', 'city', e.target.value)}
+                        readOnly={isReadOnly}
+                        className="w-full bg-[#FFFFFF] dark:bg-card border border-[#D6DAE3] dark:border-border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none hover:border-[#B9BFCC] focus:border-primary"
+                      />
+                    </>
+                  );
+                })()}
               </div>
+
+              {(() => {
+                const state = companyData.legalAddress.state;
+                const citiesForState = state ? stateCities[state] : null;
+                const showCitySelect = citiesForState && citiesForState.length > 0;
+                const isCustomCity = companyData.legalAddress.city && showCitySelect && !citiesForState.includes(companyData.legalAddress.city);
+
+                if (showCitySelect && (isCustomCity || companyData.legalAddress.city === "Other")) {
+                  return (
+                    <div className="mb-5 animate-in fade-in slide-in-from-top-1 md:col-span-2">
+                      <label className="flex items-center gap-[5px] text-[11.5px] font-medium text-[#5B5F6E] dark:text-muted-foreground mb-[7px] tracking-[0.01em]">
+                        Specify City Name <span className="text-[#E14B5A]">*</span>
+                      </label>
+                      <input
+                        value={companyData.legalAddress.city === "Other" ? "" : companyData.legalAddress.city}
+                        onChange={(e) => !isReadOnly && updateField('legalAddress', 'city', e.target.value)}
+                        readOnly={isReadOnly}
+                        className="w-full bg-[#FFFFFF] dark:bg-card border border-[#D6DAE3] dark:border-border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none hover:border-[#B9BFCC] focus:border-primary"
+                        placeholder="Type city name"
+                      />
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
               <div className="mb-5">
                 <label className="flex items-center gap-[5px] text-[12.5px] font-medium text-[#5B5F6E] dark:text-muted-foreground mb-[7px] tracking-[0.01em]">
-                  PIN Code <span className="text-[#E14B5A]">*</span>
+                  {(() => {
+                    const c = companyData.legalAddress.country;
+                    return c === 'India' ? 'PIN Code' : c === 'United States' || c === 'USA' ? 'Zip Code' : c === 'United Kingdom' ? 'Postcode' : 'ZIP/Postal Code';
+                  })()} <span className="text-[#E14B5A]">*</span>
                 </label>
                 <input
                   value={companyData.legalAddress.zipCode}
                   onChange={(e) => !isReadOnly && updateField('legalAddress', 'zipCode', e.target.value)}
                   readOnly={isReadOnly}
                   className="w-[50%] bg-[#FFFFFF] dark:bg-card border border-[#D6DAE3] dark:border-border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none hover:border-[#B9BFCC] focus:border-primary"
+                  placeholder={`Enter ${(() => {
+                    const c = companyData.legalAddress.country;
+                    return c === 'India' ? 'PIN Code' : c === 'United States' || c === 'USA' ? 'Zip Code' : c === 'United Kingdom' ? 'Postcode' : 'ZIP/Postal Code';
+                  })()}`}
                 />
               </div>
             </div>

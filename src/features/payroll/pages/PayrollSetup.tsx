@@ -2310,7 +2310,7 @@ export function PayrollSetup() {
               <div className="columns-1 lg:columns-2 gap-5 [&>div]:break-inside-avoid [&>div]:mb-5">
                 <div className="border border-border rounded-xl overflow-hidden bg-card shadow-sm">
                   <div className="flex items-center gap-3 px-5 py-3.5 bg-card border-b border-border">
-                    <div className="p-2 bg-primary/10 text-primary rounded-lg">
+                    <div className="p-2 text-primary">
                       <Landmark className="size-4" />
                     </div>
                     <div>
@@ -2360,7 +2360,7 @@ export function PayrollSetup() {
 
                 <div className="border border-border rounded-xl overflow-hidden bg-card shadow-sm">
                   <div className="flex items-center gap-3 px-5 py-3.5 bg-card border-b border-border">
-                    <div className="p-2 bg-primary/10 text-primary rounded-lg">
+                    <div className="p-2 text-primary">
                       <Landmark className="size-4" />
                     </div>
                     <div>
@@ -2401,7 +2401,7 @@ export function PayrollSetup() {
 
                 <div className="border border-border rounded-xl overflow-hidden bg-card shadow-sm">
                   <div className="flex items-center gap-3 px-5 py-3.5 bg-card border-b border-border">
-                    <div className="p-2 bg-primary/10 text-primary rounded-lg">
+                    <div className="p-2 text-primary">
                       <Users className="size-4" />
                     </div>
                     <div>
@@ -2457,7 +2457,7 @@ export function PayrollSetup() {
 
                 <div className="border border-border rounded-xl overflow-hidden bg-card shadow-sm">
                   <div className="flex items-center gap-3 px-5 py-3.5 bg-card border-b border-border">
-                    <div className="p-2 bg-primary/10 text-primary rounded-lg">
+                    <div className="p-2 text-primary">
                       <Landmark className="size-4" />
                     </div>
                     <div>
@@ -2586,7 +2586,7 @@ export function PayrollSetup() {
               <div className="border border-border rounded-xl overflow-hidden bg-card shadow-sm">
                 <div className="flex items-center justify-between px-5 py-3.5 bg-card border-b border-border">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 text-primary rounded-lg">
+                    <div className="p-2 text-primary">
                       <Landmark className="size-4" />
                     </div>
                     <div>
@@ -2700,7 +2700,7 @@ export function PayrollSetup() {
           {isTanzania && (
             <div className="border border-border rounded-xl overflow-hidden bg-card shadow-sm">
               <div className="flex items-center gap-3 px-5 py-3.5 bg-primary/5 border-b border-border">
-                <div className="p-2 bg-primary/10 text-primary rounded-lg">
+                <div className="p-2 text-primary">
                   <Building2 className="size-4" />
                 </div>
                 <div>
@@ -2754,7 +2754,7 @@ export function PayrollSetup() {
           {isUSA && (
             <div className="border border-border rounded-xl overflow-hidden bg-card shadow-sm">
               <div className="flex items-center gap-3 px-5 py-3.5 bg-blue-50/80 border-b border-border">
-                <div className="p-2 bg-blue-100 text-primaryrounded-lg">
+                <div className="p-2 text-primary">
                   <Building2 className="size-4" />
                 </div>
                 <div>
@@ -2804,7 +2804,7 @@ export function PayrollSetup() {
           {isSingapore && (
             <div className="border border-border rounded-xl overflow-hidden bg-card shadow-sm">
               <div className="flex items-center gap-3 px-5 py-3.5 bg-emerald-50/80 border-b border-border">
-                <div className="p-2 bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg">
+                <div className="p-2 text-emerald-600 dark:text-emerald-400">
                   <Building2 className="size-4" />
                 </div>
                 <div>
@@ -2856,7 +2856,7 @@ export function PayrollSetup() {
           {isUAE && (
             <div className="border border-border rounded-xl overflow-hidden bg-card shadow-sm">
               <div className="flex items-center gap-3 px-5 py-3.5 bg-amber-50/80 dark:bg-amber-950/30 border-b border-border">
-                <div className="p-2 bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded-lg">
+                <div className="p-2 text-amber-600 dark:text-amber-400">
                   <Building2 className="size-4" />
                 </div>
                 <div>

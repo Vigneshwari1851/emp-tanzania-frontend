@@ -293,16 +293,6 @@ export function LoanTypeConfig() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => handleToggle(lt.id)}
-                    className={`p-1.5 rounded-lg transition-colors ${lt.isActive ? 'text-emerald-600 hover:bg-emerald-50' : 'text-muted-foreground hover:bg-muted'}`}>
-                    {lt.isActive ? <ToggleRight className="size-5" /> : <ToggleLeft className="size-5" />}
-                  </button>
-                  <button onClick={() => openRulesModal(lt)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Eligibility Rules">
-                    <Shield className="size-4" />
-                  </button>
-                  <button onClick={() => openWorkflowModal(lt)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Approval Workflow">
-                    <Workflow className="size-4" />
-                  </button>
                   <button onClick={() => navigate(`/loans-advances/config/edit/${lt.id}`)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Edit">
                     <Edit className="size-4" />
                   </button>

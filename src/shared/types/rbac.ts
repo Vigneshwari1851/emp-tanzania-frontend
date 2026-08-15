@@ -182,6 +182,8 @@ export interface User {
   roles?: string[];
   permissions?: string[];
   departmentId: string;
+  departmentName?: string;
+  designationName?: string;
   managerId?: string; // Direct reporting manager
   employeeId: string;
   position: string;

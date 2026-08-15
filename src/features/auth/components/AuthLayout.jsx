@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import mobbg from "@/assets/login/mobbg.png";
 import loginImage from "@/assets/login/Login.svg";
 import loginDarkImage from "@/assets/login/LoginDark.svg";
 import { useTheme } from "@/shared/hooks/useTheme";
 import { useTheme as useThemeContext } from "@/shared/context/ThemeContext";
 import logoSmall from "@/assets/common/logo-small.png";
+import { getOrganizationBySlug } from "@/features/auth/services/auth";
 
 const autofillStyles = `
   @media (max-width: 1023px) {
@@ -34,8 +36,32 @@ const autofillStyles = `
 const AuthLayout = ({ children, logoUrl, entityName }) => {
   const theme = useTheme();
   const { resolvedTheme } = useThemeContext();
+  const { orgSlug } = useParams();
+  const [localOrg, setLocalOrg] = useState(null);
+
+  useEffect(() => {
+    if (orgSlug) {
+      getOrganizationBySlug(orgSlug)
+        .then((res) => {
+          if (res.success && res.data) {
+            setLocalOrg(res.data);
+            if (res.data.logo_url) {
+              localStorage.setItem('cached_company_logo', res.data.logo_url);
+            }
+            if (res.data.entity_name) {
+              localStorage.setItem('cached_company_name', res.data.entity_name);
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, [orgSlug]);
+
   const leftImage = resolvedTheme === "dark" ? loginDarkImage : loginImage;
   const textColorClass = resolvedTheme === "dark" ? "text-[#ffffff]" : "text-[#000000]";
+
+  const displayLogo = logoUrl || localOrg?.logo_url || localStorage.getItem('cached_company_logo') || window.temp_company_logo || logoSmall;
+  const displayName = entityName || localOrg?.entity_name || localStorage.getItem('cached_company_name') || "";
 
   return (
     <div className={`relative min-h-screen w-full flex items-center justify-center p-6 ${theme.fontFamily}`}>
@@ -54,9 +80,9 @@ const AuthLayout = ({ children, logoUrl, entityName }) => {
           <div className="space-y-2">
             {/* <div className="w-16 h-1.5 bg-blue-600 rounded-full"></div> */}
               <div className="flex items-center gap-2 mb-2" style={{ marginTop: '-30px' }}>
-                <img src={logoSmall} alt="Lattium Logo" className="w-10 h-10 object-contain" />
-                <p className={`${textColorClass} text-[25px] font-extrabold leading-none font-`}>
-                  Lattium
+                <img src={displayLogo} alt={`${displayName} Logo`} className="w-10 h-10 object-contain" />
+                <p className={`${textColorClass} text-[25px] font-extrabold leading-none`}>
+                  {displayName}
                 </p>
               </div>
             <div className="flex flex-col">

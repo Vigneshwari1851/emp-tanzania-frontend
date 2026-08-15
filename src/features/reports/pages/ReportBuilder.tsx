@@ -20,6 +20,7 @@ import Select from '@/shared/components/ui/Select';
 import { toast } from 'sonner';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/shared/components/ui/table";
 import { useCurrency } from '@/shared/hooks/useCurrency';
+import { maskSensitiveValue } from '../utils/masking';
 
 // Define TS Interfaces
 interface FieldSchema {
@@ -81,7 +82,6 @@ const MODULES = [
   { value: 'employees', label: 'Employee Directory' },
   { value: 'leaves', label: 'Leave Records' },
   { value: 'exits', label: 'Exit Management' },
-  { value: 'assets', label: 'Asset Management' },
   { value: 'loans', label: 'Loans and Advances' },
   { value: 'reimbursements', label: 'Reimbursements' },
   { value: 'payroll', label: 'Payroll' },
@@ -296,6 +296,25 @@ export const ReportBuilder: React.FC = () => {
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const appliedFields = selectedFields;
   const setAppliedFields = (f: any) => {};
+
+  // Save Report Modal States
+  const [showSaveReportModal, setShowSaveReportModal] = useState<boolean>(false);
+  const [saveReportTitle, setSaveReportTitle] = useState<string>('');
+  const [saveReportDescription, setSaveReportDescription] = useState<string>('');
+
+  // Save Template Modal States
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState<boolean>(false);
+  const [saveTemplateTitle, setSaveTemplateTitle] = useState<string>('');
+  const [saveTemplateDescription, setSaveTemplateDescription] = useState<string>('');
+
+  // Saved report snapshots states
+  const [savedInstances, setSavedInstances] = useState<any[]>([]);
+  const [snapshotSearchTerm, setSnapshotSearchTerm] = useState<string>('');
+  const [selectedSnapshot, setSelectedSnapshot] = useState<any | null>(null);
+  const [snapshotPreviewOpen, setSnapshotPreviewOpen] = useState<boolean>(false);
+  const [snapshotDropdownId, setSnapshotDropdownId] = useState<string | null>(null);
+  const [templateExportDropdownId, setTemplateExportDropdownId] = useState<string | null>(null);
+  const [snapshotCurrentPage, setSnapshotCurrentPage] = useState<number>(1);
   const [filters, setFilters] = useState<FilterRule[]>([]);
   const [sorts, setSorts] = useState<SortRule[]>([]);
 
@@ -534,6 +553,13 @@ export const ReportBuilder: React.FC = () => {
       setScheduledReports(defaultSchedules);
       localStorage.setItem('emp_xp_reports_schedules', JSON.stringify(defaultSchedules));
     }
+
+    const snapshots = localStorage.getItem('emp_xp_saved_reports_snapshots');
+    if (snapshots) {
+      try {
+        setSavedInstances(JSON.parse(snapshots));
+      } catch (e) {}
+    }
   }, []);
 
   // Helper to extract nested values
@@ -732,15 +758,15 @@ export const ReportBuilder: React.FC = () => {
 
   // Saved Config management
   const handleSaveConfig = () => {
-    if (!reportName.trim()) {
-      toast.error("Please specify a report name to save this configuration.");
+    if (!saveTemplateTitle.trim()) {
+      toast.error("Please specify a template name to save this configuration.");
       return;
     }
 
     const newConfig: SavedReport = {
       id: Math.random().toString(36).substring(2, 9),
-      name: reportName,
-      description: reportDescription || 'Custom structured template',
+      name: saveTemplateTitle,
+      description: saveTemplateDescription || 'Custom structured template',
       module: selectedModule,
       columns: selectedFields,
       filters,
@@ -761,9 +787,49 @@ export const ReportBuilder: React.FC = () => {
     const updated = [newConfig, ...savedReports];
     setSavedReports(updated);
     localStorage.setItem('emp_xp_reports_configs', JSON.stringify(updated));
-    setReportName('');
-    setReportDescription('');
+    setSaveTemplateTitle('');
+    setSaveTemplateDescription('');
+    setShowSaveTemplateModal(false);
     toast.success(`Successfully saved "${newConfig.name}" template.`);
+  };
+
+  const handleSaveReport = () => {
+    if (!saveReportTitle.trim()) {
+      toast.error("Please specify a report snapshot name.");
+      return;
+    }
+
+    const newSnapshot = {
+      id: Math.random().toString(36).substring(2, 9),
+      title: saveReportTitle,
+      description: saveReportDescription || 'Archived snapshot data',
+      module: selectedModule,
+      columns: selectedFields,
+      data_snapshot: finalProcessedData,
+      total_records: finalProcessedData.length,
+      created_by: 'Current User',
+      created_at: new Date().toLocaleString()
+    };
+
+    const updated = [newSnapshot, ...savedInstances];
+    setSavedInstances(updated);
+    localStorage.setItem('emp_xp_saved_reports_snapshots', JSON.stringify(updated));
+    setSaveReportTitle('');
+    setSaveReportDescription('');
+    setShowSaveReportModal(false);
+    toast.success(`Successfully saved "${newSnapshot.title}" report snapshot.`);
+  };
+
+  const handleSnapshotDelete = (id: string) => {
+    if (window.confirm("Are you sure you want to delete this saved report snapshot?")) {
+      const updated = savedInstances.filter(x => x.id !== id);
+      setSavedInstances(updated);
+      localStorage.setItem('emp_xp_saved_reports_snapshots', JSON.stringify(updated));
+      toast.success("Saved report snapshot deleted.");
+      if (selectedSnapshot?.id === id) {
+        setSnapshotPreviewOpen(false);
+      }
+    }
   };
 
   const handleUseTemplate = (tpl: SavedReport) => {
@@ -1115,7 +1181,8 @@ export const ReportBuilder: React.FC = () => {
     const rows = finalProcessedData.map(item =>
       appliedFields.map(f => {
         const val = getNestedValue(item, f);
-        return String(val !== undefined && val !== null ? val : '').replace(/"/g, '""');
+        const masked = maskSensitiveValue(formatDisplayValue(val, f), f);
+        return String(masked !== undefined && masked !== null ? masked : '').replace(/"/g, '""');
       })
     );
 
@@ -1126,7 +1193,7 @@ export const ReportBuilder: React.FC = () => {
     link.href = url;
     link.download = `report_${selectedModule}_${Date.now()}.csv`;
     link.click();
-    toast.success("CSV report exported successfully.");
+    toast.success("CSV report exported successfully with PII masking.");
   };
 
   const handleExportExcel = () => {
@@ -1137,7 +1204,8 @@ export const ReportBuilder: React.FC = () => {
       const row: Record<string, any> = {};
       appliedFields.forEach(f => {
         const label = schemas.find(s => s.key === f)?.label || f;
-        row[label] = getNestedValue(item, f);
+        const val = getNestedValue(item, f);
+        row[label] = maskSensitiveValue(formatDisplayValue(val, f), f);
       });
       return row;
     });
@@ -1146,7 +1214,7 @@ export const ReportBuilder: React.FC = () => {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Report Preview");
     XLSX.writeFile(workbook, `report_${selectedModule}_${Date.now()}.xlsx`);
-    toast.success("Excel report exported successfully.");
+    toast.success("Excel report exported successfully with PII masking.");
   };
 
   const handleExportPDF = () => {
@@ -1154,7 +1222,7 @@ export const ReportBuilder: React.FC = () => {
     const doc = new jsPDF('landscape');
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
-    doc.setTextColor(37, 99, 235); // Blue Primary color
+    doc.setTextColor(37, 99, 235);
     doc.text(`${MODULES.find(m => m.value === selectedModule)?.label} - Export Summary`, 14, 15);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
@@ -1164,7 +1232,6 @@ export const ReportBuilder: React.FC = () => {
     const schemas = MODULE_SCHEMAS[selectedModule] || [];
     const columns = appliedFields.map(f => schemas.find(s => s.key === f)?.label || f);
 
-    // Manual grid drawing
     let y = 30;
     const colWidth = 260 / Math.max(columns.length, 1);
 
@@ -1182,7 +1249,7 @@ export const ReportBuilder: React.FC = () => {
     doc.setFont("helvetica", "normal");
     doc.setTextColor(15, 23, 42);
 
-    finalProcessedData.slice(0, 20).forEach((item) => {
+    finalProcessedData.slice(0, 30).forEach((item) => {
       if (y > 185) {
         doc.addPage();
         y = 15;
@@ -1191,14 +1258,15 @@ export const ReportBuilder: React.FC = () => {
       appliedFields.forEach((f, i) => {
         const raw = getNestedValue(item, f);
         const txt = formatDisplayValue(raw, f);
-        const truncated = txt.length > 20 ? txt.substring(0, 18) + '..' : txt;
+        const masked = maskSensitiveValue(txt, f);
+        const truncated = masked.length > 20 ? masked.substring(0, 18) + '..' : masked;
         doc.text(truncated, 16 + (i * colWidth), y + 5);
       });
       y += 7;
     });
 
     doc.save(`report_${selectedModule}_${Date.now()}.pdf`);
-    toast.success("PDF exported successfully (top 20 rows preview).");
+    toast.success("PDF exported successfully with PII masking (first 30 rows).");
   };
 
   const handleExportWord = () => {
@@ -1216,7 +1284,8 @@ export const ReportBuilder: React.FC = () => {
       tableHTML += `<tr>`;
       appliedFields.forEach(f => {
         const val = getNestedValue(item, f);
-        tableHTML += `<td style="padding: 5px; font-size: 11px;">${formatDisplayValue(val, f)}</td>`;
+        const masked = maskSensitiveValue(formatDisplayValue(val, f), f);
+        tableHTML += `<td style="padding: 5px; font-size: 11px;">${masked}</td>`;
       });
       tableHTML += `</tr>`;
     });
@@ -1228,24 +1297,389 @@ export const ReportBuilder: React.FC = () => {
     link.href = url;
     link.download = `report_${selectedModule}_${Date.now()}.doc`;
     link.click();
-    toast.success("Word report exported successfully.");
+    toast.success("Word report exported successfully with PII masking.");
   };
 
   const handleExportJSON = () => {
     if (finalProcessedData.length === 0) return;
-    const dataStr = JSON.stringify(finalProcessedData, null, 2);
+    const maskedData = finalProcessedData.map(item => {
+      const row: Record<string, any> = {};
+      appliedFields.forEach(f => {
+        const val = getNestedValue(item, f);
+        row[f] = maskSensitiveValue(formatDisplayValue(val, f), f);
+      });
+      return row;
+    });
+    const dataStr = JSON.stringify(maskedData, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
     link.download = `report_${selectedModule}_${Date.now()}.json`;
     link.click();
-    toast.success("JSON exported successfully.");
+    toast.success("JSON exported successfully with PII masking.");
+  };
+
+  // Snapshot Export Handlers with PII Masking
+  const handleSnapshotExportCSV = (snap: any) => {
+    const schemas = MODULE_SCHEMAS[snap.module] || [];
+    const headers = snap.columns.map((f: string) => schemas.find(s => s.key === f)?.label || f);
+    const rows = snap.data_snapshot.map((item: any) =>
+      snap.columns.map((f: string) => {
+        const val = getNestedValue(item, f);
+        const masked = maskSensitiveValue(formatDisplayValue(val, f), f);
+        return String(masked !== undefined && masked !== null ? masked : '').replace(/"/g, '""');
+      })
+    );
+
+    const csvContent = [headers, ...rows].map((r: any) => r.map((cell: any) => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `snapshot_${snap.title.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.csv`;
+    link.click();
+    toast.success("CSV snapshot exported successfully with PII masking.");
+  };
+
+  const handleSnapshotExportExcel = (snap: any) => {
+    const schemas = MODULE_SCHEMAS[snap.module] || [];
+    const dataRows = snap.data_snapshot.map((item: any) => {
+      const row: Record<string, any> = {};
+      snap.columns.forEach((f: string) => {
+        const label = schemas.find(s => s.key === f)?.label || f;
+        const val = getNestedValue(item, f);
+        row[label] = maskSensitiveValue(formatDisplayValue(val, f), f);
+      });
+      return row;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(dataRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Snapshot Data");
+    XLSX.writeFile(workbook, `snapshot_${snap.title.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.xlsx`);
+    toast.success("Excel snapshot exported successfully with PII masking.");
+  };
+
+  const handleSnapshotExportPDF = (snap: any) => {
+    const doc = new jsPDF('landscape');
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(37, 99, 235);
+    doc.text(`Snapshot: ${snap.title}`, 14, 15);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Description: ${snap.description} | Frozen: ${snap.created_at}`, 14, 20);
+
+    const schemas = MODULE_SCHEMAS[snap.module] || [];
+    const headers = snap.columns.map((f: string) => schemas.find(s => s.key === f)?.label || f);
+
+    let y = 28;
+    const colWidth = 260 / Math.max(headers.length, 1);
+
+    doc.setFillColor(241, 245, 249);
+    doc.rect(14, y, 260, 8, 'F');
+    doc.setFont("helvetica", "bold");
+    headers.forEach((h: string, i: number) => {
+      const truncatedHeader = h.length > 20 ? h.substring(0, 18) + '..' : h;
+      doc.text(truncatedHeader, 16 + (i * colWidth), y + 5);
+    });
+    y += 8;
+
+    doc.setFont("helvetica", "normal");
+    snap.data_snapshot.slice(0, 30).forEach((item: any) => {
+      if (y > 185) {
+        doc.addPage();
+        y = 15;
+      }
+      doc.rect(14, y, 260, 7);
+      snap.columns.forEach((f: string, i: number) => {
+        const raw = getNestedValue(item, f);
+        const txt = formatDisplayValue(raw, f);
+        const masked = maskSensitiveValue(txt, f);
+        const truncated = masked.length > 20 ? masked.substring(0, 18) + '..' : masked;
+        doc.text(truncated, 16 + (i * colWidth), y + 5);
+      });
+      y += 7;
+    });
+
+    doc.save(`snapshot_${snap.title.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.pdf`);
+    toast.success("PDF snapshot exported successfully (first 30 rows).");
+  };
+
+  const handleSnapshotExportWord = (snap: any) => {
+    const schemas = MODULE_SCHEMAS[snap.module] || [];
+    const headers = snap.columns.map((f: string) => schemas.find(s => s.key === f)?.label || f);
+
+    let tableHTML = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>`;
+    tableHTML += `<head><meta charset='utf-8'></head><body><h2>Snapshot: ${snap.title}</h2><p>${snap.description}</p><table border="1" style="border-collapse: collapse; width: 100%;"><thead><tr style="background: #f1f5f9;">`;
+    headers.forEach((h: string) => {
+      tableHTML += `<th style="padding: 6px; font-size: 11px;">${h}</th>`;
+    });
+    tableHTML += `</tr></thead><tbody>`;
+    snap.data_snapshot.forEach((row: any) => {
+      tableHTML += `<tr>`;
+      snap.columns.forEach((f: string) => {
+        const val = getNestedValue(row, f);
+        const masked = maskSensitiveValue(formatDisplayValue(val, f), f);
+        tableHTML += `<td style="padding: 5px; font-size: 11px;">${masked}</td>`;
+      });
+      tableHTML += `</tr>`;
+    });
+    tableHTML += `</tbody></table></body></html>`;
+
+    const blob = new Blob(['\ufeff', tableHTML], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `snapshot_${snap.title.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.doc`;
+    link.click();
+    toast.success("Word snapshot exported successfully with PII masking.");
+  };
+
+  // Template Export Handlers
+  const fetchAndFilterTemplateData = async (tpl: SavedReport) => {
+    let endpoint = '';
+    if (tpl.module === 'employees') endpoint = `/employees?limit=${dataLimit}`;
+    else if (tpl.module === 'leaves') endpoint = `/leaves/history?limit=${dataLimit}`;
+    else if (tpl.module === 'exits') endpoint = `/exit/all-requests?limit=${dataLimit}`;
+    else if (tpl.module === 'assets') endpoint = `/assets?limit=${dataLimit}`;
+    else if (tpl.module === 'loans') endpoint = `/loans-advances/loans?limit=${dataLimit}`;
+    else if (tpl.module === 'reimbursements') endpoint = `/payroll/reimbursements/all-claims?limit=${dataLimit}`;
+    else if (tpl.module === 'payroll') endpoint = `/payroll/payslips`;
+
+    if (!endpoint) return [];
+
+    const res = await api.get(endpoint);
+    let items = [];
+    if (tpl.module === 'employees' || tpl.module === 'leaves' || tpl.module === 'exits') {
+      items = Array.isArray(res.data.data) ? res.data.data : (res.data.data?.data ?? []);
+    } else if (tpl.module === 'assets') {
+      items = Array.isArray(res.data.data) ? res.data.data : (res.data.data?.assets || res.data.data?.data || []);
+    } else {
+      items = Array.isArray(res.data.data) ? res.data.data : (res.data.data?.data || res.data.data?.items || res.data.data?.loans || res.data.data?.claims || res.data.data?.reimbursements || res.data.data?.payslips || []);
+    }
+
+    // Apply Filters
+    let processed = items.filter((item: any) => {
+      return tpl.filters.every(rule => {
+        if (!rule.field || !rule.operator) return true;
+        const raw = getNestedValue(item, rule.field);
+        const val = String(raw).toLowerCase();
+        const criterion = rule.value.toLowerCase();
+        switch (rule.operator) {
+          case 'equals': return val === criterion;
+          case 'contains': return val.includes(criterion);
+          case 'starts_with': return val.startsWith(criterion);
+          case 'greater_than': return Number(raw) > Number(rule.value);
+          case 'less_than': return Number(raw) < Number(rule.value);
+          default: return true;
+        }
+      });
+    });
+
+    // Apply Sorts
+    if (tpl.sorts.length > 0) {
+      processed = [...processed].sort((a: any, b: any) => {
+        for (const sort of tpl.sorts) {
+          if (!sort.field) continue;
+          const valA = getNestedValue(a, sort.field);
+          const valB = getNestedValue(b, sort.field);
+          const isAsc = sort.direction === 'Asc';
+
+          if (valA === valB) continue;
+
+          if (typeof valA === 'number' && typeof valB === 'number') {
+            return isAsc ? valA - valB : valB - valA;
+          }
+          return isAsc
+            ? String(valA).localeCompare(String(valB))
+            : String(valB).localeCompare(String(valA));
+        }
+        return 0;
+      });
+    }
+
+    return processed;
+  };
+
+  const handleTemplateExportExcel = async (tpl: SavedReport) => {
+    const loadToast = toast.loading(`Fetching dataset for "${tpl.name}" template...`);
+    try {
+      const data = await fetchAndFilterTemplateData(tpl);
+      if (data.length === 0) {
+        toast.error("No data matching this template was found to export.");
+        return;
+      }
+      const schemas = MODULE_SCHEMAS[tpl.module] || [];
+      const dataRows = data.map((item: any) => {
+        const row: Record<string, any> = {};
+        tpl.columns.forEach(f => {
+          const label = schemas.find(s => s.key === f)?.label || f;
+          const val = getNestedValue(item, f);
+          row[label] = maskSensitiveValue(formatDisplayValue(val, f), f);
+        });
+        return row;
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(dataRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Template Report");
+      XLSX.writeFile(workbook, `report_template_${tpl.name.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.xlsx`);
+      toast.success(`Excel report exported successfully with PII masking.`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to export template report.");
+    } finally {
+      toast.dismiss(loadToast);
+    }
+  };
+
+  const handleTemplateExportCSV = async (tpl: SavedReport) => {
+    const loadToast = toast.loading(`Fetching dataset for "${tpl.name}" template...`);
+    try {
+      const data = await fetchAndFilterTemplateData(tpl);
+      if (data.length === 0) {
+        toast.error("No data matching this template was found to export.");
+        return;
+      }
+      const schemas = MODULE_SCHEMAS[tpl.module] || [];
+      const rows = data.map((item: any) =>
+        tpl.columns.map(f => {
+          const val = getNestedValue(item, f);
+          const masked = maskSensitiveValue(formatDisplayValue(val, f), f);
+          return String(masked !== undefined && masked !== null ? masked : '').replace(/"/g, '""');
+        })
+      );
+      const headers = tpl.columns.map(f => schemas.find(s => s.key === f)?.label || f);
+
+      const csvContent = [headers, ...rows].map((r: any) => r.map((cell: any) => `"${cell}"`).join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `report_template_${tpl.name.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.csv`;
+      link.click();
+      toast.success("CSV report exported successfully with PII masking.");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to export template report.");
+    } finally {
+      toast.dismiss(loadToast);
+    }
+  };
+
+  const handleTemplateExportPDF = async (tpl: SavedReport) => {
+    const loadToast = toast.loading(`Fetching dataset for "${tpl.name}" template...`);
+    try {
+      const data = await fetchAndFilterTemplateData(tpl);
+      if (data.length === 0) {
+        toast.error("No data matching this template was found to export.");
+        return;
+      }
+      const doc = new jsPDF('landscape');
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(37, 99, 235);
+      doc.text(`Template Report: ${tpl.name}`, 14, 15);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Description: ${tpl.description} | Generated: ${new Date().toLocaleString()}`, 14, 20);
+
+      const schemas = MODULE_SCHEMAS[tpl.module] || [];
+      const columns = tpl.columns.map(f => schemas.find(s => s.key === f)?.label || f);
+
+      let y = 28;
+      const colWidth = 260 / Math.max(columns.length, 1);
+
+      doc.setFillColor(241, 245, 249);
+      doc.rect(14, y, 260, 8, 'F');
+      doc.setFont("helvetica", "bold");
+      columns.forEach((col, i) => {
+        doc.text(col, 16 + (i * colWidth), y + 6);
+      });
+
+      y += 8;
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(15, 23, 42);
+
+      data.slice(0, 30).forEach((item: any) => {
+        if (y > 185) {
+          doc.addPage();
+          y = 15;
+        }
+        doc.rect(14, y, 260, 7);
+        tpl.columns.forEach((f, i) => {
+          const raw = getNestedValue(item, f);
+          const masked = maskSensitiveValue(formatDisplayValue(raw, f), f);
+          const truncated = masked.length > 20 ? masked.substring(0, 18) + '..' : masked;
+          doc.text(truncated, 16 + (i * colWidth), y + 5);
+        });
+        y += 7;
+      });
+
+      doc.save(`report_template_${tpl.name.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.pdf`);
+      toast.success("PDF report exported successfully with PII masking (top 30 rows).");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to export template report.");
+    } finally {
+      toast.dismiss(loadToast);
+    }
+  };
+
+  const handleTemplateExportWord = async (tpl: SavedReport) => {
+    const loadToast = toast.loading(`Fetching dataset for "${tpl.name}" template...`);
+    try {
+      const data = await fetchAndFilterTemplateData(tpl);
+      if (data.length === 0) {
+        toast.error("No data matching this template was found to export.");
+        return;
+      }
+      const schemas = MODULE_SCHEMAS[tpl.module] || [];
+      const headers = tpl.columns.map(f => schemas.find(s => s.key === f)?.label || f);
+
+      let tableHTML = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>`;
+      tableHTML += `<head><meta charset='utf-8'></head><body><h2>Template Report: ${tpl.name}</h2><p>${tpl.description}</p><table border="1" style="border-collapse: collapse; width: 100%;"><thead><tr style="background: #f1f5f9;">`;
+      headers.forEach(h => {
+        tableHTML += `<th style="padding: 6px; font-size: 11px;">${h}</th>`;
+      });
+      tableHTML += `</tr></thead><tbody>`;
+      data.forEach((item: any) => {
+        tableHTML += `<tr>`;
+        tpl.columns.forEach(f => {
+          const val = getNestedValue(item, f);
+          const masked = maskSensitiveValue(formatDisplayValue(val, f), f);
+          tableHTML += `<td style="padding: 5px; font-size: 11px;">${masked}</td>`;
+        });
+        tableHTML += `</tr>`;
+      });
+      tableHTML += `</tbody></table></body></html>`;
+
+      const blob = new Blob(['\ufeff', tableHTML], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `report_template_${tpl.name.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.doc`;
+      link.click();
+      toast.success("Word report exported successfully with PII masking.");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to export template report.");
+    } finally {
+      toast.dismiss(loadToast);
+    }
   };
 
   // Close dropdown helper
   useEffect(() => {
-    const handleClose = () => setOpenDropdownId(null);
+    const handleClose = () => {
+      setOpenDropdownId(null);
+      setSnapshotDropdownId(null);
+      setTemplateExportDropdownId(null);
+    };
     document.addEventListener('click', handleClose);
     return () => document.removeEventListener('click', handleClose);
   }, []);
@@ -1264,6 +1698,7 @@ export const ReportBuilder: React.FC = () => {
         {[
           { id: 'overview', label: 'Overview', icon: FileText },
           { id: 'build', label: 'Report Builder', icon: Settings },
+          { id: 'snapshots', label: 'Saved Reports', icon: FileSpreadsheet },
           { id: 'saved', label: 'Saved Templates', icon: FolderOpen },
           { id: 'scheduled', label: 'Scheduled Runs', icon: Clock },
         ].map(tab => {
@@ -1291,9 +1726,9 @@ export const ReportBuilder: React.FC = () => {
           {/* Summary KPIs Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'Total Saved Configs', count: savedReports.length, icon: FolderOpen, desc: 'Configured report sheets' },
+              { label: 'Saved Templates', count: savedReports.length, icon: FolderOpen, desc: 'Configured query templates' },
+              { label: 'Saved Reports', count: savedInstances.length, icon: FileSpreadsheet, desc: 'Archived data snapshots' },
               { label: 'Pending Delivery Lists', count: scheduledReports.length, icon: Clock, desc: 'Scheduled delivery runs' },
-              { label: 'Exportable Datasets', count: 4, icon: FileSpreadsheet, desc: 'Ready for download' },
               { label: 'Latest Execution Log', count: '98%', icon: Activity, desc: 'Success Rate' },
             ].map((kpi, idx) => {
               const Icon = kpi.icon;
@@ -1320,7 +1755,7 @@ export const ReportBuilder: React.FC = () => {
             })}
           </div>
 
-          {/* Quick Actions Panel */}
+          {/* Quick Actions Panel - Commented Out
           <div className="bg-card border-t border-b border-l border-r-0 border-border/80 p-6 rounded-l-xl rounded-r-none shadow-xs">
             <h3 className="font-bold text-sm text-foreground mb-4 uppercase tracking-wider">Launch Workspace Tools</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1358,6 +1793,7 @@ export const ReportBuilder: React.FC = () => {
               </button>
             </div>
           </div>
+          */}
 
           {/* Saved Templates Quick Access */}
           <div className="bg-card border-t border-b border-l border-r-0 border-border/80 rounded-l-xl rounded-r-none overflow-hidden shadow-xs">
@@ -1394,10 +1830,10 @@ export const ReportBuilder: React.FC = () => {
 
       {/* ── 2. Report Builder Tab ───────────────────────────────────────────── */}
       {activeTab === 'build' && (
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 animate-in fade-in duration-300">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start animate-in fade-in duration-300">
 
           {/* Left Column Controls */}
-          <div className="xl:col-span-1 space-y-6">
+          <div className="xl:col-span-1 flex flex-col gap-6">
 
             {/* Box 1: Data Source */}
             <div className="bg-card border border-border/80 p-5 rounded-xl shadow-xs space-y-4">
@@ -1428,7 +1864,7 @@ export const ReportBuilder: React.FC = () => {
             </div>
 
             {/* Box 2: Field Selector */}
-            <div className="bg-card border border-border/80 p-5 rounded-xl shadow-xs space-y-4">
+            <div className="bg-card border border-border/80 p-5 rounded-xl shadow-xs flex flex-col flex-1 min-h-[480px] space-y-4">
               <div className="flex justify-between items-center border-b border-border/50 pb-3">
                 <h3 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
                   <Check className="w-4 h-4 text-primary" /> 2. Choose Columns
@@ -1446,7 +1882,7 @@ export const ReportBuilder: React.FC = () => {
               </div>
 
               {/* Grouped Accordions */}
-              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin">
+              <div className="space-y-3 flex-1 overflow-y-auto max-h-[500px] pr-1 scrollbar-thin">
                 {Object.entries(
                   (MODULE_SCHEMAS[selectedModule] || []).reduce((acc, field) => {
                     if (fieldSearch && !field.label.toLowerCase().includes(fieldSearch.toLowerCase())) return acc;
@@ -1505,260 +1941,60 @@ export const ReportBuilder: React.FC = () => {
                 ))}
               </div>
             </div>
+          </div>
 
-              {/* Box 3: Filtering & Sorting */}
-              <div className="bg-card border border-border/80 p-5 rounded-xl shadow-xs space-y-4">
-                <div className="flex justify-between items-center border-b border-border/50 pb-3">
-                  <h3 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
-                    <Settings className="w-4 h-4 text-primary" /> 3. Advanced Rules
-                  </h3>
+          {/* Right Column Preview */}
+          <div className="xl:col-span-3 space-y-6">
+
+            {/* Workspace Controls Header */}
+            <div className="bg-card border border-border/80 p-6 rounded-xl shadow-xs">
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-sm text-foreground uppercase tracking-wider">Workspace Controls</h3>
+                  <p className="text-[10px] text-muted-foreground font-bold uppercase mt-0.5 tracking-wider">
+                    Fetch live source items or commit current filters to templates & snapshot archives
+                  </p>
                 </div>
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto shrink-0 justify-end items-center">
+                  <Button
+                    onClick={handleRefreshData}
+                    disabled={loading}
+                    className="bg-primary hover:bg-primary/70 text-white font-bold h-9 text-xs border-0 shadow-sm"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> Loading...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-4 h-4 mr-1.5 fill-current" /> Refresh Data
+                      </>
+                    )}
+                  </Button>
 
-                {/* Filters */}
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Active Filters ({filters.length})</span>
-                    <button onClick={handleAddFilter} className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1">
-                      <Plus className="w-3 h-3" /> Add Rule
-                    </button>
-                  </div>
-                  {filters.map((filter, index) => (
-                    <div key={filter.id} className="p-2.5 border border-border/50 rounded-lg bg-muted/30 space-y-2 relative">
-                      <button
-                        onClick={() => setFilters(prev => prev.filter(f => f.id !== filter.id))}
-                        className="absolute top-2 right-2 text-muted-foreground hover:text-rose-600"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                      <div className="pr-5 space-y-1">
-                        <Select
-                          value={filter.field}
-                          onChange={val => setFilters(prev => prev.map(f => f.id === filter.id ? { ...f, field: val } : f))}
-                          options={MODULE_SCHEMAS[selectedModule]?.map(s => ({ value: s.key, label: s.label })) || []}
-                        />
-                        <Select
-                          value={filter.operator}
-                          onChange={val => setFilters(prev => prev.map(f => f.id === filter.id ? { ...f, operator: val } : f))}
-                          options={OPERATORS}
-                        />
-                        <input
-                          type="text"
-                          placeholder="Value..."
-                          value={filter.value}
-                          onChange={e => setFilters(prev => prev.map(f => f.id === filter.id ? { ...f, value: e.target.value } : f))}
-                          className="w-full px-2.5 py-1 bg-card border border-border rounded-md text-xs focus:outline-none text-foreground"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                  <Button
+                    onClick={() => {
+                      if (finalProcessedData.length === 0) {
+                        toast.error("Please fetch report data before saving a report snapshot.");
+                        return;
+                      }
+                      setShowSaveReportModal(true);
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9 text-xs border-0 shadow-sm"
+                  >
+                    <Save className="w-4 h-4 mr-1.5" /> Save Report
+                  </Button>
 
-                {/* Sorts */}
-                <div className="space-y-3 pt-3 border-t border-border/50">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Sort Priority ({sorts.length})</span>
-                    <button onClick={handleAddSort} className="text-[10px] font-bold text-primaryhover:underline flex items-center gap-1">
-                      <Plus className="w-3 h-3" /> Add Sort
-                    </button>
-                  </div>
-                  {sorts.map((sort) => (
-                    <div key={sort.id} className="flex gap-2 items-center bg-muted/30 p-2 border border-border/50 rounded-lg relative pr-8">
-                      <button
-                        onClick={() => setSorts(prev => prev.filter(s => s.id !== sort.id))}
-                        className="absolute right-2 text-muted-foreground hover:text-rose-600"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                      <div className="flex-1">
-                        <Select
-                          value={sort.field}
-                          onChange={val => setSorts(prev => prev.map(s => s.id === sort.id ? { ...s, field: val } : s))}
-                          options={MODULE_SCHEMAS[selectedModule]?.map(s => ({ value: s.key, label: s.label })) || []}
-                        />
-                      </div>
-                      <div className="w-24">
-                        <Select
-                          value={sort.direction}
-                          onChange={val => setSorts(prev => prev.map(s => s.id === sort.id ? { ...s, direction: val as 'Asc' | 'Desc' } : s))}
-                          options={[
-                            { value: "Asc", label: "Asc" },
-                            { value: "Desc", label: "Desc" }
-                          ]}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Box 4: Layout Mode */}
-              <div className="bg-card border border-border/80 p-5 rounded-xl shadow-xs space-y-4">
-                <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border/50 pb-3 flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-primary" /> 4. Layout Mode
-                </h3>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['table', 'chart', 'summary'] as const).map(mode => (
-                    <button
-                      key={mode}
-                      onClick={() => setReportLayout(mode)}
-                      className={`py-2 px-1 text-[10px] font-bold uppercase rounded-lg border transition-all ${reportLayout === mode
-                          ? 'bg-primary/5 border-primary text-primary'
-                          : 'bg-card border-border text-muted-foreground hover:bg-muted/50'
-                        }`}
-                    >
-                      {mode}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Chart configurations */}
-                {reportLayout === 'chart' && (
-                  <div className="space-y-3 pt-3 border-t border-border/50">
-                    <div>
-                      <label className="text-[10px] font-bold text-muted-foreground block mb-1">Chart Type</label>
-                      <Select
-                        value={chartType}
-                        onChange={setChartType}
-                        options={[
-                          { value: "Column Chart", label: "Column Chart" },
-                          { value: "Bar Chart", label: "Bar Chart" },
-                          { value: "Line Chart", label: "Line Chart" },
-                          { value: "Pie Chart", label: "Pie Chart" },
-                          { value: "Donut Chart", label: "Donut Chart" }
-                        ]}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-bold text-muted-foreground block mb-1">X-Axis Group Field</label>
-                      <Select
-                        value={chartXAxis}
-                        onChange={setChartXAxis}
-                        options={MODULE_SCHEMAS[selectedModule]?.filter(s => s.isCategorical).map(s => ({ value: s.key, label: s.label })) || []}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-bold text-muted-foreground block mb-1">Y-Axis Values</label>
-                      <Select
-                        value={chartYAxis}
-                        onChange={setChartYAxis}
-                        options={[
-                          { value: "Count", label: "Row Count" },
-                          ...(MODULE_SCHEMAS[selectedModule]?.filter(f => f.isNumeric).map(f => ({ value: f.key, label: `Sum of ${f.label}` })) || [])
-                        ]}
-                      />
-                    </div>
-
-                    <div className="flex justify-between items-center text-xs text-muted-foreground">
-                      <span>Show Legend</span>
-                      <input
-                        type="checkbox"
-                        checked={chartShowLegend}
-                        onChange={e => setChartShowLegend(e.target.checked)}
-                        className="rounded border-border text-primary"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-bold text-muted-foreground block mb-1.5">Color Theme</label>
-                      <div className="flex gap-2">
-                        {['blue', 'purple', 'sunset', 'forest'].map(theme => (
-                          <button
-                            key={theme}
-                            onClick={() => setChartColorPalette(theme)}
-                            className={`w-6 h-6 rounded-full border transition-all ${chartColorPalette === theme ? 'ring-2 ring-blue-500 scale-110' : 'opacity-70'
-                              }`}
-                            style={{
-                              background: theme === 'blue' ? '#3B82F6' : theme === 'purple' ? '#8B5CF6' : theme === 'sunset' ? '#F97316' : '#10B981'
-                            }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Box 5: Export Panel */}
-              <div className="bg-card border border-border/80 p-5 rounded-xl shadow-xs space-y-4">
-                <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border/50 pb-3 flex items-center gap-2">
-                  <Download className="w-4 h-4 text-primary" /> 5. Export Logs
-                </h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <button onClick={handleExportExcel} disabled={!hasGenerated} className="flex items-center gap-2 p-2 bg-muted/50 border border-border hover:bg-muted/80 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-xs font-medium rounded-lg text-muted-foreground">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span> Excel
-                  </button>
-                  <button onClick={handleExportPDF} disabled={!hasGenerated} className="flex items-center gap-2 p-2 bg-muted/50 border border-border hover:bg-muted/80 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-xs font-medium rounded-lg text-muted-foreground">
-                    <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span> PDF
-                  </button>
-                  <button onClick={handleExportCSV} disabled={!hasGenerated} className="flex items-center gap-2 p-2 bg-muted/50 border border-border hover:bg-muted/80 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-xs font-medium rounded-lg text-muted-foreground">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span> CSV
-                  </button>
-                  <button onClick={handleExportWord} disabled={!hasGenerated} className="flex items-center gap-2 p-2 bg-muted/50 border border-border hover:bg-muted/80 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-xs font-medium rounded-lg text-muted-foreground">
-                    <span className="w-2 h-2 rounded-full bg-primary-500 shrink-0"></span> Word
-                  </button>
-                  <button onClick={handleExportJSON} disabled={!hasGenerated} className="flex items-center gap-2 p-2 bg-muted/50 border border-border hover:bg-muted/80 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-xs font-medium rounded-lg text-muted-foreground col-span-2 justify-center">
-                    <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span> Export JSON Dataset
-                  </button>
+                  <Button
+                    onClick={() => setShowSaveTemplateModal(true)}
+                    variant="outline"
+                    className="border-border hover:bg-muted/50 font-bold h-9 text-xs"
+                  >
+                    <Save className="w-4 h-4 mr-1.5 text-muted-foreground" /> Save Template
+                  </Button>
                 </div>
               </div>
             </div>
-
-            {/* Right Column Preview */}
-            <div className="xl:col-span-3 space-y-6">
-
-              {/* Template Header Inputs */}
-              <div className="bg-card border border-border/80 p-6 rounded-xl shadow-xs space-y-4">
-                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end justify-between">
-                  <div className="flex-1 space-y-3 w-full">
-                    <div>
-                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">Save Template Name</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Active Leave Details..."
-                        value={reportName}
-                        onChange={e => setReportName(e.target.value)}
-                        className="w-full px-3 py-2 text-xs bg-muted/50 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 placeholder:text-muted-foreground text-foreground"
-                      />
-                    </div>
-                    <div>
-                      <input
-                        type="text"
-                        placeholder="Enter template description (optional)..."
-                        value={reportDescription}
-                        onChange={e => setReportDescription(e.target.value)}
-                        className="w-full px-3 py-1.5 text-xs bg-muted/50 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 placeholder:text-muted-foreground text-foreground"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 w-full sm:w-auto shrink-0 justify-end">
-                    <Button
-                      onClick={handleSaveConfig}
-                      variant="outline"
-                      className="border-border hover:bg-muted/50 font-bold h-9 text-xs"
-                    >
-                      <Save className="w-4 h-4 mr-1.5 text-muted-foreground" /> Save Template
-                    </Button>
-                    <Button
-                      onClick={handleRefreshData}
-                      disabled={loading}
-                      className="bg-primary hover:bg-primary/70 text-white font-bold h-9 text-xs border-0 shadow-sm"
-                    >
-                      {loading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> Loading...
-                        </>
-                      ) : (
-                        <>
-                          <Play className="w-4 h-4 mr-1.5 fill-current" /> Refresh Data
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </div>
 
               {/* Live Data Preview */}
               <div className="bg-card border-t border-b border-l border-r-0 border-border/80 rounded-l-xl rounded-r-none shadow-sm overflow-hidden min-h-[480px] flex flex-col">
@@ -1991,9 +2227,291 @@ export const ReportBuilder: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              {/* Step 3 & 4 Sub Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                {/* Box 3: Advanced Rules */}
+                <div className="bg-card border border-border/80 p-5 rounded-xl shadow-xs space-y-4">
+                  <div className="flex justify-between items-center border-b border-border/50 pb-3">
+                    <h3 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+                      <Settings className="w-4 h-4 text-primary" /> 3. Advanced Rules
+                    </h3>
+                  </div>
+
+                  {/* Filters */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Active Filters ({filters.length})</span>
+                      <button onClick={handleAddFilter} className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1">
+                        <Plus className="w-3 h-3" /> Add Rule
+                      </button>
+                    </div>
+                    {filters.map((filter, index) => (
+                      <div key={filter.id} className="p-2.5 border border-border/50 rounded-lg bg-muted/30 space-y-2 relative">
+                        <button
+                          onClick={() => setFilters(prev => prev.filter(f => f.id !== filter.id))}
+                          className="absolute top-2 right-2 text-muted-foreground hover:text-rose-600"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                        <div className="pr-5 space-y-1">
+                          <Select
+                            value={filter.field}
+                            onChange={val => setFilters(prev => prev.map(f => f.id === filter.id ? { ...f, field: val } : f))}
+                            options={MODULE_SCHEMAS[selectedModule]?.map(s => ({ value: s.key, label: s.label })) || []}
+                          />
+                          <Select
+                            value={filter.operator}
+                            onChange={val => setFilters(prev => prev.map(f => f.id === filter.id ? { ...f, operator: val } : f))}
+                            options={OPERATORS}
+                          />
+                          <input
+                            type="text"
+                            placeholder="Value..."
+                            value={filter.value}
+                            onChange={e => setFilters(prev => prev.map(f => f.id === filter.id ? { ...f, value: e.target.value } : f))}
+                            className="w-full px-2.5 py-1 bg-card border border-border rounded-md text-xs focus:outline-none text-foreground"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Sorts */}
+                  <div className="space-y-3 pt-3 border-t border-border/50">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Sort Priority ({sorts.length})</span>
+                      <button onClick={handleAddSort} className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1">
+                        <Plus className="w-3 h-3" /> Add Sort
+                      </button>
+                    </div>
+                    {sorts.map((sort) => (
+                      <div key={sort.id} className="flex gap-2 items-center bg-muted/30 p-2 border border-border/50 rounded-lg relative pr-8">
+                        <button
+                          onClick={() => setSorts(prev => prev.filter(s => s.id !== sort.id))}
+                          className="absolute right-2 text-muted-foreground hover:text-rose-600"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                        <div className="flex-1">
+                          <Select
+                            value={sort.field}
+                            onChange={val => setSorts(prev => prev.map(s => s.id === sort.id ? { ...s, field: val } : s))}
+                            options={MODULE_SCHEMAS[selectedModule]?.map(s => ({ value: s.key, label: s.label })) || []}
+                          />
+                        </div>
+                        <div className="w-24">
+                          <Select
+                            value={sort.direction}
+                            onChange={val => setSorts(prev => prev.map(s => s.id === sort.id ? { ...s, direction: val as 'Asc' | 'Desc' } : s))}
+                            options={[
+                              { value: "Asc", label: "Asc" },
+                              { value: "Desc", label: "Desc" }
+                            ]}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Box 4: Layout Mode */}
+                <div className="bg-card border border-border/80 p-5 rounded-xl shadow-xs space-y-4">
+                  <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border/50 pb-3 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-primary" /> 4. Layout Mode
+                  </h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['table', 'chart', 'summary'] as const).map(mode => (
+                      <button
+                        key={mode}
+                        onClick={() => setReportLayout(mode)}
+                        className={`py-2 px-1 text-[10px] font-bold uppercase rounded-lg border transition-all ${reportLayout === mode
+                            ? 'bg-primary/5 border-primary text-primary'
+                            : 'bg-card border-border text-muted-foreground hover:bg-muted/50'
+                          }`}
+                      >
+                        {mode}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Chart configurations */}
+                  {reportLayout === 'chart' && (
+                    <div className="space-y-3 pt-3 border-t border-border/50">
+                      <div>
+                        <label className="text-[10px] font-bold text-muted-foreground block mb-1">Chart Type</label>
+                        <Select
+                          value={chartType}
+                          onChange={setChartType}
+                          options={[
+                            { value: "Column Chart", label: "Column Chart" },
+                            { value: "Bar Chart", label: "Bar Chart" },
+                            { value: "Line Chart", label: "Line Chart" },
+                            { value: "Pie Chart", label: "Pie Chart" },
+                            { value: "Donut Chart", label: "Donut Chart" }
+                          ]}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-muted-foreground block mb-1">X-Axis Group Field</label>
+                        <Select
+                          value={chartXAxis}
+                          onChange={setChartXAxis}
+                          options={MODULE_SCHEMAS[selectedModule]?.filter(s => s.isCategorical).map(s => ({ value: s.key, label: s.label })) || []}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-muted-foreground block mb-1">Y-Axis Values</label>
+                        <Select
+                          value={chartYAxis}
+                          onChange={setChartYAxis}
+                          options={[
+                            { value: "Count", label: "Row Count" },
+                            ...(MODULE_SCHEMAS[selectedModule]?.filter(f => f.isNumeric).map(f => ({ value: f.key, label: `Sum of ${f.label}` })) || [])
+                          ]}
+                        />
+                      </div>
+
+                      <div className="flex justify-between items-center text-xs text-muted-foreground">
+                        <span>Show Legend</span>
+                        <input
+                          type="checkbox"
+                          checked={chartShowLegend}
+                          onChange={e => setChartShowLegend(e.target.checked)}
+                          className="rounded border-border text-primary"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-muted-foreground block mb-1.5">Color Theme</label>
+                        <div className="flex gap-2">
+                          {['blue', 'purple', 'sunset', 'forest'].map(theme => (
+                            <button
+                              key={theme}
+                              onClick={() => setChartColorPalette(theme)}
+                              className={`w-6 h-6 rounded-full border transition-all ${chartColorPalette === theme ? 'ring-2 ring-blue-500 scale-110' : 'opacity-70'
+                                }`}
+                              style={{
+                                background: theme === 'blue' ? '#3B82F6' : theme === 'purple' ? '#8B5CF6' : theme === 'sunset' ? '#F97316' : '#10B981'
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
       )}
+
+          {/* ── Saved Reports (Snapshots) Tab ───────────────────────────────────── */}
+          {activeTab === 'snapshots' && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-4">
+                {/* <div className="relative w-full sm:max-w-md">
+                  <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search saved reports by title, author..."
+                    value={snapshotSearchTerm}
+                    onChange={e => { setSnapshotSearchTerm(e.target.value); setSnapshotCurrentPage(1); }}
+                    className="w-full pl-9 pr-4 py-2 text-xs bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
+                  />
+                </div> */}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {savedInstances
+                  .filter(inst => {
+                    const q = snapshotSearchTerm.toLowerCase();
+                    const title = (inst?.title || inst?.name || '').toLowerCase();
+                    const desc = (inst?.description || '').toLowerCase();
+                    return title.includes(q) || desc.includes(q);
+                  })
+                  .map(snap => {
+                    return (
+                      <div key={snap.id} className="bg-card p-6 border border-border/80 rounded-xl hover:shadow-md transition-shadow flex flex-col justify-between relative group">
+                        <div className="absolute top-4 right-4">
+                          <button
+                            onClick={() => handleSnapshotDelete(snap.id)}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="w-10 h-10 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/30 flex items-center justify-center text-emerald-600">
+                            <FileSpreadsheet className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-sm text-foreground tracking-tight">{snap.title}</h4>
+                            <p className="text-[10px] text-muted-foreground font-bold uppercase mt-0.5 tracking-wider">
+                              {snap.module} &bull; {snap.total_records} rows
+                            </p>
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{snap.description}</p>
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-4 mt-4 border-t border-border/50">
+                          <button
+                            onClick={() => { setSelectedSnapshot(snap); setSnapshotPreviewOpen(true); }}
+                            className="flex-1 py-1.5 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wider text-center bg-muted/60 text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
+                          >
+                            Preview
+                          </button>
+
+                          <div className="relative flex-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSnapshotDropdownId(snapshotDropdownId === snap.id ? null : snap.id);
+                              }}
+                              className="w-full py-1.5 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wider text-center bg-emerald-600/10 text-emerald-600 hover:bg-emerald-600/20 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              Export <ChevronDown className="w-3 h-3" />
+                            </button>
+
+                            {snapshotDropdownId === snap.id && (
+                              <div className="absolute right-0 top-9 bg-card border border-border shadow-lg rounded-lg py-1 z-50 text-left animate-in slide-in-from-top duration-100 w-36">
+                                <button
+                                  onClick={() => handleSnapshotExportExcel(snap)}
+                                  className="w-full text-left px-3 py-1.5 text-[10px] font-bold text-muted-foreground hover:bg-muted/50 flex items-center gap-1.5"
+                                >
+                                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Excel (.xlsx)
+                                </button>
+                                <button
+                                  onClick={() => handleSnapshotExportPDF(snap)}
+                                  className="w-full text-left px-3 py-1.5 text-[10px] font-bold text-muted-foreground hover:bg-muted/50 border-t border-border/50 flex items-center gap-1.5"
+                                >
+                                  <FileText className="w-3.5 h-3.5 text-rose-600" /> PDF (.pdf)
+                                </button>
+                                <button
+                                  onClick={() => handleSnapshotExportCSV(snap)}
+                                  className="w-full text-left px-3 py-1.5 text-[10px] font-bold text-muted-foreground hover:bg-muted/50 border-t border-border/50 flex items-center gap-1.5"
+                                >
+                                  <FileText className="w-3.5 h-3.5 text-blue-600" /> CSV (.csv)
+                                </button>
+                                <button
+                                  onClick={() => handleSnapshotExportWord(snap)}
+                                  className="w-full text-left px-3 py-1.5 text-[10px] font-bold text-muted-foreground hover:bg-muted/50 border-t border-border/50 flex items-center gap-1.5"
+                                >
+                                  <FileEdit className="w-3.5 h-3.5 text-indigo-600" /> Word (.docx)
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
 
           {/* ── 3. Saved Templates Tab ─────────────────────────────────────────── */}
           {activeTab === 'saved' && (
@@ -2049,14 +2567,54 @@ export const ReportBuilder: React.FC = () => {
                         <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{tpl.description}</p>
                       </div>
 
-                      <div className="mt-6 pt-4 border-t border-border/50 flex items-center justify-between text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                        <span>{tpl.columns.length} Columns selected</span>
+                      <div className="flex items-center gap-2 pt-4 mt-4 border-t border-border/50">
                         <button
                           onClick={() => handleUseTemplate(tpl)}
-                          className="text-primaryhover:underline flex items-center gap-1"
+                          className="flex-1 py-1.5 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wider text-center bg-muted/60 text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
                         >
-                          Open Builder
+                          Preview
                         </button>
+
+                        <div className="relative flex-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTemplateExportDropdownId(templateExportDropdownId === tpl.id ? null : tpl.id);
+                            }}
+                            className="w-full py-1.5 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wider text-center bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            Export <ChevronDown className="w-3 h-3" />
+                          </button>
+
+                          {templateExportDropdownId === tpl.id && (
+                            <div className="absolute right-0 top-9 bg-card border border-border shadow-lg rounded-lg py-1 z-50 text-left animate-in slide-in-from-top duration-100 w-36">
+                              <button
+                                onClick={() => handleTemplateExportExcel(tpl)}
+                                className="w-full text-left px-3 py-1.5 text-[10px] font-bold text-muted-foreground hover:bg-muted/50 flex items-center gap-1.5"
+                              >
+                                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Excel (.xlsx)
+                              </button>
+                              <button
+                                onClick={() => handleTemplateExportPDF(tpl)}
+                                className="w-full text-left px-3 py-1.5 text-[10px] font-bold text-muted-foreground hover:bg-muted/50 border-t border-border/50 flex items-center gap-1.5"
+                              >
+                                <FileText className="w-3.5 h-3.5 text-rose-600" /> PDF (.pdf)
+                              </button>
+                              <button
+                                onClick={() => handleTemplateExportCSV(tpl)}
+                                className="w-full text-left px-3 py-1.5 text-[10px] font-bold text-muted-foreground hover:bg-muted/50 border-t border-border/50 flex items-center gap-1.5"
+                              >
+                                <FileText className="w-3.5 h-3.5 text-blue-600" /> CSV (.csv)
+                              </button>
+                              <button
+                                onClick={() => handleTemplateExportWord(tpl)}
+                                className="w-full text-left px-3 py-1.5 text-[10px] font-bold text-muted-foreground hover:bg-muted/50 border-t border-border/50 flex items-center gap-1.5"
+                              >
+                                <FileEdit className="w-3.5 h-3.5 text-indigo-600" /> Word (.docx)
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))
@@ -2247,6 +2805,197 @@ export const ReportBuilder: React.FC = () => {
                     className="bg-primary hover:bg-primary/70 text-white font-bold h-9 text-xs border-0 shadow-sm"
                   >
                     Create Delivery Job
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Save Report Snapshot Modal ────────────────────────────────────────── */}
+          {showSaveReportModal && (
+            <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50 backdrop-blur-xs">
+              <div className="bg-card border border-border rounded-xl max-w-md w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="p-5 border-b border-border/50 flex justify-between items-center">
+                  <div>
+                    <h3 className="font-bold text-sm text-foreground uppercase">Save Report Snapshot</h3>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Archive frozen query dataset values on current database state</p>
+                  </div>
+                  <button
+                    onClick={() => setShowSaveReportModal(false)}
+                    className="p-1 hover:bg-muted/80 rounded text-muted-foreground"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="p-5 space-y-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">Snapshot Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Q3 Active Payroll Summary..."
+                      value={saveReportTitle}
+                      onChange={e => setSaveReportTitle(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-muted/50 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 text-foreground"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">Description</label>
+                    <textarea
+                      placeholder="Enter description of this snapshot..."
+                      value={saveReportDescription}
+                      onChange={e => setSaveReportDescription(e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 text-xs bg-muted/50 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 text-foreground"
+                    />
+                  </div>
+                </div>
+                <div className="p-4 border-t border-border/50 bg-muted/50 flex justify-end gap-2.5">
+                  <Button
+                    onClick={() => setShowSaveReportModal(false)}
+                    variant="outline"
+                    className="h-9 text-xs border-border text-muted-foreground"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSaveReport}
+                    className="bg-primary hover:bg-primary/70 text-white font-bold h-9 text-xs border-0 shadow-sm"
+                  >
+                    Save Snapshot
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Save Template Config Modal ────────────────────────────────────────── */}
+          {showSaveTemplateModal && (
+            <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50 backdrop-blur-xs">
+              <div className="bg-card border border-border rounded-xl max-w-md w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="p-5 border-b border-border/50 flex justify-between items-center">
+                  <div>
+                    <h3 className="font-bold text-sm text-foreground uppercase">Save Query Template</h3>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Save current query column selection and filters for future runs</p>
+                  </div>
+                  <button
+                    onClick={() => setShowSaveTemplateModal(false)}
+                    className="p-1 hover:bg-muted/80 rounded text-muted-foreground"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="p-5 space-y-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">Template Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Monthly Exit Log..."
+                      value={saveTemplateTitle}
+                      onChange={e => setSaveTemplateTitle(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-muted/50 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 text-foreground"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">Description</label>
+                    <textarea
+                      placeholder="Enter description of this template..."
+                      value={saveTemplateDescription}
+                      onChange={e => setSaveTemplateDescription(e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 text-xs bg-muted/50 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 text-foreground"
+                    />
+                  </div>
+                </div>
+                <div className="p-4 border-t border-border/50 bg-muted/50 flex justify-end gap-2.5">
+                  <Button
+                    onClick={() => setShowSaveTemplateModal(false)}
+                    variant="outline"
+                    className="h-9 text-xs border-border text-muted-foreground"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSaveConfig}
+                    className="bg-primary hover:bg-primary/70 text-white font-bold h-9 text-xs border-0 shadow-sm"
+                  >
+                    Save Template
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Snapshot Data Preview Modal ───────────────────────────────────────── */}
+          {snapshotPreviewOpen && selectedSnapshot && (
+            <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-6 z-50 backdrop-blur-xs">
+              <div className="bg-card border border-border rounded-xl max-w-5xl w-full max-h-[85vh] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="p-5 border-b border-border/50 flex justify-between items-center bg-muted/20">
+                  <div>
+                    <h3 className="font-bold text-sm text-foreground uppercase flex items-center gap-2">
+                      <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+                      Snapshot: {selectedSnapshot.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {selectedSnapshot.description} &bull; Frozen at: {selectedSnapshot.created_at} ({selectedSnapshot.total_records} rows)
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => { setSnapshotPreviewOpen(false); setSelectedSnapshot(null); }}
+                    className="p-1.5 hover:bg-muted/80 rounded-lg text-muted-foreground transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-auto p-6 bg-muted/10">
+                  <div className="rounded-xl border border-border bg-card overflow-hidden shadow-xs">
+                    <Table className="min-w-full border-collapse">
+                      <TableHeader className="bg-muted border-b border-border">
+                        <TableRow>
+                          {selectedSnapshot.columns.map((f: string) => (
+                            <TableHead key={f} className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                              {MODULE_SCHEMAS[selectedSnapshot.module]?.find(m => m.key === f)?.label || f}
+                            </TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedSnapshot.data_snapshot.length > 0 ? (
+                          selectedSnapshot.data_snapshot.map((row: any, idx: number) => (
+                            <TableRow key={idx} className="hover:bg-muted/50 transition-colors">
+                              {selectedSnapshot.columns.map((f: string) => {
+                                const raw = getNestedValue(row, f);
+                                const txt = formatDisplayValue(raw, f);
+                                const masked = maskSensitiveValue(txt, f);
+                                return (
+                                  <TableCell key={f} className="px-6 py-4 text-xs text-foreground font-medium whitespace-nowrap">
+                                    {masked}
+                                  </TableCell>
+                                );
+                              })}
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={selectedSnapshot.columns.length} className="text-center py-12 text-muted-foreground font-medium italic">
+                              No data records archived in this snapshot.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+
+                <div className="p-4 border-t border-border/50 bg-muted/50 flex justify-between items-center">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Module: {selectedSnapshot.module.toUpperCase()} &bull; Total records: {selectedSnapshot.total_records}
+                  </p>
+                  <Button
+                    onClick={() => { setSnapshotPreviewOpen(false); setSelectedSnapshot(null); }}
+                    className="bg-primary hover:bg-primary/70 text-white font-bold h-9 text-xs border-0 shadow-sm"
+                  >
+                    Close Preview
                   </Button>
                 </div>
               </div>

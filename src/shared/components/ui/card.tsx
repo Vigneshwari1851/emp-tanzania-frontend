@@ -62,10 +62,15 @@ function CardAction({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 function CardContent({ className, ...props }: React.ComponentProps<"div">) {
+  const hasCustomPadding = className?.includes("p-") || className?.includes("pb-") || className?.includes("py-");
   return (
     <div
       data-slot="card-content"
-      className={cn("px-6 [&:last-child]:pb-6", className)}
+      className={cn(
+        "px-6",
+        !hasCustomPadding && "[&:last-child]:pb-6",
+        className
+      )}
       {...props}
     />
   );

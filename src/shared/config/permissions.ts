@@ -239,6 +239,7 @@ export const navItemPermissions: Record<string, Permission[]> = {
   '/system-settings': [PermissionVal.MANAGE_SYSTEM_SETTINGS, PermissionVal.VIEW_SYSTEM_SETTINGS],
   '/system-group': [PermissionVal.MANAGE_SYSTEM_SETTINGS, PermissionVal.VIEW_SYSTEM_SETTINGS],
   '/report-builder': [PermissionVal.MANAGE_SYSTEM_SETTINGS, PermissionVal.VIEW_SYSTEM_SETTINGS],
+  '/reports/saved': [PermissionVal.MANAGE_SYSTEM_SETTINGS, PermissionVal.VIEW_SYSTEM_SETTINGS],
   '/privacy-policy': [],
   '/employee-exit': [PermissionVal.VIEW_ALL_EMPLOYEES, PermissionVal.VIEW_TEAM_EMPLOYEES, PermissionVal.MANAGE_DEPARTMENTS],
   '/news': [PermissionVal.VIEW_NEWS],

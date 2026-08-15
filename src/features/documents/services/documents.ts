@@ -26,6 +26,7 @@ export interface Document {
   updated_at?: string;
   tags?: string[];
   target_department?: string;
+  file_url?: string;
 }
 
 interface ApiResponse<T> {

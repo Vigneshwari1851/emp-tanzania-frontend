@@ -125,7 +125,7 @@ export function PayrollReportsTab({ payrollGroups, salaryStructures, employees, 
               >
                 <CardContent className="p-5 flex flex-col gap-3">
                   <div className="flex items-center justify-between">
-                    <div className={`p-2.5 rounded-lg w-fit ${r.bg} group-hover:scale-110 transition-transform`}>
+                    <div className="p-2.5 w-fit group-hover:scale-110 transition-transform">
                       <r.icon className={`size-5 ${r.color}`} />
                     </div>
                     <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded">{r.format}</span>

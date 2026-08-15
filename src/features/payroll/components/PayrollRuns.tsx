@@ -485,8 +485,8 @@ export function PayrollRuns() {
                     >
                       <TableCell className="pl-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="p-1.5 bg-primary/10 rounded-lg">
-                            <CalendarIcon className="size-3.5 text-primary" />
+                          <div className="p-1.5 text-primary">
+                            <CalendarIcon className="size-3.5" />
                           </div>
                           <span className="font-bold text-foreground text-sm tracking-tight">{monthData.month}</span>
                         </div>

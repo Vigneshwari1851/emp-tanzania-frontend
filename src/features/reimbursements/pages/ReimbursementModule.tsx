@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useAuth } from '@/shared/context/AuthContext';
+import { useNotifications } from '@/shared/context/NotificationContext';
 import { UserRole } from '@/shared/types/rbac';
 import {
   FileText, Search, Plus, Shield, DollarSign, CheckCircle2, XCircle, Clock,
@@ -139,6 +140,13 @@ export interface EmployeeClaim {
     paidDate: string;
     month?: string;
   };
+  reportingManagerId?: number;
+  approval_sequence?: string;
+  workflow_sequence?: string;
+  current_step_index?: number;
+  current_assigned_role?: string;
+  approval_logs?: string;
+  payroll_batch_id?: string;
 }
 
 export interface AuditLogEntry {
@@ -467,12 +475,32 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
   );
 };
 
+const getActiveWorkflowStep = (claim: EmployeeClaim, workflowSteps: string[]): string | null => {
+  if (['Approved', 'Paid', 'Rejected', 'Cancelled', 'Waiting for Payout'].includes(claim.status)) {
+    return null;
+  }
+  if (claim.status === 'Submitted' || claim.status === 'Pending Manager Approval' || claim.status === 'Resubmitted') {
+    if (workflowSteps.includes('Manager')) return 'Manager';
+    if (workflowSteps.includes('HR')) return 'HR';
+    if (workflowSteps.includes('Finance')) return 'Finance';
+  }
+  if (claim.status === 'Pending HR Approval') {
+    if (workflowSteps.includes('HR')) return 'HR';
+    if (workflowSteps.includes('Finance')) return 'Finance';
+  }
+  if (claim.status === 'Pending Finance Approval') {
+    if (workflowSteps.includes('Finance')) return 'Finance';
+  }
+  return null;
+};
+
 // ==========================================
 // CORE REIMBURSEMENT PAGE COMPONENT
 // ==========================================
 
 export function ReimbursementModule() {
   const { user } = useAuth();
+  const { lastEvent } = useNotifications();
 
   // Dynamic user role mapping
   const userRole = useMemo(() => {
@@ -490,8 +518,16 @@ export function ReimbursementModule() {
     return 'EMPLOYEE';
   }, [user]);
 
+  const reimbursementRole = useMemo(() => {
+    if (!user) return 'EMPLOYEE';
+    const email = (user.email || '').toLowerCase();
+    if (email === 'hrmanager@demo.com' || email.includes('hr@') || email.includes('hrmanager')) return 'HR';
+    if (email === 'financemanager@demo.com' || email.includes('finance@') || email.includes('financemanager')) return 'FINANCE';
+    return userRole;
+  }, [user, userRole]);
+
   // Is Admin/SuperAdmin/Finance (who holds management permission)
-  const isManagement = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'HR' || userRole === 'FINANCE';
+  const isManagement = reimbursementRole === 'SUPER_ADMIN' || reimbursementRole === 'ADMIN' || reimbursementRole === 'HR' || reimbursementRole === 'FINANCE';
 
   // State Management backed by Local Storage
   const [categories, setCategories] = useState<ExpenseCategory[]>(() => {
@@ -535,7 +571,7 @@ export function ReimbursementModule() {
   // Sync claims from backend DB (replaces stale localStorage status)
   const syncFromBackend = useCallback(async () => {
       try {
-        const backendClaims = isManagement 
+        const backendClaims = (isManagement || userRole === 'MANAGER')
           ? await payrollService.getAllClaims() 
           : await payrollService.getMyClaims();
         if (!Array.isArray(backendClaims) || backendClaims.length === 0) return;
@@ -553,16 +589,40 @@ export function ReimbursementModule() {
               'Rejected': 'Rejected',
               'Paid': 'Paid',
               'Cancelled': 'Cancelled',
+              'REJECTED': 'Rejected',
+              'READY_FOR_PAYROLL_REVIEW': 'Waiting for Payout',
+              'INCLUDED_IN_PAYROLL': 'Pending Payroll',
+              'PAID': 'Paid',
             };
-            const mappedStatus = backendStatusMap[bc.status] || bc.status as EmployeeClaim['status'];
+            let mappedStatus = backendStatusMap[bc.status];
+            if (!mappedStatus) {
+              if (bc.status === 'PENDING_APPROVAL') {
+                mappedStatus = bc.current_assigned_role === 'HR' ? 'Pending HR Approval' : (bc.current_assigned_role === 'FINANCE' ? 'Pending Finance Approval' : 'Pending Manager Approval');
+              } else {
+                mappedStatus = bc.status as EmployeeClaim['status'];
+              }
+            }
 
             const existingIdx = merged.findIndex(c => c.dbId === bc.id);
+            const managerId = bc.user?.details?.reporting_manager_id ? Number(bc.user.details.reporting_manager_id) : undefined;
+            const resolvedEmpId = bc.user?.details?.employee_id || 
+                                  (bc.user_id === user?.id ? user?.employeeId : undefined) || 
+                                  bc.user_id.toString();
+
             if (existingIdx >= 0) {
               const existingItem = merged[existingIdx].items[0];
               merged[existingIdx] = {
                 ...merged[existingIdx],
                 status: mappedStatus,
                 dbId: bc.id,
+                reportingManagerId: managerId,
+                employeeId: resolvedEmpId,
+                approval_sequence: bc.approval_sequence,
+                workflow_sequence: bc.workflow_sequence || bc.approval_sequence,
+                current_step_index: bc.current_step_index,
+                current_assigned_role: bc.current_assigned_role,
+                approval_logs: bc.approval_logs,
+                payroll_batch_id: bc.payroll_batch_id,
                 items: existingItem
                   ? [{
                       ...existingItem,
@@ -581,7 +641,7 @@ export function ReimbursementModule() {
                 id: `clm-db-${bc.id}`,
                 dbId: bc.id,
                 claimNumber: `CLM-${String(bc.id).padStart(4, '0')}`,
-                employeeId: `EMP-${bc.user_id}`,
+                employeeId: resolvedEmpId,
                 employeeName: `${firstName} ${lastName}`.trim() || bc.user?.username || 'Unknown',
                 department: deptName,
                 policyId: '',
@@ -590,6 +650,13 @@ export function ReimbursementModule() {
                 amount: Number(bc.amount),
                 currency: 'INR',
                 status: mappedStatus,
+                reportingManagerId: managerId,
+                approval_sequence: bc.approval_sequence,
+                workflow_sequence: bc.workflow_sequence || bc.approval_sequence,
+                current_step_index: bc.current_step_index,
+                current_assigned_role: bc.current_assigned_role,
+                approval_logs: bc.approval_logs,
+                payroll_batch_id: bc.payroll_batch_id,
                 items: [{ id: `item-${bc.id}`, description: bc.description || '', category: bc.type || '', amount: Number(bc.amount), date: bc.expense_date ? new Date(bc.expense_date).toISOString().split('T')[0] : '', receiptUrl: resolveFileUrl(bc.proof_url) || undefined, receiptName: bc.proof_url && !bc.proof_url.startsWith('data:') ? (bc.proof_url.split('/').pop() || 'Receipt') : undefined }],
                 comments: bc.remarks ? [{ user: 'System', role: 'Backend', comment: bc.remarks, date: new Date().toISOString().split('T')[0] }] : [],
                 history: [{ action: 'Synced from Backend', user: 'System', role: 'Backend', date: new Date().toISOString().split('T')[0], details: `Status: ${bc.status}, Payment: ${bc.payment_status || 'N/A'}` }]
@@ -601,11 +668,20 @@ export function ReimbursementModule() {
       } catch (err) {
         console.error('Failed to sync claims from backend:', err);
       }
-  }, [isManagement]);
+  }, [isManagement, userRole, user]);
 
   useEffect(() => {
     syncFromBackend();
   }, [syncFromBackend]);
+
+  // Real-time synchronization via WebSocket events
+  useEffect(() => {
+    const syncEvents = ['reimbursement_claim', 'reimbursement_status', 'notification_update', 'notification'];
+    if (lastEvent && syncEvents.includes(lastEvent.event)) {
+      console.log('Real-time reimbursement update triggered by:', lastEvent.event);
+      syncFromBackend();
+    }
+  }, [lastEvent, syncFromBackend]);
 
   // Current active navigation tab
   const [activeTab, setActiveTab] = useState<'dashboard' | 'my-claims' | 'approval-inbox' | 'approved' | 'finance-processing' | 'policies' | 'categories' | 'reports' | 'settings'>(() => {
@@ -798,7 +874,7 @@ export function ReimbursementModule() {
     const reasons: string[] = [];
     
     // 1. Department match
-    const userDept = user.departmentId || 'Engineering';
+    const userDept = user.departmentName || 'Engineering';
     const deptEligible = policy.eligibility.departments.includes('All') || 
                          policy.eligibility.departments.some(d => d.toLowerCase() === userDept.toLowerCase());
     if (!deptEligible) {
@@ -806,7 +882,7 @@ export function ReimbursementModule() {
     }
 
     // 2. Designation match
-    const userDesig = user.position || 'Developer';
+    const userDesig = user.designationName || 'Developer';
     const desigEligible = policy.eligibility.designations.includes('All') || 
                           policy.eligibility.designations.some(d => d.toLowerCase() === userDesig.toLowerCase());
     if (!desigEligible) {
@@ -853,6 +929,7 @@ export function ReimbursementModule() {
 
   // Filtered claims based on tab, role, and search queries
   const filteredClaims = useMemo(() => {
+    console.log("[filteredClaims] userRole:", userRole, "claims count:", claims.length, "activeTab:", activeTab);
     return claims.filter(c => {
       // 1. Role Gating & Context Filtering
       if (activeTab === 'my-claims') {
@@ -862,29 +939,39 @@ export function ReimbursementModule() {
         // Don't show employee's own claim in their own inbox
         if (c.employeeId === user?.employeeId) return false;
         // Admin/Super Admin act once per claim: claims they've already approved/reviewed leave their inbox
-        if ((userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && adminActionedClaims.has(c.id)) return false;
-        // When user picks a specific status, show matching claims regardless of role
-        if (statusFilter !== 'All') {
-          // fall through to the status filter at line 755
-        } else {
-          // Default view: role-based filtering — each role only sees claims at their approval stage.
-          // ADMIN/SUPER_ADMIN receive notifications at every stage, so they review any open claim.
-          if (userRole === 'MANAGER') {
-            if (c.status !== 'Submitted' && c.status !== 'Pending Manager Approval' && c.status !== 'Resubmitted') return false;
-          } else if (userRole === 'HR') {
-            if (c.status !== 'Pending HR Approval') return false;
-          } else if (userRole === 'FINANCE') {
-            if (c.status !== 'Pending Finance Approval') return false;
+        if ((reimbursementRole === 'ADMIN' || reimbursementRole === 'SUPER_ADMIN') && adminActionedClaims.has(c.id)) return false;
+        // Enforce role-based stage filtering strictly at all times
+        const policy = policies.find(p => p.id === c.policyId || p.name === c.policyName);
+        const workflowSteps = policy?.workflow || ['Manager', 'HR', 'Finance'];
+        const activeStep = getActiveWorkflowStep(c, workflowSteps);
+
+        const dbRoleToStepMap: Record<string, string> = { 'MANAGER': 'Manager', 'HR': 'HR', 'FINANCE': 'Finance' };
+        const currentStep = c.current_assigned_role ? dbRoleToStepMap[c.current_assigned_role] || c.current_assigned_role : activeStep;
+
+        console.log(`[filteredClaims] Claim ${c.claimNumber} (${c.status}) -> currentStep: ${currentStep}, userRole: ${userRole}`);
+
+        if (reimbursementRole === 'MANAGER') {
+          if (currentStep !== 'Manager') return false;
+          if (c.reportingManagerId && String(c.reportingManagerId) !== String(user?.id)) return false;
+        } else if (reimbursementRole === 'HR') {
+          if (currentStep !== 'HR') return false;
+        } else if (reimbursementRole === 'FINANCE') {
+          if (currentStep !== 'Finance') return false;
+        } else if (reimbursementRole === 'ADMIN' || reimbursementRole === 'SUPER_ADMIN') {
+          if (currentStep === 'Manager') {
+            if (c.reportingManagerId && String(c.reportingManagerId) !== String(user?.id)) return false;
+          } else {
+            if (!currentStep) return false;
           }
+        } else {
+          return false;
         }
       } else if (activeTab === 'approved') {
         // Approved Reimbursements: fully approved / paid claims visible to all approvers
-        if (c.status !== 'Approved' && c.status !== 'Paid') return false;
+        if (c.status !== 'Approved' && c.status !== 'Paid' && c.status !== 'Waiting for Payout' && c.status !== 'Pending Payroll' && c.status !== 'Processing Payout') return false;
       } else if (activeTab === 'finance-processing') {
-        // Finance sees claims in Pending Finance Approval, Approved, or Paid by default
-        if (statusFilter === 'All') {
-          if (c.status !== 'Pending Finance Approval' && c.status !== 'Waiting for Payout' && c.status !== 'Approved' && c.status !== 'Paid' && c.status !== 'Processing Payout' && c.status !== 'Pending Payroll') return false;
-        }
+        // Finance sees claims in Pending Finance Approval, Approved, or Paid strictly
+        if (c.status !== 'Pending Finance Approval' && c.status !== 'Waiting for Payout' && c.status !== 'Approved' && c.status !== 'Paid' && c.status !== 'Processing Payout' && c.status !== 'Pending Payroll') return false;
       }
 
       // 2. Filter Inputs
@@ -1378,6 +1465,7 @@ export function ReimbursementModule() {
           description: newClaim.items.map((i: any) => i.description).filter(Boolean).join('; ') || claimNo,
           date: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
           proofUrl,
+          approval_sequence: JSON.stringify(selectedPolicy?.workflow || ['Manager', 'HR', 'Finance']),
         });
         if (backendClaim?.id) {
           setClaims(prev => prev.map(c => c.id === claim.id ? { ...c, dbId: backendClaim.id } : c));
@@ -1476,21 +1564,22 @@ export function ReimbursementModule() {
     const claim = claims.find(c => c.id === claimId);
     if (!claim) return;
 
-    const policy = policies.find(p => p.id === claim.policyId);
+    const policy = policies.find(p => p.id === claim.policyId || p.name === claim.policyName);
     const workflowSteps = policy?.workflow || ['Manager', 'HR', 'Finance'];
+    const activeStep = getActiveWorkflowStep(claim, workflowSteps);
 
     let backendStatus = 'approved';
-    if (claim.status === 'Submitted' || claim.status === 'Pending Manager Approval') {
+    if (activeStep === 'Manager') {
       if (workflowSteps.includes('HR')) {
         backendStatus = 'pending_hr';
       } else if (workflowSteps.includes('Finance')) {
         backendStatus = 'pending_finance';
       }
-    } else if (claim.status === 'Pending HR Approval') {
+    } else if (activeStep === 'HR') {
       if (workflowSteps.includes('Finance')) {
         backendStatus = 'pending_finance';
       }
-    } else if (claim.status === 'Pending Finance Approval') {
+    } else if (activeStep === 'Finance') {
       backendStatus = 'waiting_payout';
     }
 
@@ -1505,7 +1594,7 @@ export function ReimbursementModule() {
     setClaims(prevClaims =>
       prevClaims.map(c => {
         if (c.id === claimId) {
-          const policy = policies.find(p => p.id === c.policyId);
+          const policy = policies.find(p => p.id === c.policyId || p.name === c.policyName);
           const workflowSteps = policy?.workflow || ['Manager', 'HR', 'Finance'];
           const roleLabelMap: Record<string, string> = {
             'MANAGER': 'Manager Approved',
@@ -1516,8 +1605,9 @@ export function ReimbursementModule() {
           };
           const actionLabel = roleLabelMap[userRole] || 'Approved';
 
+          const activeStep = getActiveWorkflowStep(c, workflowSteps);
           let nextStatus: EmployeeClaim['status'] = 'Approved';
-          if (c.status === 'Submitted' || c.status === 'Pending Manager Approval') {
+          if (activeStep === 'Manager') {
             if (workflowSteps.includes('HR')) {
               nextStatus = 'Pending HR Approval';
             } else if (workflowSteps.includes('Finance')) {
@@ -1525,13 +1615,13 @@ export function ReimbursementModule() {
             } else {
               nextStatus = 'Approved';
             }
-          } else if (c.status === 'Pending HR Approval') {
+          } else if (activeStep === 'HR') {
             if (workflowSteps.includes('Finance')) {
               nextStatus = 'Pending Finance Approval';
             } else {
               nextStatus = 'Approved';
             }
-          } else if (c.status === 'Pending Finance Approval') {
+          } else if (activeStep === 'Finance') {
             nextStatus = 'Waiting for Payout';
           }
 
@@ -1817,6 +1907,15 @@ export function ReimbursementModule() {
     if (!newPolicy.name || !newPolicy.code || newPolicy.categories.length === 0) {
       toast.error('Policy name, code, and at least one category are required');
       return;
+    }
+
+    if (newPolicy.effectiveDate && newPolicy.expiryDate) {
+      const start = new Date(newPolicy.effectiveDate);
+      const end = new Date(newPolicy.expiryDate);
+      if (end <= start) {
+        toast.error('Expiry date must be after the effective date');
+        return;
+      }
     }
 
     if (editingPolicyId) {
@@ -2586,17 +2685,17 @@ export function ReimbursementModule() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Policy Limit Type</label>
-                  <select
+                  <Select
                     value={newPolicy.type}
-                    onChange={e => setNewPolicy(prev => ({ ...prev, type: e.target.value as any }))}
-                    className="w-full h-[35px] px-3 bg-card border border-border rounded-sm outline-none hover:border-primary focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                  >
-                    <option value="Actual">Actual Reimbursement</option>
-                    <option value="Fixed">Fixed Stipend</option>
-                    <option value="Capped">Capped Limit</option>
-                    <option value="Per Diem">Per Diem Allowance</option>
-                    <option value="Mileage">Mileage Payout</option>
-                  </select>
+                    onChange={val => setNewPolicy(prev => ({ ...prev, type: val as any }))}
+                    options={[
+                      { value: "Actual", label: "Actual Reimbursement" },
+                      { value: "Fixed", label: "Fixed Stipend" },
+                      { value: "Capped", label: "Capped Limit" },
+                      { value: "Per Diem", label: "Per Diem Allowance" },
+                      { value: "Mileage", label: "Mileage Payout" }
+                    ]}
+                  />
                 </div>
 
                 <div>
@@ -2611,16 +2710,16 @@ export function ReimbursementModule() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Frequency Cycle</label>
-                  <select
+                  <Select
                     value={newPolicy.frequency}
-                    onChange={e => setNewPolicy(prev => ({ ...prev, frequency: e.target.value as any }))}
-                    className="w-full h-[35px] px-3 bg-card border border-border rounded-sm outline-none hover:border-primary focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                  >
-                    <option value="Daily">Daily</option>
-                    <option value="Monthly">Monthly</option>
-                    <option value="Yearly">Yearly</option>
-                    <option value="Per Claim">Per Claim</option>
-                  </select>
+                    onChange={val => setNewPolicy(prev => ({ ...prev, frequency: val as any }))}
+                    options={[
+                      { value: "Daily", label: "Daily" },
+                      { value: "Monthly", label: "Monthly" },
+                      { value: "Yearly", label: "Yearly" },
+                      { value: "Per Claim", label: "Per Claim" }
+                    ]}
+                  />
                 </div>
               </div>
 
@@ -3143,29 +3242,46 @@ dotColor = 'bg-blue-500'; labelColor = 'text-blue-700 dark:text-blue-300'; bgCol
                 );
               }
 
+              const policy = policies.find(p => p.id === viewingClaim.policyId || p.name === viewingClaim.policyName);
+              const workflowSteps = policy?.workflow || ['Manager', 'HR', 'Finance'];
+              const activeStep = getActiveWorkflowStep(viewingClaim, workflowSteps);
+
+              const dbRoleToStepMap: Record<string, string> = { 'MANAGER': 'Manager', 'HR': 'HR', 'FINANCE': 'Finance' };
+              const currentStep = viewingClaim.current_assigned_role ? dbRoleToStepMap[viewingClaim.current_assigned_role] || viewingClaim.current_assigned_role : activeStep;
+
               const canApproveStage = (() => {
-                const s = viewingClaim.status;
-                if (userRole === 'MANAGER') {
-                  return s === 'Submitted' || s === 'Pending Manager Approval' || s === 'Resubmitted';
+                if (!currentStep) return false;
+                const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(reimbursementRole);
+
+                if (currentStep === 'Manager') {
+                  return reimbursementRole === 'MANAGER' || (isAdmin && String(viewingClaim.reportingManagerId) === String(user?.id));
                 }
-                if (userRole === 'HR') return s === 'Pending HR Approval';
-                if (userRole === 'FINANCE') return s === 'Pending Finance Approval';
-                // ADMIN / SUPER_ADMIN can act on any open claim stage — but only once per claim
-                if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
-                  if (adminActionedClaims.has(viewingClaim.id)) return false;
-                  return ['Submitted', 'Pending Manager Approval', 'Pending HR Approval', 'Pending Finance Approval', 'Resubmitted', 'Waiting for Payout'].includes(s);
+                if (currentStep === 'HR') {
+                  return reimbursementRole === 'HR' || isAdmin;
+                }
+                if (currentStep === 'Finance') {
+                  return reimbursementRole === 'FINANCE' || isAdmin;
                 }
                 return false;
               })();
 
               if (!canApproveStage) {
+                let waitingMessage = "This claim is pending approval at a different stage.";
+                if (currentStep === 'Manager') {
+                  waitingMessage = "Waiting for Reporting Manager approval.";
+                } else if (currentStep === 'HR') {
+                  waitingMessage = "Waiting for HR Department verification.";
+                } else if (currentStep === 'Finance') {
+                  waitingMessage = "Waiting for Finance Manager disbursal.";
+                }
+
                 return (
                   <div className="pt-6 border-t border-border">
                     <div className="flex items-center gap-3 p-4 rounded-xl border text-sm font-semibold bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300">
-                      <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+                      <Clock className="w-5 h-5 flex-shrink-0 text-amber-500 animate-pulse" />
                       <div>
-                        <p className="font-extrabold">Not your approval stage</p>
-                        <p className="text-xs font-medium mt-0.5 opacity-75">Current status: <span className="font-black">{viewingClaim.status}</span> — This claim is pending approval at a different stage.</p>
+                        <p className="font-extrabold">Workflow Approval Stage Gated</p>
+                        <p className="text-xs font-medium mt-0.5 opacity-75">Current status: <span className="font-black">{waitingMessage}</span></p>
                       </div>
                     </div>
                   </div>
@@ -3826,9 +3942,9 @@ dotColor = 'bg-blue-500'; labelColor = 'text-blue-700 dark:text-blue-300'; bgCol
                                     setPaymentForm(prev => ({ ...prev, claimId: c.id }));
                                     setIsPaymentModalOpen(true);
                                   }}
-                                  disabled={c.status === 'Paid' || c.status === 'Pending Payroll' || c.status === 'Rejected' || c.status === 'Cancelled'}
+                                  disabled={!['Pending Finance Approval', 'Waiting for Payout', 'Processing Payout'].includes(c.status)}
                                   className={`font-bold px-3 py-1.5 rounded-lg text-xs transition border shadow-sm ${
-                                    c.status !== 'Paid' && c.status !== 'Pending Payroll' && c.status !== 'Rejected' && c.status !== 'Cancelled'
+                                    ['Pending Finance Approval', 'Waiting for Payout', 'Processing Payout'].includes(c.status)
                                       ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500/20'
                                       : 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50'
                                   }`}

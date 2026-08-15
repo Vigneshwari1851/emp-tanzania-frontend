@@ -908,9 +908,7 @@ export const DepartmentHierarchyView: React.FC<DepartmentHierarchyViewProps> = (
           <div className="w-full lg:w-96 min-h-[600px] bg-card border border-border rounded-lg p-5 flex flex-col space-y-5 shrink-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] self-start animate-in slide-in-from-right-4 duration-300">
             <div className="flex items-center justify-between pb-3 border-b border-slate-150">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-50 text-primaryflex items-center justify-center border border-blue-100/50 shrink-0">
-                  {selectedNode.id === -999 ? <Briefcase className="w-5 h-5" /> : <Building className="w-5 h-5" />}
-                </div>
+                {selectedNode.id === -999 ? <Briefcase className="w-6 h-6 text-primary shrink-0" /> : <Building className="w-6 h-6 text-primary shrink-0" />}
                 <div>
                   <h3 className="font-bold text-foreground leading-tight">
                     {selectedNode.id === -999 ? "Executive Office" : "Department Info"}

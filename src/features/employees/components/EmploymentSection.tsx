@@ -29,7 +29,8 @@ const EmploymentSection: React.FC<EmploymentSectionProps> = ({
   });
 
   const validateEmpField = (name: string, value: any, isBlur: boolean, hasExistingError: boolean) => {
-    if (!isBlur && !hasExistingError) return "";
+    const isDate = name.includes("startDate") || name.includes("endDate");
+    if (!isDate && !isBlur && !hasExistingError) return "";
     
     if (name.includes("company") || name.includes("position") || name.includes("startDate")) {
       if (!value) return "This field is required";

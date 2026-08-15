@@ -48,6 +48,13 @@ const usStates = [
   "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"
 ];
 
+const tanzaniaRegions = [
+  "Arusha", "Dar es Salaam", "Dodoma", "Geita", "Iringa", "Kagera", "Katavi", "Kigoma", 
+  "Kilimanjaro", "Lindi", "Manyara", "Mara", "Mbeya", "Morogoro", "Mtwara", "Mwanza", 
+  "Njombe", "Pemba North", "Pemba South", "Pwani", "Rukwa", "Ruvuma", "Shinyanga", 
+  "Simiyu", "Singida", "Songwe", "Tabora", "Tanga", "Zanzibar North", "Zanzibar South", "Zanzibar Urban/West"
+];
+
 const stateCities: Record<string, string[]> = {
   "Andhra Pradesh": ["Visakhapatnam", "Vijayawada", "Guntur", "Nellore", "Kurnool", "Rajahmundry", "Tirupati", "Anantapur", "Kadapa", "Kakinada"],
   "Arunachal Pradesh": ["Itanagar", "Naharlagun", "Pasighat"],
@@ -84,7 +91,38 @@ const stateCities: Record<string, string[]> = {
   "Lakshadweep": ["Kavaratti"],
   "Puducherry": ["Puducherry", "Karaikal", "Mahe", "Yanam"],
   "Ladakh": ["Leh", "Kargil"],
-  "Jammu and Kashmir": ["Srinagar", "Jammu", "Anantnag", "Baramulla"]
+  "Jammu and Kashmir": ["Srinagar", "Jammu", "Anantnag", "Baramulla"],
+  "Arusha": ["Arusha", "Karatu", "Mto wa Mbu", "Monduli"],
+  "Dar es Salaam": ["Dar es Salaam", "Kinondoni", "Ilala", "Temeke", "Ubungo", "Kigamboni"],
+  "Dodoma": ["Dodoma", "Kondoa", "Mpwapwa", "Kongwa"],
+  "Geita": ["Geita", "Chato"],
+  "Iringa": ["Iringa", "Mafinga", "Ruaha Mbuyuni"],
+  "Kagera": ["Bukoba", "Biharamulo", "Ngara"],
+  "Katavi": ["Mpanda"],
+  "Kigoma": ["Kigoma", "Kasulu", "Kibondo"],
+  "Kilimanjaro": ["Moshi", "Same", "Mwanga", "Hai"],
+  "Lindi": ["Lindi", "Ruangwa", "Nachingwea"],
+  "Manyara": ["Babati", "Mbulu", "Simanjiro"],
+  "Mara": ["Musoma", "Bunda", "Tarime"],
+  "Mbeya": ["Mbeya", "Tunduma", "Mbarali", "Chunya"],
+  "Morogoro": ["Morogoro", "Ifakara", "Kilosa", "Mikumi"],
+  "Mtwara": ["Mtwara", "Masasi", "Newala"],
+  "Mwanza": ["Mwanza", "Sengerema", "Nansio", "Geita"],
+  "Njombe": ["Njombe", "Makambako"],
+  "Pemba North": ["Wete"],
+  "Pemba South": ["Mkoani"],
+  "Pwani": ["Kibaha", "Bagamoyo", "Kisarawe", "Chalinze"],
+  "Rukwa": ["Sumbawanga"],
+  "Ruvuma": ["Songea", "Mbinga", "Tunduru"],
+  "Shinyanga": ["Shinyanga", "Kahama"],
+  "Simiyu": ["Bariadi", "Maswa"],
+  "Singida": ["Singida", "Manyoni"],
+  "Songwe": ["Vwawa", "Mlowo"],
+  "Tabora": ["Tabora", "Nzega", "Igunga"],
+  "Tanga": ["Tanga", "Korogwe", "Muheza", "Lushoto"],
+  "Zanzibar North": ["Mkokotoni"],
+  "Zanzibar South": ["Koani"],
+  "Zanzibar Urban/West": ["Zanzibar City", "Mwanakwerekwe"]
 };
 
 
@@ -211,10 +249,10 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
   const shouldRestrictFields = !isSuperAdmin && user?.id?.toString() === id;
   const isHR = user?.role === UserRole.HR;
   const isFinance = user?.role === UserRole.FINANCE;
-  const canEditPersonal = isSuperAdmin || isHR;
+  const canEditPersonal = isSuperAdmin || isHR || isSelfEdit;
   const canEditJob = isSuperAdmin || isHR;
-  const canEditBank = isSuperAdmin || isFinance;
-  const canEditPayroll = isSuperAdmin || isFinance;
+  const canEditBank = isSuperAdmin || isFinance || isSelfEdit;
+  const canEditPayroll = isSuperAdmin || isFinance || isSelfEdit;
   const lockJobAndPayroll = isFieldRestricted || shouldRestrictFields;
   const [activeSection, setActiveSection] = useState(() => location.state?.section || defaultSection);
   const [highestStepVisitedIndex, setHighestStepVisitedIndex] = useState(() => {
@@ -596,8 +634,6 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
         const orgCurrency = rawCurrency.match(/^[A-Z]{3}/i)?.[0]?.toUpperCase() || rawCurrency.toUpperCase() || "USD";
         setFormData(prev => ({
           ...prev,
-          primaryCountry: prev.primaryCountry || orgCountry,
-          secondaryCountry: prev.secondaryCountry || orgCountry,
           currency: prev.currency || orgCurrency
         }));
       }
@@ -670,14 +706,14 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
         primaryCity: details.city || "",
         primaryState: details.state || "",
         primaryZip: details.zip || "",
-        primaryCountry: details.country || "India",
+        primaryCountry: details.country || "",
         secondaryEmail: details.secondary_email || "",
         secondaryPhone: details.secondary_phone || "",
         secondaryAddress: details.secondary_address || "",
         secondaryCity: details.secondary_city || "",
         secondaryState: details.secondary_state || "",
         secondaryZip: details.secondary_zip || "",
-        secondaryCountry: details.secondary_country || "India",
+        secondaryCountry: details.secondary_country || "",
         emergencyContactName: details.emergency_contact || "",
         emergencyContactRelationship: details.emergency_relationship || "",
         emergencyContactPhone: details.emergency_phone || "",
@@ -1519,7 +1555,8 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
       "emp_company", "emp_position", "emp_startDate", "emp_file"
     ];
 
-    const shouldValidateFull = isBlur || hasError;
+    const isDate = name.endsWith("Date") || name.toLowerCase().includes("expiry") || name.toLowerCase().includes("birth") || name.includes("startDate") || name.includes("endDate");
+    const shouldValidateFull = isDate || isBlur || hasError;
 
     const isEduEndDateRequired = () => {
       if (fieldCategory !== "edu_endDate") return false;
@@ -2283,8 +2320,43 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
   };
 
   const handleSaveDraft = async (redirect: boolean) => {
+    // Validate minimum required fields to save a draft (since backend creates user records)
+    const email = (formData.primaryEmail || "").trim();
+    const firstName = (formData.firstName || "").trim();
+    const lastName = (formData.lastName || "").trim();
+    
+    const errors: Record<string, string> = {};
+    if (!firstName) errors.firstName = "First name is required to save a draft";
+    if (!lastName) errors.lastName = "Last name is required to save a draft";
+    if (!email) {
+      errors.primaryEmail = "Email is required to save a draft";
+    } else {
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(email)) {
+        errors.primaryEmail = "Enter a valid email address";
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(prev => ({ ...prev, ...errors }));
+      toast.error("Please enter first name, last name, and a valid email address to save a draft.");
+      setActiveSection("personal");
+      return false;
+    }
+
     setIsSavingDraft(true);
     try {
+      const emailChanged = !activeEmployeeId || (originalData?.formData.primaryEmail !== email);
+      if (emailChanged) {
+        const dupCheck = await checkDuplicate({ email });
+        if (dupCheck?.emailExists) {
+          setFormErrors(prev => ({ ...prev, primaryEmail: "This email is already in use" }));
+          toast.error("This email is already registered to another employee.");
+          setActiveSection("personal");
+          setIsSavingDraft(false);
+          return false;
+        }
+      }
       if (isSelfEdit) {
         await submitChangeRequest(buildChangeRequestPayload());
         toast.success("Your changes have been submitted for approval");
@@ -2415,17 +2487,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
                   })}
                 </div>
 
-                {isSelfEdit && (
-                  <div className="mt-5 flex items-start gap-3 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/60 dark:bg-blue-950/30 px-4 py-3">
-                    <ShieldAlert className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">Changes require approval</p>
-                      <p className="text-[13px] text-blue-700/80 dark:text-blue-300/80 mt-0.5">
-                        Changes you make here will be submitted as a request and applied to your profile only after your reporting manager and HR approve them.
-                      </p>
-                    </div>
-                  </div>
-                )}
+
               </div>
 
               {/* Main Content Area */}
@@ -2798,6 +2860,20 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
                               disabled={(isFieldRestricted && !canEditPersonal) || !formData.primaryCountry}
                               options={usStates.map(state => ({ value: state, label: state }))}
                             />
+                          ) : formData.primaryCountry === 'Tanzania' ? (
+                            <SearchableSelect
+                              value={formData.primaryState}
+                              onChange={(val: string) => {
+                                updateField("primaryState", val);
+                                updateField("primaryCity", ""); // Reset city on state change
+                              }}
+                              label="Region"
+                              required
+                              error={formErrors.primaryState}
+                              placeholder="Select Region"
+                              disabled={(isFieldRestricted && !canEditPersonal) || !formData.primaryCountry}
+                              options={tanzaniaRegions.map(state => ({ value: state, label: state }))}
+                            />
                           ) : (
                             <>
                               <label className="block text-[12px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider mb-2">
@@ -2956,7 +3032,28 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
                           />
                           {formErrors.secondaryPhone && <p className="text-xs text-red-500 mt-1">{formErrors.secondaryPhone}</p>}
                         </div>
-                        <div className="md:col-span-3">
+                        <div>
+                          <SearchableSelect
+                            value={formData.secondaryCountry}
+                            onChange={(val) => {
+                              updateField("secondaryCountry", val);
+                              updateField("secondaryState", "");
+                              updateField("secondaryCity", "");
+                            }}
+                            label="Country"
+                            error={formErrors.secondaryCountry}
+                            placeholder="Select Country"
+                            disabled={sameAsPrimary || (isFieldRestricted && !canEditPersonal)}
+                            options={[
+                              "India", "United States", "United Kingdom", "United Arab Emirates",
+                              "Singapore", "Canada", "Australia", "Germany", "France",
+                              "Netherlands", "Saudi Arabia", "South Africa", "Japan",
+                              "China", "Brazil", "Mexico", "Italy", "Spain", "Malaysia", "Indonesia",
+                              "Israel", "Ireland", "New Zealand", "Tanzania", "Kenya", "Nigeria", "Other"
+                            ].map(c => ({ value: c, label: c }))}
+                          />
+                        </div>
+                        <div className="sm:col-span-2 xl:col-span-3">
                           <div className="flex items-center justify-between mb-2">
                             <label className="block text-[12px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider">
                               Street Address
@@ -3023,6 +3120,19 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
                               placeholder="Select State"
                               disabled={sameAsPrimary || (isFieldRestricted && !canEditPersonal) || !formData.secondaryCountry}
                               options={usStates.map(state => ({ value: state, label: state }))}
+                            />
+                          ) : formData.secondaryCountry === 'Tanzania' ? (
+                            <SearchableSelect
+                              value={formData.secondaryState}
+                              onChange={(val: string) => {
+                                updateField("secondaryState", val);
+                                updateField("secondaryCity", ""); // Reset city on state change
+                              }}
+                              label="Region"
+                              error={formErrors.secondaryState}
+                              placeholder="Select Region"
+                              disabled={sameAsPrimary || (isFieldRestricted && !canEditPersonal) || !formData.secondaryCountry}
+                              options={tanzaniaRegions.map(state => ({ value: state, label: state }))}
                             />
                           ) : (
                             <>
@@ -3116,27 +3226,6 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
                           }
                           return null;
                         })()}
-                        <div>
-                          <SearchableSelect
-                            value={formData.secondaryCountry}
-                            onChange={(val) => {
-                              updateField("secondaryCountry", val);
-                              updateField("secondaryState", "");
-                              updateField("secondaryCity", "");
-                            }}
-                            label="Country"
-                            error={formErrors.secondaryCountry}
-                            placeholder="Select Country"
-                            disabled={sameAsPrimary || (isFieldRestricted && !canEditPersonal)}
-                            options={[
-                              "India", "United States", "United Kingdom", "United Arab Emirates",
-                              "Singapore", "Canada", "Australia", "Germany", "France",
-                              "Netherlands", "Saudi Arabia", "South Africa", "Japan",
-                              "China", "Brazil", "Mexico", "Italy", "Spain", "Malaysia", "Indonesia",
-                              "Israel", "Ireland", "New Zealand", "Tanzania", "Kenya", "Nigeria", "Other"
-                            ].map(c => ({ value: c, label: c }))}
-                          />
-                        </div>
                         <div>
                           <label className="block text-[12px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider mb-2">
                             {(() => {
@@ -4226,6 +4315,22 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
                                       toast.error("Please fill all required certification fields (*)");
                                       return;
                                     }
+
+                                    const issue = new Date(currentCert.issueDate);
+                                    const today = new Date();
+                                    today.setHours(0, 0, 0, 0);
+                                    if (issue > today) {
+                                      toast.error("Issue date cannot be in the future");
+                                      return;
+                                    }
+
+                                    if (currentCert.expiryDate) {
+                                      const expiry = new Date(currentCert.expiryDate);
+                                      if (expiry <= issue) {
+                                        toast.error("Expiry date must be after the issue date");
+                                        return;
+                                      }
+                                    }
                                     
                                     if (!isEditMode) {
                                       setFormData((prev: any) => ({
@@ -4487,7 +4592,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => handleSaveDraft(false)}
+                      onClick={() => handleSaveDraft(true)}
                       disabled={isSavingDraft || isSubmitting}
                       className="text-sm font-bold h-10 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900 bg-amber-50/20 dark:bg-amber-950/30 hover:bg-amber-50 dark:hover:bg-amber-950/50 hover:text-amber-700 dark:hover:text-amber-300 hover:border-amber-200 dark:hover:border-amber-800 transition-all duration-300 gap-2 px-4 shadow-sm shadow-amber-50/50 dark:shadow-none"
                     >

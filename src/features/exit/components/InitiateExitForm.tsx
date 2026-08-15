@@ -682,8 +682,8 @@ const InitiateExitForm: React.FC<InitiateExitFormProps> = ({ onBack, initialData
         {/* Card 1: Employee Details, Exit Type and Timeline */}
         <div className="bg-card rounded-lg shadow-sm border border-border overflow-visible">
           <div className="px-6 py-4 border-b border-border flex items-center gap-3 bg-card rounded-t-xl">
-            <div className="p-2 bg-teal-50 rounded-lg">
-              <Calendar className="w-5 h-5 text-teal-600" />
+            <div className="p-2 text-teal-600">
+              <Calendar className="w-5 h-5" />
             </div>
             <h2 className="font-medium text-foreground text-[17px]">Exit Type and Timeline</h2>
           </div>
@@ -896,8 +896,8 @@ const InitiateExitForm: React.FC<InitiateExitFormProps> = ({ onBack, initialData
 
             {/* Info Box */}
             <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-5 flex gap-4">
-              <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Info className="w-4 h-4 text-blue-600" />
+              <div className="w-6 h-6 flex items-center justify-center flex-shrink-0 mt-0.5 text-blue-600">
+                <Info className="w-4 h-4" />
               </div>
               <div>
                 <h4 className="text-[12px] font-medium text-[15px] text-blue-900 mb-1">Notice Period Information</h4>
@@ -912,8 +912,8 @@ const InitiateExitForm: React.FC<InitiateExitFormProps> = ({ onBack, initialData
         {/* Card 2: Reason for Exit */}
         <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
           <div className="px-6 py-4 border-b border-border flex items-center gap-3 bg-card">
-            <div className="p-2 bg-teal-50 rounded-lg">
-              <FileText className="w-5 h-5 text-teal-600" />
+            <div className="p-2 text-teal-600">
+              <FileText className="w-5 h-5" />
             </div>
             <h2 className="font-medium text-foreground text-[17px]">Reason for Exit</h2>
           </div>
@@ -977,8 +977,8 @@ const InitiateExitForm: React.FC<InitiateExitFormProps> = ({ onBack, initialData
         {isAdminOrHR && (
           <div className="bg-card rounded-lg shadow-sm border border-border overflow-visible">
             <div className="px-6 py-4 border-b border-border flex items-center gap-3 bg-card rounded-t-xl">
-              <div className="p-2 bg-teal-50 rounded-lg">
-                <ArrowRightLeft className="w-5 h-5 text-teal-600" />
+              <div className="p-2 text-teal-600">
+                <ArrowRightLeft className="w-5 h-5" />
               </div>
               <div>
                 <h2 className="font-medium text-foreground text-[17px]">Knowledge Transfer</h2>
@@ -1190,8 +1190,8 @@ const InitiateExitForm: React.FC<InitiateExitFormProps> = ({ onBack, initialData
         {isAssetTrackingEnabled && (
           <div className="bg-card rounded-lg shadow-sm border border-border overflow-visible">
             <div className="px-6 py-4 border-b border-border flex items-center gap-3 bg-card rounded-t-xl">
-              <div className="p-2 bg-teal-50 rounded-lg">
-                <ClipboardCheck className="w-5 h-5 text-teal-600" />
+              <div className="p-2 text-teal-600">
+                <ClipboardCheck className="w-5 h-5" />
               </div>
               <h2 className="font-medium text-foreground text-[17px]">Company Assets to be Returned</h2>
             </div>
@@ -1300,8 +1300,8 @@ const InitiateExitForm: React.FC<InitiateExitFormProps> = ({ onBack, initialData
         {/* Card 3: Additional Details */}
         <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
           <div className="px-6 py-4 border-b border-border flex items-center gap-3 bg-card">
-            <div className="p-2 bg-teal-50 rounded-lg">
-              <Info className="w-5 h-5 text-teal-600" />
+            <div className="p-2 text-teal-600">
+              <Info className="w-5 h-5" />
             </div>
             <h2 className="font-medium text-foreground text-[17px]">Additional Details</h2>
           </div>
@@ -1376,8 +1376,8 @@ const InitiateExitForm: React.FC<InitiateExitFormProps> = ({ onBack, initialData
         {/* Important Information (Full Width Card) */}
         <div className="bg-amber-50/50 border border-amber-200 rounded-lg p-6 shadow-sm w-full">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-              <AlertCircle className="w-5 h-5 text-amber-600" />
+            <div className="w-10 h-10 flex items-center justify-center text-amber-600">
+              <AlertCircle className="w-5 h-5" />
             </div>
             <h3 className="text-[17px] font-medium text-amber-900">Important Information</h3>
           </div>

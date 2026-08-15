@@ -467,35 +467,35 @@ export default function AdminSurveyDashboard() {
                             className="p-1 text-muted-foreground hover:text-foreground bg-transparent hover:bg-muted/50 rounded-md transition-all cursor-pointer border-0 w-8 h-8 flex items-center justify-center"
                             title="Preview Survey"
                           >
-                            <Eye />
+                            <Eye className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => navigate(`/surveys/admin/preview/${survey.id}`)}
                             className="p-1 text-muted-foreground hover:text-foreground bg-transparent hover:bg-muted/50 rounded-md transition-all cursor-pointer border-0 w-8 h-8 flex items-center justify-center"
                             title="Survey Settings"
                           >
-                            <Settings />
+                            <Settings className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => navigate(`/surveys/admin/analytics/${survey.id}`)}
                             className="p-1 text-muted-foreground hover:text-foreground bg-transparent hover:bg-muted/50 rounded-md transition-all cursor-pointer border-0 w-8 h-8 flex items-center justify-center"
                             title="View Analytics"
                           >
-                            <BarChart2 />
+                            <BarChart2 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => navigate(`/surveys/admin/edit/${survey.id}`)}
                             className="p-1 text-muted-foreground hover:text-foreground bg-transparent hover:bg-muted/50 rounded-md transition-all cursor-pointer border-0 w-8 h-8 flex items-center justify-center"
                             title="Edit Survey Settings"
                           >
-                            <Pencil />
+                            <Pencil className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => navigate(`/surveys/admin/publish/${survey.id}`)}
                             className="p-1 text-muted-foreground hover:text-foreground bg-transparent hover:bg-muted/50 rounded-md transition-all cursor-pointer border-0 w-8 h-8 flex items-center justify-center"
                             title="Publish / Share"
                           >
-                            <Share2 />
+                            <Share2 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => {
@@ -518,9 +518,9 @@ export default function AdminSurveyDashboard() {
                             title="Copy Survey (Decoupled Structure)"
                           >
                             {copySurveyMutation.isPending && copySurveyMutation.variables === survey.id ? (
-                              <Loader2 className="animate-spin" />
+                              <Loader2 className="animate-spin w-4 h-4" />
                             ) : (
-                              <Copy />
+                              <Copy className="w-4 h-4" />
                             )}
                           </button>
                           <button
@@ -544,9 +544,9 @@ export default function AdminSurveyDashboard() {
                             title="Clone Survey (Linked Responses)"
                           >
                             {cloneSurveyMutation.isPending && cloneSurveyMutation.variables === survey.id ? (
-                              <Loader2 className="animate-spin" />
+                              <Loader2 className="animate-spin w-4 h-4" />
                             ) : (
-                              <GitBranch />
+                              <GitBranch className="w-4 h-4" />
                             )}
                           </button>
                           {survey.is_active && (
@@ -557,9 +557,9 @@ export default function AdminSurveyDashboard() {
                               title="Close Campaign"
                             >
                               {closeSurveyMutation.isPending && closeSurveyMutation.variables === survey.id ? (
-                                <Loader2 className="animate-spin" />
+                                <Loader2 className="animate-spin w-4 h-4" />
                               ) : (
-                                <XCircle />
+                                <XCircle className="w-4 h-4" />
                               )}
                             </button>
                           )}

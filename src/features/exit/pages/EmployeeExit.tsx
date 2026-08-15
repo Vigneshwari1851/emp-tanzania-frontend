@@ -551,8 +551,8 @@ const EmployeeExit: React.FC = () => {
               </div>
             ) : exitRequests.length === 0 ? (
               <div className="py-16 text-center">
-                <div className="w-12 h-12 bg-muted border border-border rounded-full flex items-center justify-center mx-auto mb-3">
-                  <UserX className="w-6 h-6 text-muted-foreground" />
+                <div className="w-12 h-12 flex items-center justify-center mx-auto mb-3 text-muted-foreground">
+                  <UserX className="w-6 h-6" />
                 </div>
                 <p className="text-sm font-semibold text-muted-foreground">No exit requests found</p>
               </div>

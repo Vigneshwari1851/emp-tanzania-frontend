@@ -125,9 +125,10 @@ const EducationSection: React.FC<EducationSectionProps> = ({
   });
 
   const validateEduField = (name: string, value: any, isBlur: boolean, hasExistingError: boolean, recordContext?: Education) => {
-    if (!isBlur && !hasExistingError) return "";
+    const isDate = name.includes("startDate") || name.includes("endDate");
+    if (!isDate && !isBlur && !hasExistingError) return "";
     
-    const isRequired = name.includes("level") || name.includes("institution") || name.includes("startDate");
+    const isRequired = name.includes("level") || name.includes("institution") || name.includes("startDate") || (name.includes("endDate") && !recordContext?.currentlyStudying);
     if (isRequired && !value) return "This field is required";
 
     // Degree and Field of Study are required for UG/PG/Diploma/Doctorate
@@ -179,6 +180,9 @@ const EducationSection: React.FC<EducationSectionProps> = ({
 
   const commitEducation = () => {
     const fields: (keyof Education)[] = ["level", "institution", "startDate"];
+    if (!pendingEduRecord.currentlyStudying) {
+      fields.push("endDate");
+    }
     let hasError = false;
     
     // Check basic required fields
@@ -236,6 +240,9 @@ const EducationSection: React.FC<EducationSectionProps> = ({
   const saveEducation = (index: number) => {
     const record = educationHistory[index];
     const fields: (keyof Education)[] = ["level", "institution", "startDate"];
+    if (!record.currentlyStudying) {
+      fields.push("endDate");
+    }
     let hasError = false;
     
     // Check basic required fields

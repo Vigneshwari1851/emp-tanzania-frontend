@@ -59,19 +59,23 @@ function KpiCard({
   icon: any; color: string; badge?: string;
 }) {
   return (
-    <div className="bg-card rounded-lg border border-border/80 shadow-sm p-5 hover:shadow-sm transition-shadow duration-200">
-      <div className="flex items-center justify-between mb-2">
-        <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center ring-1 ring-white/20`}>
-          <Icon className="w-5 h-5" />
-        </div>
+    <div className="bg-card min-h-[112.85px] rounded-lg border border-border/80 shadow-sm p-5 hover:shadow-sm transition-shadow duration-200 flex flex-col justify-between">
+      <div className="flex items-center justify-between">
+        <Icon className={`w-5 h-5 ${color.split(' ').pop()} shrink-0`} />
         {badge && (
           <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-0.5">
             {badge}
           </span>
         )}
       </div>
-      <p className="text-[24px] font-semibold text-foreground tabular-nums tracking-tight">{value}</p>
-      <p className="text-[11px] text-muted-foreground font-medium tracking-wide mt-1">{label}</p>
+      <div className="my-1">
+        <p className="text-[24px] font-semibold text-foreground tabular-nums tracking-tight">{value}</p>
+      </div>
+      <div className="space-y-0.5">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block truncate">
+          {label}
+        </span>
+      </div>
     </div>
   );
 }
@@ -329,9 +333,7 @@ export function FinanceDashboard() {
                 onClick={() => navigate(a.path)}
                 className="bg-card rounded-lg border border-border/70 shadow-sm p-5 flex flex-col items-center gap-2.5 hover:border-emerald-200 hover:shadow-sm hover:-translate-y-0.5 cursor-pointer transition-all duration-200 group"
               >
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${a.color} dark:bg-transparent shadow-sm group-hover:shadow-sm transition-all group-hover:scale-110`}>
-                  <a.icon className="w-5 h-5" />
-                </div>
+                <a.icon className={`w-5 h-5 ${a.color.split(' ')[0]} shrink-0 transition-transform group-hover:scale-110`} />
                 <span className="text-[10px] text-slate-600 text-center leading-tight font-medium">{a.label}</span>
               </div>
             ))}
@@ -346,9 +348,7 @@ export function FinanceDashboard() {
         <div className="bg-card rounded-lg border border-border shadow-sm p-5">
           <div className="flex items-start justify-between mb-1">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center">
-                <TrendingDown className="w-3.5 h-3.5 text-emerald-600 rotate-180" />
-              </div>
+              <TrendingDown className="w-5 h-5 text-emerald-600 rotate-180 shrink-0" />
               <h3 className="text-sm font-bold text-foreground">Monthly Payroll Trend</h3>
             </div>
             {trendData.length === 0 && (
@@ -568,9 +568,7 @@ export function FinanceDashboard() {
         <div className="bg-card rounded-lg border border-border shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-transparent flex items-center justify-center">
-                <CreditCard className="w-3.5 h-3.5 text-amber-500" />
-              </div>
+              <CreditCard className="w-5 h-5 text-amber-500 shrink-0" />
               <h3 className="text-sm font-bold text-foreground">Pending Reimbursement</h3>
             </div>
             <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold flex items-center justify-center">
@@ -609,9 +607,7 @@ export function FinanceDashboard() {
         {/* Payroll & Compliance */}
         <div className="bg-card rounded-lg border border-border shadow-sm p-5">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-              <FileCheck className="w-3.5 h-3.5 text-primary" />
-            </div>
+            <FileCheck className="w-5 h-5 text-primary shrink-0" />
             <h3 className="text-sm font-bold text-foreground">Payroll & Compliance</h3>
           </div>
           <div className="space-y-3">
@@ -642,9 +638,7 @@ export function FinanceDashboard() {
         {/* Vendor Payments */}
         <div className="bg-card rounded-lg border border-border shadow-sm p-5">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-7 h-7 rounded-lg bg-orange-50 dark:bg-transparent flex items-center justify-center">
-              <Receipt className="w-3.5 h-3.5 text-orange-500" />
-            </div>
+            <Receipt className="w-5 h-5 text-orange-500 shrink-0" />
             <h3 className="text-sm font-bold text-foreground">Vendor Payments</h3>
           </div>
           <p className="text-[12px] text-muted-foreground text-center py-6">Vendor payment tracking coming soon</p>

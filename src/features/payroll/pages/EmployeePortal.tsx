@@ -514,9 +514,7 @@ function TaxDeclarationsTab({ taxSections, savedRegime, regimeChangedAt }: { tax
           <Card className="border-border shadow-sm h-full overflow-hidden">
             <CardHeader className="pb-4 border-b border-border bg-muted/30">
               <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                <div className="size-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <FileText className="size-3.5 text-primary" />
-                </div>
+                <FileText className="size-5 text-primary shrink-0" />
                 My Declarations
               </CardTitle>
               <CardDescription>{investments.length} item{investments.length !== 1 ? 's' : ''} · FY {fy}</CardDescription>
@@ -525,9 +523,7 @@ function TaxDeclarationsTab({ taxSections, savedRegime, regimeChangedAt }: { tax
 
               {investments.length === 0 && (
                 <div className="py-20 text-center">
-                  <div className="size-16 rounded-2xl bg-muted mx-auto flex items-center justify-center mb-4">
-                    <FileText className="size-8 text-muted-foreground/30" />
-                  </div>
+                  <FileText className="size-8 text-muted-foreground/30 mx-auto mb-4" />
                   <p className="text-sm font-bold text-foreground">No declarations yet</p>
                   <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">Start by selecting a tax section and uploading your investment proof using the form on the right</p>
                 </div>
@@ -709,9 +705,7 @@ function TaxDeclarationsTab({ taxSections, savedRegime, regimeChangedAt }: { tax
           <Card className="border-border shadow-sm sticky top-6 overflow-hidden">
             <CardHeader className="pb-4 border-b border-border bg-muted/30">
               <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                <div className="size-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Plus className="size-3.5 text-primary" />
-                </div>
+                <Plus className="size-5 text-primary shrink-0" />
                 Add Declaration
               </CardTitle>
               <CardDescription>Upload investment proof for validation</CardDescription>
@@ -810,9 +804,7 @@ function TaxDeclarationsTab({ taxSections, savedRegime, regimeChangedAt }: { tax
           onClick={() => setHraOpen(o => !o)}
         >
           <div className="flex items-center gap-3">
-            <div className="size-9 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900 rounded-xl flex items-center justify-center">
-              <Home className="size-4 text-emerald-600 dark:text-emerald-400" />
-            </div>
+            <Home className="size-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <div>
               <p className="text-sm font-bold text-foreground">HRA Exemption Declaration</p>
               <p className="text-xs text-muted-foreground">Claim House Rent Allowance exemption on rent paid</p>
@@ -1159,9 +1151,7 @@ function ReimbursementsTab({ reimbursementTypes }: { reimbursementTypes: PortalR
           <Card id="claim-form" className="border-border shadow-sm overflow-hidden bg-card">
             <CardHeader className="bg-muted/30 pb-4 border-b border-border">
               <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                <div className="size-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Receipt className="size-3.5 text-primary" />
-                </div>
+                <Receipt className="size-5 text-primary shrink-0" />
                 Submit New Claim
               </CardTitle>
             </CardHeader>
@@ -1324,9 +1314,7 @@ function Form12BTab() {
       <Card className="border-border shadow-sm overflow-hidden">
         <CardHeader className="bg-muted/30 border-b border-border pb-5">
           <CardTitle className="text-lg font-bold text-foreground flex items-center gap-3">
-            <div className="size-9 rounded-xl bg-primary/10 flex items-center justify-center">
-              <FileText className="size-4 text-primary" />
-            </div>
+            <FileText className="size-5 text-primary shrink-0" />
             Previous Employment Details
           </CardTitle>
           <CardDescription>Declare income from your previous employer to ensure accurate TDS calculation for the rest of this financial year.</CardDescription>
@@ -2078,9 +2066,7 @@ export function EmployeePortal() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                   <div className="bg-card border-b border-border px-6 py-5 flex items-center gap-3">
-                    <div className="size-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                      <FileText className="size-4 text-primary" />
-                    </div>
+                    <FileText className="size-5 text-primary shrink-0" />
                     <div>
                       <p className="text-xl font-bold text-foreground">Salary Slips</p>
                       <p className="text-sm text-muted-foreground mt-0.5">View and download your monthly payslips</p>

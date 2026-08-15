@@ -238,7 +238,7 @@ export default function CreateSurveyPage() {
           {/* Survey Details Card */}
           <div className="bg-card border border-border rounded-lg p-6 space-y-5 shadow-sm">
             <div className="flex items-center gap-2 pb-3 border-b border-border">
-              <span className="p-1.5 bg-primary/10 text-primary rounded-lg">
+              <span className="p-1.5 text-primary">
                 <FileText className="w-4 h-4" />
               </span>
               <h3 className="text-sm text-foreground font-bold">Survey Details</h3>
@@ -365,7 +365,7 @@ export default function CreateSurveyPage() {
           {/* Builder Mode Card */}
           <div className="bg-card border border-border rounded-lg p-6 space-y-4 shadow-sm">
             <div className="flex items-center gap-2 pb-3 border-b border-border">
-              <span className="p-1.5 bg-primary/10 text-primary-650 rounded-lg">
+              <span className="p-1.5 text-primary-650">
                 <Activity className="w-4 h-4" />
               </span>
               <h3 className="text-sm text-foreground font-bold">Builder Mode</h3>
@@ -396,8 +396,8 @@ export default function CreateSurveyPage() {
                     }`}
                   >
                     <div className="flex items-center gap-3 mb-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isLocked ? "bg-slate-300 dark:bg-slate-600" : mode === m.key ? "bg-primary" : "bg-slate-200 dark:bg-slate-700"}`}>
-                        <m.icon size={18} className={isLocked ? "text-muted-foreground" : mode === m.key ? "text-white" : "text-muted-foreground"} />
+                      <div className={`w-10 h-10 flex items-center justify-center ${isLocked ? "text-slate-400" : mode === m.key ? "text-primary" : "text-muted-foreground"}`}>
+                        <m.icon size={18} />
                       </div>
                       <div>
                         <p className="font-bold text-sm text-foreground">{m.title}</p>
