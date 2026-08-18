@@ -16,8 +16,12 @@ import { useAuth } from "../shared/context/AuthContext";
 
 function RootRedirect() {
   const { user, isAuthenticated } = useAuth();
-  if (isAuthenticated && user?.orgSlug && user.orgSlug !== 'undefined' && user.orgSlug !== 'null') {
-    return <Navigate to={`/${user.orgSlug}`} replace />;
+  // Commented out to avoid orgSlug prefixing for now:
+  // if (isAuthenticated && user?.orgSlug && user.orgSlug !== 'undefined' && user.orgSlug !== 'null') {
+  //   return <Navigate to={`/${user.orgSlug}`} replace />;
+  // }
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
   }
   return <Navigate to="/login" replace />;
 }
@@ -154,7 +158,10 @@ export const routes = createRoutesFromElements(
     <Route path="*" element={<ErrorPage />} />
 
     {/* Protected Routes (with EMPLOYEE layout) */}
+    {/* Commented out orgSlug wrapper path for now:
     <Route path="/:orgSlug" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><MainLayout /></Suspense></ProtectedRoute>} errorElement={<ErrorPage />}>
+    */}
+    <Route path="/" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><MainLayout /></Suspense></ProtectedRoute>} errorElement={<ErrorPage />}>
       <Route index element={<Dashboard />} />
 
       {/* Org Setup Routes */}

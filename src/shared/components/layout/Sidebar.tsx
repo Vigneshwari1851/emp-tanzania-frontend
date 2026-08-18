@@ -166,9 +166,12 @@ export function Sidebar({ collapsed, onToggle, onMobileClose }: SidebarProps) {
   };
 
   const getPath = (path: string) => {
+    // Commented out to avoid orgSlug prefixing for now:
+    /*
     if (user?.orgSlug && user.orgSlug !== 'undefined' && user.orgSlug !== 'null') {
       return `/${user.orgSlug}${path === '/' ? '' : path}`;
     }
+    */
     return path;
   };
 

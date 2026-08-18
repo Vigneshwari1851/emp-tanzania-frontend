@@ -51,15 +51,6 @@ axiosInstance.interceptors.response.use(
 
           // Build tenant-aware login URL
           let loginUrl = '/login';
-          try {
-            const storedUser = sessionStorage.getItem('user');
-            if (storedUser) {
-              const parsed = JSON.parse(storedUser);
-              if (parsed?.orgSlug && parsed.orgSlug !== 'undefined' && parsed.orgSlug !== 'null') {
-                loginUrl = `/${parsed.orgSlug}/login`;
-              }
-            }
-          } catch {}
 
           // Added: Resolve loginUrl relative to the app base path (e.g. /rafiki/)
           const baseUrl = import.meta.env.BASE_URL || '/';
