@@ -60,8 +60,8 @@ const AuthLayout = ({ children, logoUrl, entityName }) => {
   const leftImage = resolvedTheme === "dark" ? loginDarkImage : loginImage;
   const textColorClass = resolvedTheme === "dark" ? "text-[#ffffff]" : "text-[#000000]";
 
-  const uploadedLogo = logoUrl || localOrg?.logo_url || localStorage.getItem('cached_company_logo') || window.temp_company_logo;
-  const displayName = entityName || localOrg?.entity_name || localStorage.getItem('cached_company_name') || "";
+  const uploadedLogo = orgSlug ? (logoUrl || localOrg?.logo_url || localStorage.getItem('cached_company_logo') || window.temp_company_logo) : null;
+  const displayName = orgSlug ? (entityName || localOrg?.entity_name || localStorage.getItem('cached_company_name') || "") : "";
 
   return (
     <div className={`relative min-h-screen w-full flex items-center justify-center p-6 ${theme.fontFamily}`}>

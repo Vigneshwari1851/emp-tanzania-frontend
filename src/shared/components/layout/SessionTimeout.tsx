@@ -28,13 +28,9 @@ export function SessionTimeout() {
   }, []);
 
   const handleTimeout = useCallback(() => {
-    const orgSlug = user?.orgSlug;
     logout();
-    const expired = orgSlug && orgSlug !== "undefined" && orgSlug !== "null"
-      ? `/${orgSlug}/login?expired=true`
-      : "/login?expired=true";
-    navigate(expired, { replace: true });
-  }, [logout, navigate, user?.orgSlug]);
+    navigate("/login?expired=true", { replace: true });
+  }, [logout, navigate]);
 
   const startIdleTimer = useCallback(() => {
     if (idleTimerRef.current !== null) {
