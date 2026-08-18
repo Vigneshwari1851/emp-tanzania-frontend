@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MapPin, PlusCircle, Trash2, ChevronRight, Search, Check, Info, AlertTriangle, CheckCircle2, Globe, Lock } from 'lucide-react';
 import { ConfirmationDialog } from "@/shared/components/ui/ConfirmationDialog";
 import Select from "@/shared/components/ui/Select";
+import SearchableSelect from "@/shared/components/ui/SearchableSelect";
 import { capitalizeFirstLetter } from '@/shared/utils/stringUtils';
 
 
@@ -188,6 +189,59 @@ const getTaxLabelAndPlaceholder = (countryName: string) => {
     label: "Tax / VAT Registration Number",
     placeholder: "Enter tax registration number"
   };
+};
+
+const getTimeZoneOptions = (countryName: string) => {
+  const country = (countryName || "").trim().toLowerCase();
+  
+  if (country === "india") {
+    return [
+      { value: "Asia/Kolkata", label: "India (IST)" }
+    ];
+  }
+  if (country === "united states" || country === "usa" || country === "us") {
+    return [
+      { value: "America/New_York", label: "USA (Eastern)" },
+      { value: "America/Chicago", label: "USA (Central)" },
+      { value: "America/Denver", label: "USA (Mountain)" },
+      { value: "America/Los_Angeles", label: "USA (Pacific)" }
+    ];
+  }
+  if (country === "united kingdom" || country === "uk" || country === "gb") {
+    return [
+      { value: "Europe/London", label: "UK (GMT/BST)" }
+    ];
+  }
+  if (country === "united arab emirates" || country === "uae") {
+    return [
+      { value: "Asia/Dubai", label: "Dubai (GST)" }
+    ];
+  }
+  if (country === "tanzania" || country === "tz") {
+    return [
+      { value: "Africa/Dar_es_Salaam", label: "Tanzania (EAT)" }
+    ];
+  }
+  if (country === "kenya" || country === "ke") {
+    return [
+      { value: "Africa/Nairobi", label: "Kenya (EAT)" }
+    ];
+  }
+  if (country === "nigeria" || country === "ng") {
+    return [
+      { value: "Africa/Lagos", label: "Nigeria (WAT)" }
+    ];
+  }
+  
+  return [
+    { value: "Asia/Kolkata", label: "India (IST)" },
+    { value: "America/New_York", label: "USA (Eastern)" },
+    { value: "Europe/London", label: "UK (GMT)" },
+    { value: "Asia/Dubai", label: "Dubai (GST)" },
+    { value: "Africa/Dar_es_Salaam", label: "Tanzania (EAT)" },
+    { value: "Africa/Nairobi", label: "Kenya (EAT)" },
+    { value: "Africa/Lagos", label: "Nigeria (WAT)" }
+  ];
 };
 
 export const GeographicalLocationTab = ({
@@ -402,7 +456,7 @@ export const GeographicalLocationTab = ({
           </div>
         ) : (
           <div className="space-y-6">
-            {companyData.locations.map((loc: any) => {
+            {companyData.locations.map((loc: any, index: number) => {
               const isComplete = isLocationComplete(loc);
               const taxDetails = getTaxLabelAndPlaceholder(loc.address?.country || companyData.legalAddress?.country || "");
               
@@ -416,7 +470,7 @@ export const GeographicalLocationTab = ({
                     <div className="flex items-center gap-[10px] min-w-0">
                       <Globe className="h-5 w-5 text-cyan-600 dark:text-cyan-400 shrink-0" />
                       <span className="font-['Space_Grotesk'] text-[14px] font-semibold text-[#12131A] dark:text-foreground truncate">
-                        {loc.locationName || "Unnamed Location"}
+                        {index === companyData.locations.length - 1 ? "Headquarters" : (loc.locationName || "Office Location")}
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
@@ -522,7 +576,7 @@ export const GeographicalLocationTab = ({
                                 State/Province <span className="text-[#E14B5A]">*</span>
                               </label>
                               {showStateSelect ? (
-                                <Select
+                                <SearchableSelect
                                   value={loc.address.state}
                                   onChange={(val: string) => {
                                     if (isReadOnly) return;
@@ -565,7 +619,7 @@ export const GeographicalLocationTab = ({
                                   <label className="flex items-center gap-[4px] text-[12.5px] font-medium text-[#5B5F6E] mb-[6px]">
                                     City <span className="text-[#E14B5A]">*</span>
                                   </label>
-                                  <Select
+                                  <SearchableSelect
                                     value={loc.address.city}
                                     onChange={(val: string) => {
                                       handleFieldChange(loc.id, "address", val, "city");
@@ -630,12 +684,7 @@ export const GeographicalLocationTab = ({
                           placeholder="Select Time Zone"
                           required
                           disabled={isReadOnly}
-                          options={[
-                            { value: "Asia/Kolkata", label: "India (IST)" },
-                            { value: "America/New_York", label: "USA (Eastern)" },
-                            { value: "Europe/London", label: "UK (GMT)" },
-                            { value: "Asia/Dubai", label: "Dubai (GST)" },
-                          ]}
+                          options={getTimeZoneOptions(loc.address?.country || legalEntityCountry || "")}
                         />
                         {errors?.locations?.[loc.id]?.timeZone && (
                           <p className="text-[11.5px] text-[#E14B5A] mt-1">{errors.locations[loc.id].timeZone}</p>
@@ -692,8 +741,8 @@ export const GeographicalLocationTab = ({
             <>
               <div className="text-[11px] font-semibold tracking-[0.06em] uppercase text-[#9498A6] mb-[12px] pl-[2px]">Locations</div>
               <div className="max-h-[350px] overflow-y-auto pr-1 space-y-[2px] mb-4">
-                {companyData.locations.map((loc: any) => {
-                  const name = loc.locationName || "Unnamed Location";
+                {companyData.locations.map((loc: any, index: number) => {
+                  const name = index === companyData.locations.length - 1 ? "Headquarters" : (loc.locationName || "Office Location");
                   const isComplete = isLocationComplete(loc);
                   return (
                     <div

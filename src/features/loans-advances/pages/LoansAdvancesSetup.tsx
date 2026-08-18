@@ -538,7 +538,7 @@ export function LoansAdvancesSetup() {
 
                 {/* Settings Tab */}
                 {activeTab === 'settings' && (
-                    <form onSubmit={handleSaveSettings} className="bg-card p-6 rounded-lg border border-border shadow-sm max-w-4xl space-y-6 animate-in fade-in duration-300">
+                    <form onSubmit={handleSaveSettings} className="bg-card p-6 rounded-lg border border-border shadow-sm w-full space-y-6 animate-in fade-in duration-300">
                         <div className="flex justify-between items-center border-b border-border pb-4">
                             <div>
                                 <h3 className="font-extrabold text-lg text-foreground">Loan & Advance Module Settings</h3>

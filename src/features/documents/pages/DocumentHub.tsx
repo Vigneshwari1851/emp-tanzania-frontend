@@ -113,8 +113,7 @@ export const DocumentHub: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [accessFilter, setAccessFilter] = useState<"All Access" | "Public" | "Restricted">("All Access");
-  const [starredOnly, setStarredOnly] = useState(false);
+  const [accessFilter, setAccessFilter] = useState<"All Access" | "Public" | "Restricted" | "Starred Only">("All Access");
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Modal State
@@ -190,26 +189,27 @@ export const DocumentHub: React.FC = () => {
   const dynamicTabs = useMemo(() => {
     const list = [{ id: "all", label: "All Documents", icon: FileText }];
     
-    // Get all unique category values from documents
-    const presentCategories = new Set(docs.map(d => d.category).filter(Boolean));
+    // Get all unique tab values from documents
+    const presentTabs = new Set(docs.map(d => d.tab).filter(Boolean));
     
     // Add known categories in their predefined order if they are present in the documents
     Object.keys(TAB_DEFS).forEach(catId => {
-      // Find if we have a matching category (case-insensitive)
-      const matchingCat = Array.from(presentCategories).find(c => c.toLowerCase() === catId);
-      if (matchingCat) {
+      // Find if we have a matching tab (case-insensitive)
+      const matchingTab = Array.from(presentTabs).find(t => t.toLowerCase() === catId);
+      if (matchingTab) {
         list.push({ id: catId, label: TAB_DEFS[catId].label, icon: TAB_DEFS[catId].icon });
-        presentCategories.delete(matchingCat);
+        presentTabs.delete(matchingTab);
       }
     });
     
-    // Append any other custom categories that are present
-    presentCategories.forEach(cat => {
-      const lower = cat.toLowerCase();
+    // Append any other custom tabs that are present
+    presentTabs.forEach(tab => {
+      const lower = tab.toLowerCase();
       if (lower === 'all') return;
+      const label = tab.split(/[\s_-]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
       list.push({
         id: lower,
-        label: cat, // Display exactly as typed
+        label: label, // Display capitalized
         icon: FileText
       });
     });
@@ -228,9 +228,9 @@ export const DocumentHub: React.FC = () => {
   const dynamicTags = useMemo(() => {
     const tagsSet = new Set<string>();
     
-    // Extract tags from documents matching the current tab category
+    // Extract tags from documents matching the current tab
     const relevantDocs = docs.filter(doc => 
-      activeTab === "all" || (doc.category && doc.category.toLowerCase() === activeTab)
+      activeTab === "all" || (doc.tab && doc.tab.toLowerCase() === activeTab)
     );
 
     relevantDocs.forEach(doc => {
@@ -256,13 +256,13 @@ export const DocumentHub: React.FC = () => {
   }, [hiddenTags, activeTag]);
 
   const docsWithStarred = useMemo(() =>
-    docs.map(doc => ({ ...doc, isStarred: starredIds.includes(doc.id) })),
+    docs.map(doc => ({ ...doc, isStarred: starredIds.map(String).includes(String(doc.id)) })),
     [docs, starredIds]
   );
 
   const filteredDocs = useMemo(() => {
     return docsWithStarred.filter(doc => {
-      if (activeTab !== "all" && doc.category.toLowerCase() !== activeTab) return false;
+      if (activeTab !== "all" && (!doc.tab || doc.tab.toLowerCase() !== activeTab)) return false;
       
       // Filter by tag if selected
       if (activeTag !== "All") {
@@ -271,22 +271,38 @@ export const DocumentHub: React.FC = () => {
         if (!hasTag) return false;
       }
 
-      if (accessFilter !== "All Access" && doc.access !== accessFilter) return false;
-      if (starredOnly && !doc.isStarred) return false;
+      if (accessFilter !== "All Access") {
+        if (accessFilter === "Starred Only" && !doc.isStarred) return false;
+        if (accessFilter === "Public" && doc.access !== "Public") return false;
+        if (accessFilter === "Restricted" && doc.access !== "Restricted") return false;
+      }
+      
       if (searchQuery.trim() !== "") {
         const query = searchQuery.toLowerCase();
         const tagsList = getTagsArray(doc.tags);
         const matchesTags = tagsList.some((tag: string) => tag.toLowerCase().includes(query));
-        if (!doc.title.toLowerCase().includes(query) &&
-          !doc.description.toLowerCase().includes(query) &&
-          !doc.category.toLowerCase().includes(query) &&
-          !matchesTags) {
+        
+        const titleMatch = doc.title ? doc.title.toLowerCase().includes(query) : false;
+        const descMatch = doc.description ? doc.description.toLowerCase().includes(query) : false;
+        const catMatch = doc.category ? doc.category.toLowerCase().includes(query) : false;
+
+        if (!titleMatch && !descMatch && !catMatch && !matchesTags) {
           return false;
         }
       }
       return true;
     });
-  }, [activeTab, activeTag, accessFilter, starredOnly, searchQuery, docsWithStarred]);
+  }, [activeTab, activeTag, accessFilter, searchQuery, docsWithStarred]);
+
+  const hasActiveFilters = useMemo(() => {
+    return accessFilter !== "All Access" || searchQuery.trim() !== "" || activeTag !== "All";
+  }, [accessFilter, searchQuery, activeTag]);
+
+  const handleClearFilters = () => {
+    setAccessFilter("All Access");
+    setSearchQuery("");
+    setActiveTag("All");
+  };
 
   return (
     <div className="space-y-4 w-full min-w-0 font-sans text-foreground animate-in fade-in duration-300">
@@ -318,38 +334,54 @@ export const DocumentHub: React.FC = () => {
             <div className="relative">
               <button
                 onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className="flex items-center gap-2 bg-card border border-border hover:border-slate-300 dark:hover:border-slate-600 rounded-lg px-4 py-2.5 text-sm text-foreground font-medium transition-all shadow-sm"
+                className={`flex items-center gap-2 bg-card border hover:border-slate-300 dark:hover:border-slate-600 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all shadow-sm ${
+                  accessFilter !== "All Access"
+                    ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20" 
+                    : "border-border text-foreground"
+                }`}
               >
                 <Filter className="w-4 h-4 text-primary" />
-                {accessFilter}
+                <span>
+                  {accessFilter}
+                </span>
                 <ChevronDown className="w-4 h-4 text-muted-foreground ml-1" />
               </button>
 
               {isFilterOpen && (
-                <div className="absolute right-0 mt-2 w-full bg-card border border-border rounded-lg shadow-sm overflow-hidden z-50">
-                  {(["All Access", "Public", "Restricted"] as const).map(option => (
-                    <button
-                      key={option}
-                      onClick={() => { setAccessFilter(option); setIsFilterOpen(false); }}
-                      className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${accessFilter === option
-                        ? "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-l-2 border-blue-500 font-medium"
-                        : "text-slate-600 dark:text-slate-400 hover:bg-muted/50"
-                        }`}
-                    >
-                      {option}
-                    </button>
-                  ))}
-                  <div className="border-t border-border my-1"></div>
-                  <button
-                    onClick={() => { setStarredOnly(!starredOnly); setIsFilterOpen(false); }}
-                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-muted/50 transition-colors"
-                  >
-                    Starred Only
-                    <Star className={`w-4 h-4 ${starredOnly ? "fill-amber-400 text-amber-400" : "text-slate-300 dark:text-slate-600"}`} />
-                  </button>
-                </div>
+                <>
+                  <div 
+                    className="fixed inset-0 z-10" 
+                    onClick={() => setIsFilterOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-lg shadow-sm overflow-hidden z-20">
+                    {(["All Access", "Public", "Restricted", "Starred Only"] as const).map(option => (
+                      <button
+                        key={option}
+                        onClick={() => { setAccessFilter(option); setIsFilterOpen(false); }}
+                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${accessFilter === option
+                          ? "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-l-2 border-blue-500 font-bold"
+                          : "text-slate-600 dark:text-slate-400 hover:bg-muted/50 font-medium"
+                          }`}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
+
+            {hasActiveFilters && (
+              <button
+                onClick={handleClearFilters}
+                className="px-3 py-2.5 text-xs text-red-500 hover:text-red-700 dark:hover:text-red-400 font-bold transition-colors flex items-center gap-1 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg shadow-sm"
+                title="Clear all filters"
+              >
+                <X className="w-3.5 h-3.5" />
+                Clear
+              </button>
+            )}
+
             <div className="w-px h-8 bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block"></div>
             {!isSelfView && !isEmployee && (
               <button
@@ -369,7 +401,7 @@ export const DocumentHub: React.FC = () => {
             // Calculate document count for each tab
             const count = tab.id === "all"
               ? docs.length
-              : docs.filter(d => d.category && d.category.toLowerCase() === tab.id).length;
+              : docs.filter(d => d.tab && d.tab.toLowerCase() === tab.id).length;
 
             return (
               <button
@@ -502,7 +534,7 @@ export const DocumentHub: React.FC = () => {
                   </div>
                 </div>
 
-                <h3 className="text-sm font-bold text-foreground leading-tight mb-1.5 group-hover:text-primarytransition-colors truncate" title={doc.title}>
+                <h3 className="text-sm font-bold text-foreground leading-tight mb-1.5 group-hover:text-primary transition-colors truncate" title={doc.title}>
                   {doc.title}
                 </h3>
 
@@ -594,7 +626,7 @@ export const DocumentHub: React.FC = () => {
                 <div className="flex items-center gap-4 flex-1 min-w-0">
                   <FileText className={`w-6 h-6 shrink-0 ${doc.type === "PDF" ? "text-red-500" : "text-blue-500"}`} />
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-foreground truncate group-hover:text-primarytransition-colors">
+                    <h3 className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">
                       {doc.title}
                     </h3>
                     <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground">

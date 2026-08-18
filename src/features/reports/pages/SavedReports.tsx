@@ -9,6 +9,7 @@ import { PageHeader } from '@/shared/components/ui/PageHeader';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/shared/components/ui/table";
 import { toast } from 'sonner';
 import api from '@/shared/services/axiosInstance';
+import { ConfirmationDialog } from '@/shared/components/ui/ConfirmationDialog';
 import { maskSensitiveValue } from '../utils/masking';
 import { useAuth } from '@/shared/context/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -46,6 +47,7 @@ export const SavedReports: React.FC = () => {
   const [selectedInstance, setSelectedInstance] = useState<SavedReportInstance | null>(null);
   const [previewOpen, setPreviewOpen] = useState<boolean>(false);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [deleteReportId, setDeleteReportId] = useState<string | null>(null);
 
   // Pagination for main list
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -71,19 +73,23 @@ export const SavedReports: React.FC = () => {
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm("Are you sure you want to delete this saved report snapshot?")) {
-      const updated = savedInstances.filter(x => x.id !== id);
-      saveInstances(updated);
-      toast.success("Saved report snapshot deleted.");
-      if (selectedInstance?.id === id) {
-        setPreviewOpen(false);
-      }
-      api.post('/notifications', {
-        title: 'Report Snapshot Deleted',
-        message: `Saved report snapshot has been deleted.`,
-        type: 'REPORT_BUILDER'
-      }).catch(err => console.error('Failed to save notification:', err));
+    setDeleteReportId(id);
+  };
+
+  const confirmDelete = () => {
+    if (!deleteReportId) return;
+    const updated = savedInstances.filter(x => x.id !== deleteReportId);
+    saveInstances(updated);
+    toast.success("Saved report snapshot deleted.");
+    if (selectedInstance?.id === deleteReportId) {
+      setPreviewOpen(false);
     }
+    api.post('/notifications', {
+      title: 'Report Snapshot Deleted',
+      message: `Saved report snapshot has been deleted.`,
+      type: 'REPORT_BUILDER'
+    }).catch(err => console.error('Failed to save notification:', err));
+    setDeleteReportId(null);
   };
 
   // Close dropdown helper
@@ -481,8 +487,18 @@ export const SavedReports: React.FC = () => {
               </Button>
             </div>
           </div>
-        </div>
       )}
+
+      <ConfirmationDialog
+        isOpen={deleteReportId !== null}
+        onConfirm={confirmDelete}
+        onClose={() => setDeleteReportId(null)}
+        title="Delete Saved Report Snapshot?"
+        description="Are you sure you want to delete this saved report snapshot? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   );
 };

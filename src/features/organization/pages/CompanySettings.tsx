@@ -11,6 +11,9 @@ import { ProgressBar } from '@/features/organization/components/ProgressBar';
 import { Permission } from '@/shared/types/rbac';
 import { CompanyStructureForm } from '@/features/organization/components/CompanyStructureForm';
 import { usePermissions } from '@/features/rbac/hooks/usePermissions';
+import { getDepartments } from '@/features/organization/services/departments';
+import { getRoles } from '@/features/rbac/services/roles';
+import { getDesignations } from '@/features/organization/services/designations';
 
 interface CompanyData {
   // Legal Entity & Tax Data
@@ -157,6 +160,9 @@ export function CompanySettings() {
 
   const [companyData, setCompanyData] = useState<CompanyData>(initialCompanyData);
   const [errors, setErrors] = useState<Record<string, any>>({});
+  const [deptCount, setDeptCount] = useState(0);
+  const [roleCount, setRoleCount] = useState(0);
+  const [designationCount, setDesignationCount] = useState(0);
 
   const tabFromUrl = new URLSearchParams(location.search).get("tab") as "legal" | "organizational" | "cost-centers" | "geographical" | "calendar" | null;
   const [activeTab, setActiveTabState] = useState<"legal" | "organizational" | "cost-centers" | "geographical" | "calendar">(tabFromUrl || "legal");
@@ -219,9 +225,43 @@ export function CompanySettings() {
     return { isValid, error: isValid ? "" : "Invalid PAN format (e.g., ABCDE1234F)" };
   }, [companyData.taxRegistrationNumbers.pan, companyData.legalAddress.country]);
 
+  const getTaxKeysForCountry = (countryName: string) => {
+    const country = (countryName || "").trim().toLowerCase();
+    if (country === "india") {
+      return ["pan", "cin", "tan", "other"];
+    }
+    if (country === "united states" || country === "usa" || country === "us") {
+      return ["ein", "other"];
+    }
+    if (country === "united kingdom" || country === "uk" || country === "gb") {
+      return ["tin", "cin", "other"];
+    }
+    if (country === "germany" || country === "de") {
+      return ["tin", "other", "cin"];
+    }
+    if (country === "france" || country === "fr") {
+      return ["siret", "tin", "other"];
+    }
+    if (country === "united arab emirates" || country === "uae" || country === "ae") {
+      return ["tin", "cin", "other"];
+    }
+    if (country === "canada" || country === "ca") {
+      return ["sin", "other"];
+    }
+    if (country === "australia" || country === "au") {
+      return ["tin", "cin", "other"];
+    }
+    if (country === "singapore" || country === "sg") {
+      return ["tin", "other"];
+    }
+    if (country === "tanzania" || country === "tz") {
+      return ["tin", "cin", "paye_reg_no", "nssf_reg_no", "wcf_reg_no", "sdl_reg_no", "other"];
+    }
+    return ["tin", "other"];
+  };
+
   const completionPercentage = useMemo(() => {
     const checks: { label: string; done: boolean; weight: number }[] = [];
-    const isIndia = companyData.legalAddress.country === "India";
     const filled = (v: string | undefined | null) => typeof v === "string" && v.trim() !== "";
 
     // 1. Legal Entity & Tax Tab
@@ -233,10 +273,19 @@ export function CompanySettings() {
     checks.push({ label: "State", done: filled(companyData.legalAddress.state), weight: 1 });
     checks.push({ label: "Zip Code", done: filled(companyData.legalAddress.zipCode), weight: 1 });
     checks.push({ label: "Country", done: filled(companyData.legalAddress.country), weight: 1 });
-    const mainTaxId = isIndia ? companyData.taxRegistrationNumbers.pan : (companyData.taxRegistrationNumbers.tin || companyData.taxRegistrationNumber);
-    checks.push({ label: isIndia ? "PAN" : "Tax ID", done: filled(mainTaxId), weight: 2 });
+    
+    // Tax fields based on country
+    const taxKeys = getTaxKeysForCountry(companyData.legalAddress.country);
+    taxKeys.forEach(key => {
+      const isFilled = filled((companyData.taxRegistrationNumbers as any)[key]) || filled((companyData as any)[key]);
+      const isMandatory = (companyData.legalAddress.country === "Tanzania" && (key === "tin" || key === "cin")) ||
+                          (companyData.legalAddress.country === "India" && key === "pan");
+      checks.push({ label: `Tax Field: ${key}`, done: isFilled, weight: isMandatory ? 2 : 1 });
+    });
+
     checks.push({ label: "Jurisdiction", done: filled(companyData.jurisdiction), weight: 1 });
     checks.push({ label: "Fiscal Year End", done: filled(companyData.fiscalYearEnd), weight: 1 });
+    checks.push({ label: "Company Logo", done: filled(companyData.logoUrl), weight: 1 });
 
     // 2. Geographical/Location Tab
     const hasLocations = Array.isArray(companyData.locations) && companyData.locations.length > 0;
@@ -245,23 +294,25 @@ export function CompanySettings() {
       filled(loc.locationCode) && 
       filled(loc.address?.street) && 
       filled(loc.address?.city) && 
-      filled(loc.timeZone)
+      filled(loc.address?.state) && 
+      filled(loc.address?.zipCode) && 
+      filled(loc.timeZone) &&
+      filled(loc.taxLocation) &&
+      filled(loc.gst)
     );
     checks.push({ label: "Office Locations Configured", done: hasLocations, weight: 1 });
     checks.push({ label: "Office Locations Complete", done: locationsComplete, weight: 1 });
 
-    // 3. Organizational Structure Tab
-    const hasBusinessUnits = Array.isArray(companyData.businessUnits) && companyData.businessUnits.some(bu => filled(bu));
-    const hasDivisions = Array.isArray(companyData.divisions) && companyData.divisions.some(div => filled(div));
-    const hasCostCenters = Array.isArray(companyData.costCenters) && companyData.costCenters.some(cc => filled(cc));
-    checks.push({ label: "Business Units", done: hasBusinessUnits, weight: 1 });
-    checks.push({ label: "Divisions", done: hasDivisions, weight: 1 });
+    // 3. Cost Centers Tab
+    const hasCostCenters = Array.isArray(companyData.costCenters) && companyData.costCenters.length > 0 && companyData.costCenters.every(cc => filled(cc));
     checks.push({ label: "Cost Centers", done: hasCostCenters, weight: 1 });
-    checks.push({ label: "Payroll Statutory Unit", done: filled(companyData.payrollStatutoryUnit), weight: 1 });
-    checks.push({ label: "Legal Employer", done: filled(companyData.legalEmployer), weight: 1 });
-    checks.push({ label: "Legislative Data Group", done: filled(companyData.legislativeDataGroup), weight: 1 });
 
-    // 4. Working Calendar & Schedule Tab
+    // 4. Organizational Structure Tab
+    checks.push({ label: "Departments Hierarchy", done: deptCount > 0, weight: 1 });
+    checks.push({ label: "Designations Hierarchy", done: designationCount > 0, weight: 1 });
+    checks.push({ label: "Roles Hierarchy", done: roleCount > 0, weight: 1 });
+
+    // 5. Working Calendar & Schedule Tab
     const calendar = companyData.workingCalendar;
     checks.push({ label: "Standard Hours", done: !!calendar.standardHours, weight: 1 });
     checks.push({ label: "Working Days Configured", done: Array.isArray(calendar.workingDays) && calendar.workingDays.length > 0, weight: 1 });
@@ -273,15 +324,31 @@ export function CompanySettings() {
       checks.push({ label: "Flex Hours Configured", done: !!calendar.flexRequiredHours && filled(calendar.flexCoreStartTime) && filled(calendar.flexCoreEndTime), weight: 2 });
     }
 
+    if (calendar.enableShifts) {
+      const shiftsComplete = Array.isArray(calendar.shifts) && calendar.shifts.length > 0 && calendar.shifts.every((s: any) => filled(s.name) && filled(s.startTime) && filled(s.endTime));
+      checks.push({ label: "Shifts Configured", done: shiftsComplete, weight: 1 });
+    }
+
+    checks.push({ label: "Public Holidays Configured", done: Array.isArray(calendar.publicHolidays) && calendar.publicHolidays.length > 0, weight: 1 });
+
     const totalWeight = checks.reduce((sum, c) => sum + c.weight, 0);
     const doneWeight = checks.reduce((sum, c) => (c.done ? sum + c.weight : sum), 0);
     return Math.min(100, Math.round((doneWeight / totalWeight) * 100));
-  }, [companyData]);
+  }, [companyData, deptCount, designationCount, roleCount]);
 
   const loadOrg = async () => {
     setIsLoading(true);
     try {
-      const orgs = await getOrganizations();
+      const [orgs, depts, roles, desigs] = await Promise.all([
+        getOrganizations(),
+        getDepartments().catch(() => []),
+        getRoles().catch(() => []),
+        getDesignations().catch(() => []),
+      ]);
+      setDeptCount(depts.length);
+      setRoleCount(roles.length);
+      setDesignationCount(desigs.length);
+
       const organization = Array.isArray(orgs) ? orgs[0] : orgs;
       if (organization && organization.id) {
         setOrgId(organization.id);
@@ -388,11 +455,37 @@ export function CompanySettings() {
       newErrors.companyCode = "Company code is required";
       hasError = true;
     }
+    if (!companyData.legalAddress?.country?.trim()) {
+      newErrors.country = "Country of incorporation is required";
+      hasError = true;
+    }
+    if (!companyData.companyType?.trim()) {
+      newErrors.companyType = "Company type is required";
+      hasError = true;
+    }
+    if (!companyData.legalAddress?.street?.trim()) {
+      newErrors.street = "Street address is required";
+      hasError = true;
+    }
+    if (!companyData.legalAddress?.state?.trim()) {
+      newErrors.state = "State/province is required";
+      hasError = true;
+    }
+    if (!companyData.legalAddress?.city?.trim()) {
+      newErrors.city = "City is required";
+      hasError = true;
+    }
+    if (!companyData.legalAddress?.zipCode?.trim()) {
+      newErrors.zipCode = "Zip/postal code is required";
+      hasError = true;
+    }
 
     // Country specific validation
-    const ctry = companyData.legalAddress.country;
-    if (ctry === "India") {
-      const pan = (companyData.taxRegistrationNumbers.pan || "").trim().toUpperCase();
+    const ctry = (companyData.legalAddress?.country || "").trim().toLowerCase();
+    const type = (companyData.companyType || "").trim().toLowerCase();
+
+    if (ctry === "india") {
+      const pan = (companyData.taxRegistrationNumbers?.pan || "").trim().toUpperCase();
       if (!pan) {
         newErrors.pan = "PAN is required";
         hasError = true;
@@ -400,16 +493,74 @@ export function CompanySettings() {
         newErrors.pan = panStatus.error;
         hasError = true;
       }
-    } else if (ctry === "USA") {
-      const ein = (companyData.taxRegistrationNumbers.ein || "").trim();
-      if (!ein) {
+      if (type.includes("private limited") || type.includes("public limited") || type.includes("opc") || type.includes("one person") || type.includes("llp") || type.includes("limited liability partnership")) {
+        if (!(companyData.taxRegistrationNumbers?.cin || "").trim()) {
+          newErrors.cin = "CIN/LLPIN is required";
+          hasError = true;
+        }
+      }
+    } else if (ctry === "united states" || ctry === "usa" || ctry === "us") {
+      if (!(companyData.taxRegistrationNumbers?.ein || "").trim()) {
         newErrors.ein = "EIN is required";
         hasError = true;
       }
-    } else if (ctry === "France") {
-      const siret = (companyData.taxRegistrationNumbers.siret || "").trim().replace(/\s/g, "");
-      if (!siret) {
+    } else if (ctry === "united kingdom" || ctry === "uk" || ctry === "gb") {
+      if (!(companyData.taxRegistrationNumbers?.tin || "").trim()) {
+        newErrors.tin = "UTR (Tax Reference) is required";
+        hasError = true;
+      }
+      if (type.includes("ltd") || type.includes("plc") || type.includes("limited") || type.includes("llp")) {
+        if (!(companyData.taxRegistrationNumbers?.cin || "").trim()) {
+          newErrors.cin = "Registration Number (CRN) is required";
+          hasError = true;
+        }
+      }
+    } else if (ctry === "germany" || ctry === "de") {
+      if (!(companyData.taxRegistrationNumbers?.tin || "").trim()) {
+        newErrors.tin = "Steuernummer is required";
+        hasError = true;
+      }
+    } else if (ctry === "france" || ctry === "fr") {
+      if (!(companyData.taxRegistrationNumbers?.siret || "").trim()) {
         newErrors.siret = "SIRET is required";
+        hasError = true;
+      }
+      if (!(companyData.taxRegistrationNumbers?.tin || "").trim()) {
+        newErrors.tin = "SIREN is required";
+        hasError = true;
+      }
+    } else if (ctry === "united arab emirates" || ctry === "uae" || ctry === "ae") {
+      if (!(companyData.taxRegistrationNumbers?.tin || "").trim()) {
+        newErrors.tin = "TRN is required";
+        hasError = true;
+      }
+    } else if (ctry === "canada" || ctry === "ca") {
+      if (!(companyData.taxRegistrationNumbers?.sin || "").trim()) {
+        newErrors.sin = "Business Number is required";
+        hasError = true;
+      }
+    } else if (ctry === "australia" || ctry === "au") {
+      if (!(companyData.taxRegistrationNumbers?.tin || "").trim()) {
+        newErrors.tin = "ABN is required";
+        hasError = true;
+      }
+    } else if (ctry === "singapore" || ctry === "sg") {
+      if (!(companyData.taxRegistrationNumbers?.tin || "").trim()) {
+        newErrors.tin = "UEN is required";
+        hasError = true;
+      }
+    } else if (ctry === "tanzania" || ctry === "tz") {
+      if (!(companyData.taxRegistrationNumbers?.tin || "").trim()) {
+        newErrors.tin = "TIN is required";
+        hasError = true;
+      }
+      if (!(companyData.taxRegistrationNumbers?.cin || "").trim()) {
+        newErrors.cin = "BRELA (Business Registration No.) is required";
+        hasError = true;
+      }
+    } else {
+      if (!(companyData.taxRegistrationNumbers?.tin || companyData.taxRegistrationNumber || "").trim()) {
+        newErrors.tin = "Tax ID is required";
         hasError = true;
       }
     }

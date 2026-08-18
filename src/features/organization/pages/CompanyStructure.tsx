@@ -21,6 +21,7 @@ import { getProfilePictureUrl } from '@/shared/utils/fileUtils';
 import { toast } from "sonner";
 import { ConfirmationDialog } from '@/shared/components/ui/ConfirmationDialog';
 import { getDesignations, type DesignationNode } from '../services/designations';
+import { getRoles } from '@/features/rbac/services/roles';
 
 const getInitials = (name: string) => {
   if (!name || name === "Unassigned") return "?";
@@ -322,13 +323,57 @@ export function CompanyStructure() {
     return () => clearTimeout(timer);
   }, [newlyCreatedId]);
 
+  const [roleCount, setRoleCount] = useState(0);
+  const [designationCount, setDesignationCount] = useState(0);
+
+  useEffect(() => {
+    Promise.all([
+      getRoles().catch(() => []),
+      getDesignations().catch(() => []),
+    ]).then(([r, d]) => {
+      setRoleCount(r.length);
+      setDesignationCount(d.length);
+    });
+  }, []);
+
+  const getTaxKeysForCountry = (countryName: string) => {
+    const country = (countryName || "").trim().toLowerCase();
+    if (country === "india") {
+      return ["pan", "cin", "tan", "other"];
+    }
+    if (country === "united states" || country === "usa" || country === "us") {
+      return ["ein", "other"];
+    }
+    if (country === "united kingdom" || country === "uk" || country === "gb") {
+      return ["tin", "cin", "other"];
+    }
+    if (country === "germany" || country === "de") {
+      return ["tin", "other", "cin"];
+    }
+    if (country === "france" || country === "fr") {
+      return ["siret", "tin", "other"];
+    }
+    if (country === "united arab emirates" || country === "uae" || country === "ae") {
+      return ["tin", "cin", "other"];
+    }
+    if (country === "canada" || country === "ca") {
+      return ["sin", "other"];
+    }
+    if (country === "australia" || country === "au") {
+      return ["tin", "cin", "other"];
+    }
+    if (country === "singapore" || country === "sg") {
+      return ["tin", "other"];
+    }
+    if (country === "tanzania" || country === "tz") {
+      return ["tin", "cin", "paye_reg_no", "nssf_reg_no", "wcf_reg_no", "sdl_reg_no", "other"];
+    }
+    return ["tin", "other"];
+  };
+
   const completionPercentage = useMemo(() => {
     if (!companyDetails) return 0;
     const filled = (v: string | undefined | null) => typeof v === 'string' && v.trim() !== '';
-    const isIndia = companyDetails.country === 'India';
-    const mainTaxId = isIndia
-      ? companyDetails.pan
-      : companyDetails.tin || companyDetails.ein || companyDetails.siret || companyDetails.otherTaxId;
 
     const checks: { done: boolean; weight: number }[] = [];
 
@@ -341,9 +386,20 @@ export function CompanyStructure() {
     checks.push({ done: filled(companyDetails.state), weight: 1 });
     checks.push({ done: filled(companyDetails.zip), weight: 1 });
     checks.push({ done: filled(companyDetails.country), weight: 1 });
-    checks.push({ done: filled(mainTaxId), weight: 2 });
+    
+    // Tax fields based on country
+    const taxKeys = getTaxKeysForCountry(companyDetails.country);
+    taxKeys.forEach(key => {
+      const val = (companyDetails.taxRegistrationNumbers as any)?.[key] || (companyDetails as any)[key];
+      const isFilled = filled(val);
+      const isMandatory = (companyDetails.country === "Tanzania" && (key === "tin" || key === "cin")) ||
+                          (companyDetails.country === "India" && key === "pan");
+      checks.push({ done: isFilled, weight: isMandatory ? 2 : 1 });
+    });
+
     checks.push({ done: filled(companyDetails.jurisdiction), weight: 1 });
     checks.push({ done: filled(companyDetails.fiscalYearEnd), weight: 1 });
+    checks.push({ done: filled(companyDetails.logoUrl), weight: 1 });
 
     // 2. Geographical/Location Tab
     const hasLocations = Array.isArray(companyDetails.locations) && companyDetails.locations.length > 0;
@@ -352,23 +408,25 @@ export function CompanyStructure() {
       filled(loc.locationCode) && 
       filled(loc.address?.street) && 
       filled(loc.address?.city) && 
-      filled(loc.timeZone)
+      filled(loc.address?.state) && 
+      filled(loc.address?.zipCode) && 
+      filled(loc.timeZone) &&
+      filled(loc.taxLocation) &&
+      filled(loc.gst)
     );
     checks.push({ done: hasLocations, weight: 1 });
     checks.push({ done: locationsComplete, weight: 1 });
 
-    // 3. Organizational Structure Tab
-    const hasBusinessUnits = typeof companyDetails.businessUnit === 'string' && companyDetails.businessUnit.trim() !== '';
-    const hasDivisions = typeof (companyDetails as any).division === 'string' && (companyDetails as any).division.trim() !== '';
+    // 3. Cost Centers Tab
     const hasCostCenters = typeof companyDetails.costCenter === 'string' && companyDetails.costCenter.trim() !== '';
-    checks.push({ done: hasBusinessUnits, weight: 1 });
-    checks.push({ done: hasDivisions, weight: 1 });
     checks.push({ done: hasCostCenters, weight: 1 });
-    checks.push({ done: filled(companyDetails.payrollStatutoryUnit), weight: 1 });
-    checks.push({ done: filled(companyDetails.legalEmployer), weight: 1 });
-    checks.push({ done: filled(companyDetails.legislativeDataGroup), weight: 1 });
 
-    // 4. Working Calendar & Schedule Tab
+    // 4. Organizational Structure Tab
+    checks.push({ done: departments.length > 0, weight: 1 });
+    checks.push({ done: designationCount > 0, weight: 1 });
+    checks.push({ done: roleCount > 0, weight: 1 });
+
+    // 5. Working Calendar & Schedule Tab
     const calendar = companyDetails.workingCalendar;
     if (calendar) {
       checks.push({ done: !!calendar.standardHours, weight: 1 });
@@ -380,12 +438,21 @@ export function CompanyStructure() {
       } else if (calendar.scheduleType === "flexible") {
         checks.push({ done: !!calendar.flexRequiredHours && filled(calendar.flexCoreStartTime) && filled(calendar.flexCoreEndTime), weight: 2 });
       }
+
+      if ((calendar as any).enableShifts) {
+        const shifts = (companyDetails as any).shifts || [];
+        const shiftsComplete = Array.isArray(shifts) && shifts.length > 0 && shifts.every((s: any) => filled(s.name) && filled(s.startTime) && filled(s.endTime));
+        checks.push({ done: shiftsComplete, weight: 1 });
+      }
+
+      const publicHolidays = (companyDetails as any).public_holidays || (calendar as any).publicHolidays || [];
+      checks.push({ done: Array.isArray(publicHolidays) && publicHolidays.length > 0, weight: 1 });
     }
 
     const totalWeight = checks.reduce((sum, item) => sum + item.weight, 0);
     const doneWeight = checks.reduce((sum, item) => sum + (item.done ? item.weight : 0), 0);
     return totalWeight === 0 ? 0 : Math.min(100, Math.round((doneWeight / totalWeight) * 100));
-  }, [companyDetails]);
+  }, [companyDetails, departments, roleCount, designationCount]);
 
   const [selectedTeam, setSelectedTeam] = useState<TeamNode | null>(null);
   const [openSidebarSections, setOpenSidebarSections] = useState<Record<string, boolean>>({});

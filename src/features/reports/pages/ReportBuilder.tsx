@@ -18,6 +18,7 @@ import { Card } from '@/shared/components/ui/card';
 import { PageHeader } from '@/shared/components/ui/PageHeader';
 import Select from '@/shared/components/ui/Select';
 import { toast } from 'sonner';
+import { ConfirmationDialog } from '@/shared/components/ui/ConfirmationDialog';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/shared/components/ui/table";
 import { useCurrency } from '@/shared/hooks/useCurrency';
 import { maskSensitiveValue } from '../utils/masking';
@@ -317,6 +318,7 @@ export const ReportBuilder: React.FC = () => {
   const [snapshotCurrentPage, setSnapshotCurrentPage] = useState<number>(1);
   const [filters, setFilters] = useState<FilterRule[]>([]);
   const [sorts, setSorts] = useState<SortRule[]>([]);
+  const [deleteSnapshotId, setDeleteSnapshotId] = useState<string | null>(null);
 
   // Layout Options
   const [reportLayout, setReportLayout] = useState<'table' | 'chart' | 'summary'>('table');
@@ -831,20 +833,24 @@ export const ReportBuilder: React.FC = () => {
   };
 
   const handleSnapshotDelete = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this saved report snapshot?")) {
-      const updated = savedInstances.filter(x => x.id !== id);
-      setSavedInstances(updated);
-      localStorage.setItem('emp_xp_saved_reports_snapshots', JSON.stringify(updated));
-      toast.success("Saved report snapshot deleted.");
-      if (selectedSnapshot?.id === id) {
-        setSnapshotPreviewOpen(false);
-      }
-      api.post('/notifications', {
-        title: 'Report Snapshot Deleted',
-        message: `Saved report snapshot has been deleted.`,
-        type: 'REPORT_BUILDER'
-      }).catch(e => console.error('Failed to save notification:', e));
+    setDeleteSnapshotId(id);
+  };
+
+  const confirmSnapshotDelete = () => {
+    if (!deleteSnapshotId) return;
+    const updated = savedInstances.filter(x => x.id !== deleteSnapshotId);
+    setSavedInstances(updated);
+    localStorage.setItem('emp_xp_saved_reports_snapshots', JSON.stringify(updated));
+    toast.success("Saved report snapshot deleted.");
+    if (selectedSnapshot?.id === deleteSnapshotId) {
+      setSnapshotPreviewOpen(false);
     }
+    api.post('/notifications', {
+      title: 'Report Snapshot Deleted',
+      message: `Saved report snapshot has been deleted.`,
+      type: 'REPORT_BUILDER'
+    }).catch(e => console.error('Failed to save notification:', e));
+    setDeleteSnapshotId(null);
   };
 
   const handleUseTemplate = (tpl: SavedReport) => {
@@ -3029,6 +3035,17 @@ export const ReportBuilder: React.FC = () => {
               </div>
             </div>
           )}
+
+          <ConfirmationDialog
+            isOpen={deleteSnapshotId !== null}
+            onConfirm={confirmSnapshotDelete}
+            onClose={() => setDeleteSnapshotId(null)}
+            title="Delete Saved Report Snapshot?"
+            description="Are you sure you want to delete this saved report snapshot? This action cannot be undone."
+            confirmText="Delete"
+            cancelText="Cancel"
+            variant="danger"
+          />
 
         </div>
       );

@@ -154,7 +154,8 @@ export const LegalEntityTaxTab = ({
   filteredCountries,
   dropdownRef,
   getCompanyTypesByCountry,
-  getTaxFieldsForCompanyType
+  getTaxFieldsForCompanyType,
+  errors
 }: any) => {
 
   const scrollToSection = (id: string) => {
@@ -227,8 +228,9 @@ export const LegalEntityTaxTab = ({
                   value={companyData.EntityName}
                   onChange={(e) => !isReadOnly && setCompanyData({ ...companyData, EntityName: capitalizeFirstLetter(e.target.value) })}
                   readOnly={isReadOnly}
-                  className="w-full bg-[#FFFFFF] dark:bg-card border border-[#D6DAE3] dark:border-border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none placeholder:text-[#9498A6] hover:border-[#B9BFCC] focus:border-primary focus:shadow-[0_0_0_3.5px_rgba(84,87,229,0.12)]"
+                  className={`w-full bg-[#FFFFFF] dark:bg-card border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none placeholder:text-[#9498A6] hover:border-[#B9BFCC] focus:border-primary focus:shadow-[0_0_0_3.5px_rgba(84,87,229,0.12)] ${errors?.EntityName ? 'border-red-500' : 'border-[#D6DAE3] dark:border-border'}`}
                 />
+                {errors?.EntityName && <p className="text-[11.5px] text-red-500 mt-1">{errors.EntityName}</p>}
               </div>
               <div className="mb-5">
                 <label className="flex items-center gap-[5px] text-[12.5px] font-medium text-[#5B5F6E] dark:text-muted-foreground mb-[7px] tracking-[0.01em]">
@@ -238,8 +240,9 @@ export const LegalEntityTaxTab = ({
                   value={companyData.companyCode}
                   onChange={(e) => !isReadOnly && setCompanyData({ ...companyData, companyCode: e.target.value })}
                   readOnly={isReadOnly}
-                  className="w-full bg-[#FFFFFF] dark:bg-card border border-[#D6DAE3] dark:border-border rounded-[7px] text-[#12131A] dark:text-foreground text-[13px] font-['IBM_Plex_Mono',monospace] tracking-[0.02em] p-[10px_12px] transition-all outline-none placeholder:text-[#9498A6] hover:border-[#B9BFCC] focus:border-primary focus:shadow-[0_0_0_3.5px_rgba(84,87,229,0.12)]"
+                  className={`w-full bg-[#FFFFFF] dark:bg-card border rounded-[7px] text-[#12131A] dark:text-foreground text-[13px] font-['IBM_Plex_Mono',monospace] tracking-[0.02em] p-[10px_12px] transition-all outline-none placeholder:text-[#9498A6] hover:border-[#B9BFCC] focus:border-primary focus:shadow-[0_0_0_3.5px_rgba(84,87,229,0.12)] ${errors?.companyCode ? 'border-red-500' : 'border-[#D6DAE3] dark:border-border'}`}
                 />
+                {errors?.companyCode && <p className="text-[11.5px] text-red-500 mt-1">{errors.companyCode}</p>}
               </div>
               
               <div className="mb-5">
@@ -263,6 +266,7 @@ export const LegalEntityTaxTab = ({
                   required
                   disabled={isReadOnly}
                   placeholder="Select Country"
+                  error={errors?.country}
                   options={[
                     "India", "United States", "United Kingdom", "United Arab Emirates",
                     "Singapore", "Canada", "Australia", "Germany", "France",
@@ -282,12 +286,13 @@ export const LegalEntityTaxTab = ({
                   onChange={(val) => !isReadOnly && setCompanyData({ ...companyData, companyType: val })}
                   placeholder="Select type"
                   disabled={isReadOnly}
-                  buttonClassName="!h-[41px] text-[13.5px] rounded-[7px] border-[#D6DAE3] dark:border-border hover:border-[#B9BFCC] focus:border-primary px-3 text-[#12131A] dark:text-foreground font-normal shadow-none"
+                  buttonClassName={`!h-[41px] text-[13.5px] rounded-[7px] border hover:border-[#B9BFCC] focus:border-primary px-3 text-[#12131A] dark:text-foreground font-normal shadow-none ${errors?.companyType ? 'border-red-500' : 'border-[#D6DAE3] dark:border-border'}`}
                   options={getCompanyTypesByCountry(companyData.legalAddress.country).map((t: string) => ({
                     value: t,
                     label: t,
                   }))}
                 />
+                {errors?.companyType && <p className="text-[11.5px] text-red-500 mt-1">{errors.companyType}</p>}
               </div>
 
               <div className="mb-5">
@@ -352,8 +357,9 @@ export const LegalEntityTaxTab = ({
                     }}
                     readOnly={isReadOnly}
                     placeholder={field.placeholder}
-                    className="w-full bg-[#FFFFFF] dark:bg-card border border-[#D6DAE3] dark:border-border rounded-[7px] text-[#12131A] dark:text-foreground text-[13px] font-['IBM_Plex_Mono',monospace] tracking-[0.02em] p-[10px_12px] transition-all outline-none placeholder:text-[#9498A6] hover:border-[#B9BFCC] focus:border-primary focus:shadow-[0_0_0_3.5px_rgba(84,87,229,0.12)]"
+                    className={`w-full bg-[#FFFFFF] dark:bg-card border rounded-[7px] text-[#12131A] dark:text-foreground text-[13px] font-['IBM_Plex_Mono',monospace] tracking-[0.02em] p-[10px_12px] transition-all outline-none placeholder:text-[#9498A6] focus:shadow-[0_0_0_3.5px_rgba(84,87,229,0.12)] ${errors?.[field.key] ? 'border-red-500' : 'border-[#D6DAE3] dark:border-border focus:border-primary'}`}
                   />
+                  {errors?.[field.key] && <div className="text-[11.5px] text-red-500 mt-[6px]">{errors[field.key]}</div>}
                   {field.key === "pan" && panError && <div className="text-[11.5px] text-[#E14B5A] mt-[6px]">{panError}</div>}
                 </div>
               ))}
@@ -389,8 +395,9 @@ export const LegalEntityTaxTab = ({
                 value={companyData.legalAddress.street}
                 onChange={(e) => !isReadOnly && updateField('legalAddress', 'street', e.target.value)}
                 readOnly={isReadOnly}
-                className="w-full bg-[#FFFFFF] dark:bg-card border border-[#D6DAE3] dark:border-border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none hover:border-[#B9BFCC] focus:border-primary"
+                className={`w-full bg-[#FFFFFF] dark:bg-card border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none focus:shadow-[0_0_0_3.5px_rgba(84,87,229,0.12)] ${errors?.street ? 'border-red-500' : 'border-[#D6DAE3] dark:border-border focus:border-primary'}`}
               />
+              {errors?.street && <p className="text-[11.5px] text-red-500 mt-1">{errors.street}</p>}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
               <div className="mb-5">
@@ -405,6 +412,7 @@ export const LegalEntityTaxTab = ({
                     required
                     disabled={isReadOnly}
                     placeholder="Select State"
+                    error={errors?.state}
                     options={indianStates.map(state => ({ value: state, label: state }))}
                   />
                 ) : companyData.legalAddress.country === 'United States' || companyData.legalAddress.country === 'USA' ? (
@@ -418,6 +426,7 @@ export const LegalEntityTaxTab = ({
                     required
                     disabled={isReadOnly}
                     placeholder="Select State"
+                    error={errors?.state}
                     options={usStates.map(state => ({ value: state, label: state }))}
                   />
                 ) : companyData.legalAddress.country === 'Tanzania' ? (
@@ -431,6 +440,7 @@ export const LegalEntityTaxTab = ({
                     required
                     disabled={isReadOnly}
                     placeholder="Select Region"
+                    error={errors?.state}
                     options={tanzaniaRegions.map(state => ({ value: state, label: state }))}
                   />
                 ) : (
@@ -442,8 +452,9 @@ export const LegalEntityTaxTab = ({
                       value={companyData.legalAddress.state}
                       onChange={(e) => !isReadOnly && updateField('legalAddress', 'state', e.target.value)}
                       readOnly={isReadOnly}
-                      className="w-full bg-[#FFFFFF] dark:bg-card border border-[#D6DAE3] dark:border-border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none hover:border-[#B9BFCC] focus:border-primary"
+                      className={`w-full bg-[#FFFFFF] dark:bg-card border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none focus:shadow-[0_0_0_3.5px_rgba(84,87,229,0.12)] ${errors?.state ? 'border-red-500' : 'border-[#D6DAE3] dark:border-border focus:border-primary'}`}
                     />
+                    {errors?.state && <p className="text-[11.5px] text-red-500 mt-1">{errors.state}</p>}
                   </>
                 )}
               </div>
@@ -464,6 +475,7 @@ export const LegalEntityTaxTab = ({
                       required
                       disabled={isReadOnly || !companyData.legalAddress.state}
                       placeholder="Select City"
+                      error={errors?.city}
                       options={[
                         ...citiesForState.map(c => ({ value: c, label: c })),
                         { value: "Other", label: "Other (Enter Manually)" }
@@ -478,8 +490,9 @@ export const LegalEntityTaxTab = ({
                         value={companyData.legalAddress.city}
                         onChange={(e) => !isReadOnly && updateField('legalAddress', 'city', e.target.value)}
                         readOnly={isReadOnly}
-                        className="w-full bg-[#FFFFFF] dark:bg-card border border-[#D6DAE3] dark:border-border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none hover:border-[#B9BFCC] focus:border-primary"
+                        className={`w-full bg-[#FFFFFF] dark:bg-card border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none focus:shadow-[0_0_0_3.5px_rgba(84,87,229,0.12)] ${errors?.city ? 'border-red-500' : 'border-[#D6DAE3] dark:border-border focus:border-primary'}`}
                       />
+                      {errors?.city && <p className="text-[11.5px] text-red-500 mt-1">{errors.city}</p>}
                     </>
                   );
                 })()}
@@ -501,9 +514,10 @@ export const LegalEntityTaxTab = ({
                         value={companyData.legalAddress.city === "Other" ? "" : companyData.legalAddress.city}
                         onChange={(e) => !isReadOnly && updateField('legalAddress', 'city', e.target.value)}
                         readOnly={isReadOnly}
-                        className="w-full bg-[#FFFFFF] dark:bg-card border border-[#D6DAE3] dark:border-border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none hover:border-[#B9BFCC] focus:border-primary"
+                        className={`w-full bg-[#FFFFFF] dark:bg-card border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none focus:shadow-[0_0_0_3.5px_rgba(84,87,229,0.12)] ${errors?.city ? 'border-red-500' : 'border-[#D6DAE3] dark:border-border focus:border-primary'}`}
                         placeholder="Type city name"
                       />
+                      {errors?.city && <p className="text-[11.5px] text-red-500 mt-1">{errors.city}</p>}
                     </div>
                   );
                 }
@@ -521,12 +535,13 @@ export const LegalEntityTaxTab = ({
                   value={companyData.legalAddress.zipCode}
                   onChange={(e) => !isReadOnly && updateField('legalAddress', 'zipCode', e.target.value)}
                   readOnly={isReadOnly}
-                  className="w-[50%] bg-[#FFFFFF] dark:bg-card border border-[#D6DAE3] dark:border-border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none hover:border-[#B9BFCC] focus:border-primary"
+                  className={`w-[50%] bg-[#FFFFFF] dark:bg-card border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none focus:shadow-[0_0_0_3.5px_rgba(84,87,229,0.12)] ${errors?.zipCode ? 'border-red-500' : 'border-[#D6DAE3] dark:border-border focus:border-primary'}`}
                   placeholder={`Enter ${(() => {
                     const c = companyData.legalAddress.country;
                     return c === 'India' ? 'PIN Code' : c === 'United States' || c === 'USA' ? 'Zip Code' : c === 'United Kingdom' ? 'Postcode' : 'ZIP/Postal Code';
                   })()}`}
                 />
+                {errors?.zipCode && <p className="text-[11.5px] text-red-500 mt-1">{errors.zipCode}</p>}
               </div>
             </div>
           </div>
