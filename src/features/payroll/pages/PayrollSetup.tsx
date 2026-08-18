@@ -21,6 +21,7 @@ import axiosInstance from '@/shared/services/axiosInstance';
 
 import { PayrollReportsTab } from './PayrollReportsTab';
 import { TaxDeclarationApprovalHub } from '../components/TaxDeclarationApprovalHub';
+import PayeBandManager from '../components/PayeBandManager';
 import { useCurrency } from '@/shared/hooks/useCurrency';
 import { StandardDatePicker } from '@/shared/components/ui/StandardDatePicker';
 import { cn } from '@/shared/components/ui/utils';
@@ -2765,14 +2766,31 @@ export function PayrollSetup() {
                   />
                   <StatutoryInputField
                     label="SDL Rate (%)"
-                    value={parseFloat(statutorySettings.find(s => s.key === 'TZ_SDL_RATE')?.value || '0.04') * 100}
+                    value={parseFloat(statutorySettings.find(s => s.key === 'TZ_SDL_RATE')?.value || '0.035') * 100}
                     onChange={(val) => handleSettingChange('TZ_SDL_RATE', String(parseFloat(val) / 100))}
                     isLockedDefault={true}
-                    legalDefaultValue="4.0%"
-                    tooltipText="Skills Development Levy"
+                    legalDefaultValue="3.5%"
+                    tooltipText="Skills Development Levy (employer-only, 10+ employees)"
                     readOnly={!isEditingStatutory}
                   />
                 </div>
+              </div>
+            </div>
+          )}
+
+          {isTanzania && (
+            <div className="border border-border rounded-xl overflow-hidden bg-card shadow-sm">
+              <div className="flex items-center gap-3 px-5 py-3.5 bg-primary/5 border-b border-border">
+                <div className="p-2 text-primary">
+                  <Building2 className="size-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-foreground">PAYE Tax Bands (Progressive)</h3>
+                  <p className="text-[11px] text-muted-foreground">Configure progressive income tax brackets for resident employees</p>
+                </div>
+              </div>
+              <div className="p-5">
+                <PayeBandManager />
               </div>
             </div>
           )}
