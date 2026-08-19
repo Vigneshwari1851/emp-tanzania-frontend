@@ -535,6 +535,14 @@ export function ReimbursementModule() {
     return data ? JSON.parse(data) : defaultSettings;
   });
 
+  const [isEditing, setIsEditing] = useState(false);
+
+  const handleCancelSettings = () => {
+    const data = localStorage.getItem('reimb_settings');
+    setSettings(data ? JSON.parse(data) : defaultSettings);
+    setIsEditing(false);
+  };
+
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => {
     const data = localStorage.getItem('reimb_audit_logs');
     return data ? JSON.parse(data) : defaultAuditLogs;
@@ -608,9 +616,7 @@ export function ReimbursementModule() {
     }
   }, [activeTab, syncFromBackend]);
 
-  useEffect(() => {
-    localStorage.setItem('reimb_settings', JSON.stringify(settings));
-  }, [settings]);
+
 
   useEffect(() => {
     localStorage.setItem('reimb_audit_logs', JSON.stringify(auditLogs));
@@ -1917,8 +1923,21 @@ export function ReimbursementModule() {
   // Settings form handlers
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
+    const [startDate, endDate] = settings.financialYear && settings.financialYear.includes(' to ') 
+      ? settings.financialYear.split(' to ') 
+      : ['', ''];
+    if (!startDate || !endDate) {
+      toast.error("Financial Year Start and End dates are required");
+      return;
+    }
+    if (new Date(endDate) <= new Date(startDate)) {
+      toast.error("Financial Year End Date must be after Start Date");
+      return;
+    }
+    localStorage.setItem('reimb_settings', JSON.stringify(settings));
     writeAuditLog('SETTINGS_UPDATED', 'Settings', 'global', '', 'Updated global settings configuration');
     toast.success('Module settings updated successfully!');
+    setIsEditing(false);
   };
 
   // Export claims to CSV file
@@ -4092,44 +4111,83 @@ dotColor = 'bg-blue-500'; labelColor = 'text-blue-700 dark:text-blue-300'; bgCol
           </div>
         )}
 
-        {/* ==========================================
-            TAB: ADMIN SETTINGS
-            ========================================== */}
-        {activeTab === 'settings' && (
-          <form onSubmit={handleSaveSettings} className="bg-card p-6 rounded-xl border border-border shadow-sm max-w-[1800px] space-y-6 animate-in fade-in duration-300">
-            <div>
-              <h3 className="font-extrabold text-lg text-foreground">Reimbursement Module Settings</h3>
-              <p className="text-xs text-muted-foreground">Configure claim submission timelines, attachment size constraints, default workflow triggers and compliance standards</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Claim Auto-Number Prefix</label>
-                <input
-                  type="text"
-                  value={settings.autoClaimNumberPrefix}
-                  onChange={e => setSettings(prev => ({ ...prev, autoClaimNumberPrefix: e.target.value }))}
-                  className="w-full p-2 bg-card border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900 focus:border-blue-400 dark:focus:border-blue-500 transition"
-                />
+        {activeTab === 'settings' && (() => {
+          const [startDate, endDate] = settings.financialYear && settings.financialYear.includes(' to ')
+            ? settings.financialYear.split(' to ')
+            : ['', ''];
+          return (
+            <form onSubmit={handleSaveSettings} className="bg-card p-6 rounded-xl border border-border shadow-sm max-w-[1800px] space-y-6 animate-in fade-in duration-300">
+              <div className="flex justify-between items-center border-b border-border pb-4">
+                <div>
+                  <h3 className="font-extrabold text-lg text-foreground">Reimbursement Module Settings</h3>
+                  <p className="text-xs text-muted-foreground">Configure claim submission timelines, attachment size constraints, default workflow triggers and compliance standards</p>
+                </div>
+                {!isEditing ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(true)}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-muted hover:bg-muted/80 text-foreground text-xs font-bold rounded-lg border border-border transition-all cursor-pointer shadow-sm"
+                  >
+                    <Edit className="w-3.5 h-3.5 text-primary" />
+                    Edit Settings
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCancelSettings}
+                      className="px-3.5 py-2 border border-border hover:bg-muted text-foreground text-xs font-bold rounded-lg transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-primary hover:bg-primary/95 text-white text-xs font-bold rounded-lg transition-all shadow-sm cursor-pointer"
+                    >
+                      Save Settings
+                    </button>
+                  </div>
+                )}
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Financial Year Range</label>
-                <input
-                  type="text"
-                  value={settings.financialYear}
-                  onChange={e => setSettings(prev => ({ ...prev, financialYear: e.target.value }))}
-                  className="w-full p-2 bg-card border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900 focus:border-blue-400 dark:focus:border-blue-500 transition"
-                />
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Claim Auto-Number Prefix</label>
+                  <input
+                    type="text"
+                    disabled={!isEditing}
+                    value={settings.autoClaimNumberPrefix}
+                    onChange={e => setSettings(prev => ({ ...prev, autoClaimNumberPrefix: e.target.value }))}
+                    className="w-full px-3 py-2 bg-card disabled:bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:cursor-not-allowed transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Financial Year Start</label>
+                  <StandardDatePicker
+                    disabled={!isEditing}
+                    value={startDate}
+                    onChange={date => setSettings(prev => ({ ...prev, financialYear: `${date} to ${endDate}` }))}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Financial Year End</label>
+                  <StandardDatePicker
+                    disabled={!isEditing}
+                    value={endDate}
+                    onChange={date => setSettings(prev => ({ ...prev, financialYear: `${startDate} to ${date}` }))}
+                  />
+                </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Submission Window Days (From Expense Date)</label>
                 <input
                   type="number"
+                  disabled={!isEditing}
                   value={settings.claimWindowDays}
                   onChange={e => setSettings(prev => ({ ...prev, claimWindowDays: parseInt(e.target.value) || 30 }))}
-                  className="w-full p-2 bg-card border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900 focus:border-blue-400 dark:focus:border-blue-500 transition"
+                  className="w-full px-3 py-2 bg-card disabled:bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:cursor-not-allowed transition"
                 />
               </div>
 
@@ -4137,9 +4195,10 @@ dotColor = 'bg-blue-500'; labelColor = 'text-blue-700 dark:text-blue-300'; bgCol
                 <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Receipt Document Upload Max Size (MB)</label>
                 <input
                   type="number"
+                  disabled={!isEditing}
                   value={settings.receiptSizeLimitMb}
                   onChange={e => setSettings(prev => ({ ...prev, receiptSizeLimitMb: parseInt(e.target.value) || 5 }))}
-                  className="w-full p-2 bg-card border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900 focus:border-blue-400 dark:focus:border-blue-500 transition"
+                  className="w-full px-3 py-2 bg-card disabled:bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:cursor-not-allowed transition"
                 />
               </div>
 
@@ -4147,9 +4206,10 @@ dotColor = 'bg-blue-500'; labelColor = 'text-blue-700 dark:text-blue-300'; bgCol
                 <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Default Tax Rule (GST %)</label>
                 <input
                   type="number"
+                  disabled={!isEditing}
                   value={settings.taxRulesGst}
                   onChange={e => setSettings(prev => ({ ...prev, taxRulesGst: parseInt(e.target.value) || 18 }))}
-                  className="w-full p-2 bg-card border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900 focus:border-blue-400 dark:focus:border-blue-500 transition"
+                  className="w-full px-3 py-2 bg-card disabled:bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:cursor-not-allowed transition"
                 />
               </div>
 
@@ -4157,23 +4217,16 @@ dotColor = 'bg-blue-500'; labelColor = 'text-blue-700 dark:text-blue-300'; bgCol
                 <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Default System Currency</label>
                 <input
                   type="text"
+                  disabled={!isEditing}
                   value={settings.defaultCurrency}
                   onChange={e => setSettings(prev => ({ ...prev, defaultCurrency: e.target.value }))}
-                  className="w-full p-2 bg-card border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900 focus:border-blue-400 dark:focus:border-blue-500 transition"
+                  className="w-full px-3 py-2 bg-card disabled:bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:cursor-not-allowed transition"
                 />
               </div>
             </div>
-
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-              <button
-                type="submit"
-                className="bg-primary hover:bg-primary/80 text-white font-bold px-6 py-2.5 rounded-lg shadow transition"
-              >
-                Save Settings Configuration
-              </button>
-            </div>
           </form>
-        )}
+          );
+        })()}
 
       </div>
 

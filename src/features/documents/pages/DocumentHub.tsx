@@ -371,17 +371,6 @@ export const DocumentHub: React.FC = () => {
               )}
             </div>
 
-            {hasActiveFilters && (
-              <button
-                onClick={handleClearFilters}
-                className="px-3 py-2.5 text-xs text-red-500 hover:text-red-700 dark:hover:text-red-400 font-bold transition-colors flex items-center gap-1 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg shadow-sm"
-                title="Clear all filters"
-              >
-                <X className="w-3.5 h-3.5" />
-                Clear
-              </button>
-            )}
-
             <div className="w-px h-8 bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block"></div>
             {!isSelfView && !isEmployee && (
               <button

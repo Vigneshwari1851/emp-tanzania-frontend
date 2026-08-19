@@ -1003,7 +1003,9 @@ export const CompanyStructureForm: React.FC<CompanyStructureFormProps> = ({
                   type="button"
                   onClick={() => {
                     const existing = companyData.costCenters || [];
+                    const newIndex = existing.length;
                     setCompanyData({ ...companyData, costCenters: [...existing, ""] });
+                    setEditingCostCenters(prev => ({ ...prev, [newIndex]: true }));
                   }}
                   className="flex items-center gap-1 px-3 py-1.5 bg-primary/10 dark:bg-primary-900/30 text-primary dark:text-primary-300 border border-primary-200 dark:border-primary-800 rounded-lg text-[11px] font-bold hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-all active:scale-95"
                 >
@@ -1031,7 +1033,10 @@ export const CompanyStructureForm: React.FC<CompanyStructureFormProps> = ({
                 {!isReadOnly && (
                   <Button
                     variant="outline"
-                    onClick={() => setCompanyData({ ...companyData, costCenters: [""] })}
+                    onClick={() => {
+                      setCompanyData({ ...companyData, costCenters: [""] });
+                      setEditingCostCenters({ 0: true });
+                    }}
                     className="h-8 px-4 text-[12px] font-bold gap-1.5 mt-2"
                   >
                     <Plus className="w-3.5 h-3.5" />

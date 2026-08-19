@@ -19,6 +19,7 @@ import { ApprovalTimeline, getStatusLabel, getStatusColor } from '../components/
 import { ConfirmationDialog } from '@/shared/components/ui/ConfirmationDialog';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import RejectReasonDialog from '@/shared/components/ui/RejectReasonDialog';
+import { StandardDatePicker } from '@/shared/components/ui/StandardDatePicker';
 
 export function LoansAdvancesSetup() {
     const [searchParams] = useSearchParams();
@@ -54,6 +55,17 @@ export function LoansAdvancesSetup() {
 
     const handleSaveSettings = async (e: React.FormEvent) => {
         e.preventDefault();
+        const [startDate, endDate] = settings.financialYear && settings.financialYear.includes(' to ') 
+            ? settings.financialYear.split(' to ') 
+            : ['', ''];
+        if (!startDate || !endDate) {
+            toast.error("Financial Year Start and End dates are required");
+            return;
+        }
+        if (new Date(endDate) <= new Date(startDate)) {
+            toast.error("Financial Year End Date must be after Start Date");
+            return;
+        }
         try {
             const data = await loansAdvancesService.saveSettings(settings);
             if (data) {
@@ -536,67 +548,77 @@ export function LoansAdvancesSetup() {
                     </div>
                 )}
 
-                {/* Settings Tab */}
-                {activeTab === 'settings' && (
-                    <form onSubmit={handleSaveSettings} className="bg-card p-6 rounded-lg border border-border shadow-sm w-full space-y-6 animate-in fade-in duration-300">
-                        <div className="flex justify-between items-center border-b border-border pb-4">
-                            <div>
-                                <h3 className="font-extrabold text-lg text-foreground">Loan & Advance Module Settings</h3>
-                                <p className="text-xs text-muted-foreground">Configure request prefix, maximum tenure limits, and default interest rate configurations</p>
-                            </div>
-                            {!isEditing ? (
-                                <button
-                                    type="button"
-                                    onClick={() => setIsEditing(true)}
-                                    className="flex items-center gap-1.5 px-4 py-2 bg-muted hover:bg-muted/80 text-foreground text-xs font-bold rounded-lg border border-border transition-all cursor-pointer shadow-sm"
-                                >
-                                    <Edit className="w-3.5 h-3.5 text-primary" />
-                                    Edit Settings
-                                </button>
-                            ) : (
-                                <div className="flex gap-2">
+                {activeTab === 'settings' && (() => {
+                    const [startDate, endDate] = settings.financialYear && settings.financialYear.includes(' to ')
+                        ? settings.financialYear.split(' to ')
+                        : ['', ''];
+                    return (
+                        <form onSubmit={handleSaveSettings} className="bg-card p-6 rounded-lg border border-border shadow-sm w-full space-y-6 animate-in fade-in duration-300">
+                            <div className="flex justify-between items-center border-b border-border pb-4">
+                                <div>
+                                    <h3 className="font-extrabold text-lg text-foreground">Loan & Advance Module Settings</h3>
+                                    <p className="text-xs text-muted-foreground">Configure request prefix, maximum tenure limits, and default interest rate configurations</p>
+                                </div>
+                                {!isEditing ? (
                                     <button
                                         type="button"
-                                        onClick={() => {
-                                            setIsEditing(false);
-                                            fetchSettings();
-                                        }}
-                                        className="px-3.5 py-2 border border-border hover:bg-muted text-foreground text-xs font-bold rounded-lg transition cursor-pointer"
+                                        onClick={() => setIsEditing(true)}
+                                        className="flex items-center gap-1.5 px-4 py-2 bg-muted hover:bg-muted/80 text-foreground text-xs font-bold rounded-lg border border-border transition-all cursor-pointer shadow-sm"
                                     >
-                                        Cancel
+                                        <Edit className="w-3.5 h-3.5 text-primary" />
+                                        Edit Settings
                                     </button>
-                                    <button
-                                        type="submit"
-                                        className="px-4 py-2 bg-primary hover:bg-primary/95 text-white text-xs font-bold rounded-lg transition-all shadow-sm cursor-pointer"
-                                    >
-                                        Save Settings
-                                    </button>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsEditing(false);
+                                                fetchSettings();
+                                            }}
+                                            className="px-3.5 py-2 border border-border hover:bg-muted text-foreground text-xs font-bold rounded-lg transition cursor-pointer"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="px-4 py-2 bg-primary hover:bg-primary/95 text-white text-xs font-bold rounded-lg transition-all shadow-sm cursor-pointer"
+                                        >
+                                            Save Settings
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Request Auto-Number Prefix</label>
+                                    <input
+                                        type="text"
+                                        disabled={!isEditing}
+                                        value={settings.autoRequestNumberPrefix}
+                                        onChange={e => setSettings(prev => ({ ...prev, autoRequestNumberPrefix: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-card disabled:bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:cursor-not-allowed transition"
+                                    />
                                 </div>
-                            )}
-                        </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Request Auto-Number Prefix</label>
-                                <input
-                                    type="text"
-                                    disabled={!isEditing}
-                                    value={settings.autoRequestNumberPrefix}
-                                    onChange={e => setSettings(prev => ({ ...prev, autoRequestNumberPrefix: e.target.value }))}
-                                    className="w-full px-3 py-2 bg-card disabled:bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:cursor-not-allowed transition"
-                                />
-                            </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Financial Year Start</label>
+                                    <StandardDatePicker
+                                        disabled={!isEditing}
+                                        value={startDate}
+                                        onChange={date => setSettings(prev => ({ ...prev, financialYear: `${date} to ${endDate}` }))}
+                                    />
+                                </div>
 
-                            <div>
-                                <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Financial Year Range</label>
-                                <input
-                                    type="text"
-                                    disabled={!isEditing}
-                                    value={settings.financialYear}
-                                    onChange={e => setSettings(prev => ({ ...prev, financialYear: e.target.value }))}
-                                    className="w-full px-3 py-2 bg-card disabled:bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:cursor-not-allowed transition"
-                                />
-                            </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Financial Year End</label>
+                                    <StandardDatePicker
+                                        disabled={!isEditing}
+                                        value={endDate}
+                                        onChange={date => setSettings(prev => ({ ...prev, financialYear: `${startDate} to ${date}` }))}
+                                    />
+                                </div>
 
                             <div>
                                 <label className="block text-xs font-bold text-slate-600 dark:text-slate-500 uppercase mb-2">Max Loan Amount Limit</label>
@@ -645,7 +667,8 @@ export function LoansAdvancesSetup() {
                         </div>
 
                     </form>
-                )}
+                  );
+                })()}
             </div>
 
             {/* Settle Confirmation Dialog */}

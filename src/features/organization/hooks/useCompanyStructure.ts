@@ -89,7 +89,12 @@ function mapDepartments(deptData: any[]): DepartmentNode[] {
       id: t.id,
       name: t.team_name ?? t.name,
       description: t.description,
-      lead: t.team_lead?.username ?? t.team_lead ?? t.lead ?? "Unassigned",
+      lead: (t.team_lead && typeof t.team_lead === 'object'
+        ? (t.team_lead.full_name || t.team_lead.username || t.team_lead.name || (t.team_lead.first_name ? `${t.team_lead.first_name} ${t.team_lead.last_name || ''}`.trim() : ''))
+        : (typeof t.team_lead === 'string' ? t.team_lead : '')) || 
+        (t.lead && typeof t.lead === 'object'
+        ? (t.lead.full_name || t.lead.username || t.lead.name)
+        : (typeof t.lead === 'string' ? t.lead : '')) || "Unassigned",
       members: Array.isArray(t.members) ? t.members : (Array.isArray(t.team_members) ? t.team_members : []),
       avatars: (t.members || t.team_members || [])
         .map((m: any) => m.profile_picture || (m.first_name?.[0] || m.username?.[0] || "?").toUpperCase())
