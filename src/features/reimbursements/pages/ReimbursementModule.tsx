@@ -3180,15 +3180,16 @@ dotColor = 'bg-blue-500'; labelColor = 'text-blue-700 dark:text-blue-300'; bgCol
               const canApproveStage = (() => {
                 if (!currentStep) return false;
                 const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(reimbursementRole);
+                if (isAdmin) return true;
 
                 if (currentStep === 'Manager') {
-                  return reimbursementRole === 'MANAGER' || (isAdmin && String(viewingClaim.reportingManagerId) === String(user?.id));
+                  return reimbursementRole === 'MANAGER';
                 }
                 if (currentStep === 'HR') {
-                  return reimbursementRole === 'HR' || isAdmin;
+                  return reimbursementRole === 'HR';
                 }
                 if (currentStep === 'Finance') {
-                  return reimbursementRole === 'FINANCE' || isAdmin;
+                  return reimbursementRole === 'FINANCE';
                 }
                 return false;
               })();

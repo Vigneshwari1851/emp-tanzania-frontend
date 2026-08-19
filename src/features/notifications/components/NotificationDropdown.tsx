@@ -5,7 +5,7 @@ import { type Notification as DropdownNotification } from './types';
 import { Bell, X, CheckCheck } from "lucide-react";
 import { useNotifications } from '@/shared/context/NotificationContext';
 import { useAuth } from '@/shared/context/AuthContext';
-import { getNotificationTargetUrl } from '@/features/notifications/utils/notificationTarget';
+import { getNotificationTargetUrl, handleNotificationNavigation } from '@/features/notifications/utils/notificationTarget';
 
 interface NotificationDropdownProps {
   onClose: () => void;
@@ -140,7 +140,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ onCl
                   onMarkRead={(id) => {
                     markAsRead(Number(id));
                     const raw = notifications.find(n => n.id === Number(id));
-                    navigate(getNotificationTargetUrl(raw || {}, user));
+                    handleNotificationNavigation(navigate, raw || {}, user);
                     onClose();
                   }}
                 />

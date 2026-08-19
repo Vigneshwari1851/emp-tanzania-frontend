@@ -270,7 +270,10 @@ export function CreateLoanType() {
                   value={formData.department_id}
                   onChange={val => setFormData({ ...formData, department_id: val })}
                   placeholder="All Departments"
-                  options={departments.map(d => ({ value: String(d.id), label: (d as any).department_name || (d as any).name }))}
+                  options={[
+                    { value: "", label: "All Departments" },
+                    ...departments.map(d => ({ value: String(d.id), label: (d as any).department_name || (d as any).name }))
+                  ]}
                 />
               </div>
               <div className="space-y-1">
@@ -279,7 +282,10 @@ export function CreateLoanType() {
                   value={formData.designation_id}
                   onChange={val => setFormData({ ...formData, designation_id: val })}
                   placeholder="All Designations"
-                  options={designations.map(d => ({ value: String(d.id), label: d.designation_name || d.name }))}
+                  options={[
+                    { value: "", label: "All Designations" },
+                    ...designations.map(d => ({ value: String(d.id), label: d.designation_name || d.name }))
+                  ]}
                 />
               </div>
             </div>
@@ -290,7 +296,10 @@ export function CreateLoanType() {
                   value={formData.branch_id}
                   onChange={val => setFormData({ ...formData, branch_id: val })}
                   placeholder="All Branches"
-                  options={branches.map(b => ({ value: String(b.id), label: b.branch_name || b.name }))}
+                  options={[
+                    { value: "", label: "All Branches" },
+                    ...branches.map(b => ({ value: String(b.id), label: b.branch_name || b.name }))
+                  ]}
                 />
               </div>
               <div className="space-y-1">
@@ -299,7 +308,10 @@ export function CreateLoanType() {
                   value={formData.role_id}
                   onChange={val => setFormData({ ...formData, role_id: val })}
                   placeholder="All Roles"
-                  options={roles.map(r => ({ value: String(r.id), label: r.name }))}
+                  options={[
+                    { value: "", label: "All Roles" },
+                    ...roles.map(r => ({ value: String(r.id), label: r.name }))
+                  ]}
                 />
               </div>
             </div>
