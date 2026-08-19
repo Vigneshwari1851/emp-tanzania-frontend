@@ -71,6 +71,11 @@ export const getTaxSections = async () => {
     return response.data.data;
 };
 
+export const getActiveTzTaxPolicy = async () => {
+    const response = await axiosInstance.get(`${API_URL}/tanzania/tax-policies/active`);
+    return response.data.data;
+};
+
 export const createTaxSection = async (data: any) => {
     const response = await axiosInstance.post(`${API_URL}/tax-sections`, data);
     return response.data.data;

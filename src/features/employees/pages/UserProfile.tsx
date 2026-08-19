@@ -32,6 +32,7 @@ import { RoleGate } from '@/features/auth/components/RoleGate';
 import { Permission } from '@/shared/types/rbac';
 import { usePermissions } from '@/features/rbac/hooks/usePermissions';
 import { useAuth } from '@/shared/context/AuthContext';
+import { useCurrency } from '@/shared/hooks/useCurrency';
 import { formatDisplayRole, toTitleCase, normalizeQualificationLabel } from '@/shared/utils/stringUtils';
 import { getProfilePictureUrl } from '@/shared/utils/fileUtils';
 import { DocumentThumbnail } from '@/shared/components/common/DocumentThumbnail';
@@ -78,6 +79,7 @@ interface EmploymentRecord {
 
 export function UserProfile() {
   const { user: authUser } = useAuth();
+  const { currencySymbol } = useCurrency();
   const navigate = useOrgNavigate();
   const { id } = useParams();
   const location = useLocation();
@@ -87,6 +89,7 @@ export function UserProfile() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeSection, setActiveSection] = useState("personal");
   const [fetchedManager, setFetchedManager] = useState<string>("");
+  const [payrollGroups, setPayrollGroups] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchManager = async () => {
@@ -185,6 +188,21 @@ export function UserProfile() {
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
+
+  useEffect(() => {
+    const fetchPayrollGroups = async () => {
+      try {
+        const { getPayrollGroups } = await import('@/features/payroll/services/payroll');
+        const pGroups = await getPayrollGroups();
+        setPayrollGroups(pGroups || []);
+      } catch (error) {
+        if ((error as any)?.response?.status !== 403) {
+          console.error("Failed to fetch payroll groups", error);
+        }
+      }
+    };
+    fetchPayrollGroups();
+  }, []);
 
   const formatDate = (dateString?: string | Date) => {
     if (!dateString) return "—";
@@ -359,7 +377,7 @@ export function UserProfile() {
 
   const viewFormData = {
     baseSalary: details?.base_salary || "",
-    currency: details?.currency || "USD",
+    currency: details?.currency || "",
     payFrequency: details?.salary_frequency || "Monthly",
     payrollGroupId: details?.payroll_group_id != null ? String(details.payroll_group_id) : "",
   };
@@ -997,7 +1015,7 @@ export function UserProfile() {
                       id={employee.id.toString()}
                       compensationSplits={compensationSplits}
                       setCompensationSplits={noop}
-                      payrollGroups={[]}
+                      payrollGroups={payrollGroups}
                       readOnly
                     />
 
@@ -1009,7 +1027,7 @@ export function UserProfile() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                         <div>
                           <label className="block text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Base Salary</label>
-                          <p className="text-sm font-bold text-foreground py-1">{details?.base_salary ? `${details?.currency || "USD"} ${parseFloat(details.base_salary).toLocaleString()}` : "—"}</p>
+                          <p className="text-sm font-bold text-foreground py-1">{details?.base_salary ? `${currencySymbol} ${parseFloat(details.base_salary).toLocaleString()}` : "—"}</p>
                         </div>
                         <div>
                           <label className="block text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Pay Frequency</label>

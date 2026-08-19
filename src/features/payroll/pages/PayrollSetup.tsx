@@ -131,6 +131,280 @@ export function PayrollSetup() {
     setDraftCycle(payCycle);
   }, [payCycle]);
 
+  // Tanzania Tax Policy Config States
+  const [tzPolicies, setTzPolicies] = useState<any[]>([]);
+  const [isTzModalOpen, setIsTzModalOpen] = useState(false);
+  const [tzSelectedPolicy, setTzSelectedPolicy] = useState<any>(null);
+  const [tzModalMode, setTzModalMode] = useState<'create' | 'edit' | 'view'>('create');
+  const [tzEffectiveDate, setTzEffectiveDate] = useState('');
+  const [tzEmpNssfRate, setTzEmpNssfRate] = useState(10);
+  const [tzEmpyrNssfRate, setTzEmpyrNssfRate] = useState(10);
+  const [tzSdlRate, setTzSdlRate] = useState(3.5);
+  const [tzWcfRate, setTzWcfRate] = useState(0.5);
+  const [tzHeslbRate, setTzHeslbRate] = useState(15);
+  const [tzSdlThreshold, setTzSdlThreshold] = useState(10);
+  const [tzPersonalRelief, setTzPersonalRelief] = useState(270000);
+  const [tzDisabilityRelief, setTzDisabilityRelief] = useState(270000);
+  const [tzPayeSlabs, setTzPayeSlabs] = useState<any[]>([
+    { lowerLimit: 0, upperLimit: 270000, rate: 0, fixedAmount: 0 },
+    { lowerLimit: 270001, upperLimit: 520000, rate: 8, fixedAmount: 0 },
+    { lowerLimit: 520001, upperLimit: 760000, rate: 20, fixedAmount: 20000 },
+    { lowerLimit: 760001, upperLimit: 1000000, rate: 25, fixedAmount: 68000 },
+    { lowerLimit: 1000001, upperLimit: null, rate: 30, fixedAmount: 128000 }
+  ]);
+  const [isSavingTzPolicy, setIsSavingTzPolicy] = useState(false);
+
+  // Tanzania compliance export states
+  const [exportYear, setExportYear] = useState(new Date().getFullYear().toString());
+  const [exportMonth, setExportMonth] = useState((new Date().getMonth() + 1).toString().padStart(2, '0'));
+  const [finalizedPayrollExists, setFinalizedPayrollExists] = useState<boolean | null>(null);
+  const [checkingFinalized, setCheckingFinalized] = useState(false);
+  const [downloadingReport, setDownloadingReport] = useState<string | null>(null);
+
+  const checkFinalizedPayroll = async (year: string, month: string) => {
+    setCheckingFinalized(true);
+    try {
+      const res = await axiosInstance.get(`/payroll/tanzania/compliance/check/${year}/${month}`);
+      if (res.data?.success) {
+        setFinalizedPayrollExists(res.data.exists);
+      } else {
+        setFinalizedPayrollExists(false);
+      }
+    } catch (err) {
+      setFinalizedPayrollExists(false);
+    } finally {
+      setCheckingFinalized(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isTanzania) {
+      checkFinalizedPayroll(exportYear, exportMonth);
+    }
+  }, [exportYear, exportMonth, isTanzania]);
+
+  const handleDownloadTzReport = async (reportType: 'paye' | 'sdl' | 'nssf' | 'heslb' | 'wcf') => {
+    setDownloadingReport(reportType);
+    try {
+      const response = await axiosInstance.get(
+        `/payroll/tanzania/compliance/${reportType}/${exportYear}/${exportMonth}`,
+        { responseType: 'blob' }
+      );
+      
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Tanzania_${reportType.toUpperCase()}_${exportYear}_${exportMonth}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      toast.success(`${reportType.toUpperCase()} report downloaded successfully`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Failed to download ${reportType.toUpperCase()} report. Verify that the finalized payroll exists for this period.`);
+    } finally {
+      setDownloadingReport(null);
+    }
+  };
+
+  const fetchTzPolicies = async () => {
+    try {
+      const response = await axiosInstance.get('/payroll/tanzania/tax-policies');
+      if (response.data?.success) {
+        setTzPolicies(response.data.data || []);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch Tanzania tax policies:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (isTanzania) {
+      fetchTzPolicies();
+    }
+  }, [isTanzania]);
+
+  const validateTzSlabsFrontend = (slabs: any[]) => {
+    if (slabs.length === 0) return "Slabs cannot be empty";
+    
+    // Sort
+    const sorted = [...slabs].sort((a, b) => Number(a.lowerLimit) - Number(b.lowerLimit));
+    for (let i = 0; i < slabs.length; i++) {
+      if (Number(slabs[i].lowerLimit) !== Number(sorted[i].lowerLimit)) {
+        return "Slabs must be ordered by lower limit";
+      }
+      if (Number(slabs[i].rate) < 0) return "Tax rate cannot be negative";
+      if (Number(slabs[i].fixedAmount) < 0) return "Fixed tax cannot be negative";
+      if (slabs[i].upperLimit !== null && slabs[i].upperLimit !== undefined && slabs[i].upperLimit !== '') {
+        if (Number(slabs[i].lowerLimit) >= Number(slabs[i].upperLimit)) {
+          return `Slab ${i+1}: lower limit must be less than upper limit`;
+        }
+      }
+    }
+
+    // Only last open ended
+    for (let i = 0; i < slabs.length - 1; i++) {
+      if (slabs[i].upperLimit === null || slabs[i].upperLimit === undefined || slabs[i].upperLimit === '') {
+        return "Only the final slab can be open-ended (blank/null upper limit)";
+      }
+    }
+    const lastSlab = slabs[slabs.length - 1];
+    if (lastSlab.upperLimit !== null && lastSlab.upperLimit !== undefined && lastSlab.upperLimit !== '') {
+      return "The final slab must be open-ended (leave upper limit blank)";
+    }
+
+    // No gaps/overlaps
+    for (let i = 0; i < slabs.length - 1; i++) {
+      const currUpper = Number(slabs[i].upperLimit);
+      const nextLower = Number(slabs[i + 1].lowerLimit);
+      if (nextLower !== currUpper && nextLower !== currUpper + 1) {
+        return `Gap or overlap detected between slab ${i + 1} and ${i + 2}`;
+      }
+    }
+
+    return null;
+  };
+
+  const handleSaveTzPolicy = async (status: 'draft' | 'active') => {
+    const errorMsg = validateTzSlabsFrontend(tzPayeSlabs);
+    if (errorMsg) {
+      toast.error(errorMsg);
+      return;
+    }
+
+    setIsSavingTzPolicy(true);
+    try {
+      const payload = {
+        effective_date: tzEffectiveDate,
+        status,
+        employee_nssf_rate: Math.min(tzEmpNssfRate, 10) / 100,
+        employer_nssf_rate: tzEmpyrNssfRate / 100,
+        sdl_rate: tzSdlRate / 100,
+        wcf_rate: tzWcfRate / 100,
+        heslb_rate: tzHeslbRate / 100,
+        sdl_threshold: tzSdlThreshold,
+        personal_relief_annual: tzPersonalRelief,
+        disability_relief_annual: tzDisabilityRelief,
+        paye_slabs: tzPayeSlabs.map(s => ({
+          lowerLimit: Number(s.lowerLimit),
+          upperLimit: s.upperLimit === '' || s.upperLimit === null ? null : Number(s.upperLimit),
+          rate: Number(s.rate),
+          fixedAmount: Number(s.fixedAmount)
+        }))
+      };
+
+      let res;
+      if (tzModalMode === 'edit' && tzSelectedPolicy) {
+        res = await axiosInstance.put(`/payroll/tanzania/tax-policies/${tzSelectedPolicy.id}`, payload);
+      } else {
+        res = await axiosInstance.post('/payroll/tanzania/tax-policies', payload);
+      }
+
+      if (res.data?.success) {
+        toast.success(`Tanzania tax policy saved as ${status}`);
+        setIsTzModalOpen(false);
+        fetchTzPolicies();
+      } else {
+        toast.error(res.data?.message || 'Failed to save policy');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Error saving policy');
+    } finally {
+      setIsSavingTzPolicy(false);
+    }
+  };
+
+  const handleActivateTzPolicy = async (policyId: number) => {
+    try {
+      const res = await axiosInstance.patch(`/payroll/tanzania/tax-policies/${policyId}/status`, {
+        status: 'active'
+      });
+      if (res.data?.success) {
+        toast.success('Tax policy activated successfully');
+        fetchTzPolicies();
+      } else {
+        toast.error(res.data?.message || 'Failed to activate policy');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Error activating policy');
+    }
+  };
+
+  const handleTzPolicyStatus = async (policyId: number, newStatus: string) => {
+    try {
+      const res = await axiosInstance.patch(`/payroll/tanzania/tax-policies/${policyId}/status`, {
+        status: newStatus
+      });
+      if (res.data?.success) {
+        toast.success(`Policy ${newStatus === 'active' ? 'activated' : newStatus === 'inactive' ? 'deactivated' : 'set to draft'} successfully`);
+        fetchTzPolicies();
+      } else {
+        toast.error(res.data?.message || 'Failed to update policy status');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Error updating policy status');
+    }
+  };
+
+  const openTzPolicyModal = (mode: 'create' | 'edit' | 'view', policy?: any) => {
+    setTzModalMode(mode);
+    setTzSelectedPolicy(policy || null);
+    if (policy) {
+      setTzEffectiveDate(policy.effective_date ? new Date(policy.effective_date).toISOString().split('T')[0] : '');
+      setTzEmpNssfRate(parseFloat(policy.employee_nssf_rate) * 100);
+      setTzEmpyrNssfRate(parseFloat(policy.employer_nssf_rate) * 100);
+      setTzSdlRate(parseFloat(policy.sdl_rate || 0.035) * 100);
+      setTzWcfRate(parseFloat(policy.wcf_rate || 0.005) * 100);
+      setTzHeslbRate(parseFloat(policy.heslb_rate || 0.15) * 100);
+      setTzSdlThreshold(parseInt(policy.sdl_threshold || 10));
+      setTzPersonalRelief(parseFloat(policy.personal_relief_annual || 270000));
+      setTzDisabilityRelief(parseFloat(policy.disability_relief_annual || 270000));
+      setTzPayeSlabs(policy.paye_slabs || []);
+    } else {
+      const activePolicy = tzPolicies.find(p => p.status === 'active');
+      if (activePolicy) {
+        setTzEffectiveDate('');
+        setTzEmpNssfRate(parseFloat(activePolicy.employee_nssf_rate) * 100);
+        setTzEmpyrNssfRate(parseFloat(activePolicy.employer_nssf_rate) * 100);
+        setTzSdlRate(parseFloat(activePolicy.sdl_rate || 0.035) * 100);
+        setTzWcfRate(parseFloat(activePolicy.wcf_rate || 0.005) * 100);
+        setTzHeslbRate(parseFloat(activePolicy.heslb_rate || 0.15) * 100);
+        setTzSdlThreshold(parseInt(activePolicy.sdl_threshold || '10'));
+        setTzPersonalRelief(parseFloat(activePolicy.personal_relief_annual || '270000'));
+        setTzDisabilityRelief(parseFloat(activePolicy.disability_relief_annual || '270000'));
+        setTzPayeSlabs((activePolicy.paye_slabs as any[]) || [
+          { lowerLimit: 0, upperLimit: 270000, rate: 0, fixedAmount: 0 },
+          { lowerLimit: 270001, upperLimit: 520000, rate: 8, fixedAmount: 0 },
+          { lowerLimit: 520001, upperLimit: 760000, rate: 20, fixedAmount: 20000 },
+          { lowerLimit: 760001, upperLimit: 1000000, rate: 25, fixedAmount: 68000 },
+          { lowerLimit: 1000001, upperLimit: null, rate: 30, fixedAmount: 128000 }
+        ]);
+      } else {
+        setTzEffectiveDate('');
+        setTzEmpNssfRate(10);
+        setTzEmpyrNssfRate(10);
+        setTzSdlRate(3.5);
+        setTzWcfRate(0.5);
+        setTzHeslbRate(15);
+        setTzSdlThreshold(10);
+        setTzPersonalRelief(270000);
+        setTzDisabilityRelief(270000);
+        setTzPayeSlabs([
+          { lowerLimit: 0, upperLimit: 270000, rate: 0, fixedAmount: 0 },
+          { lowerLimit: 270001, upperLimit: 520000, rate: 8, fixedAmount: 0 },
+          { lowerLimit: 520001, upperLimit: 760000, rate: 20, fixedAmount: 20000 },
+          { lowerLimit: 760001, upperLimit: 1000000, rate: 25, fixedAmount: 68000 },
+          { lowerLimit: 1000001, upperLimit: null, rate: 30, fixedAmount: 128000 }
+        ]);
+      }
+    }
+    setIsTzModalOpen(true);
+  };
+
+
   const now = new Date();
   const cycleMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const maxCycleDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -168,9 +442,7 @@ export function PayrollSetup() {
       { name: 'National Insurance', type: 'deduction', calculationType: 'percentage', value: 8, isTaxable: false, isStatutory: true }
     ],
     'tanzania': [
-      { name: 'Basic Salary', type: 'earning', calculationType: 'percentage', value: 100, isTaxable: true, isStatutory: true },
-      { name: 'PAYE Tax', type: 'deduction', calculationType: 'percentage', value: 9, isTaxable: false, isStatutory: true },
-      { name: 'NSSF Pension', type: 'deduction', calculationType: 'percentage', value: 10, isTaxable: false, isStatutory: true }
+      { name: 'Basic Salary', type: 'earning', calculationType: 'percentage', value: 100, isTaxable: true, isStatutory: true }
     ]
   };
 
@@ -2723,59 +2995,369 @@ export function PayrollSetup() {
           </div>
         )}
           
-          {isTanzania && (
-            <div className="border border-border rounded-xl overflow-hidden bg-card shadow-sm">
-              <div className="flex items-center gap-3 px-5 py-3.5 bg-primary/5 border-b border-border">
-                <div className="p-2 text-primary">
-                  <Building2 className="size-4" />
+          {isTanzania && (() => {
+            const activePolicy = tzPolicies.find(p => p.status === 'active');
+            return (
+              <div className="space-y-6">
+                {/* Active Policy Card */}
+                <div className="border border-border rounded-xl overflow-hidden bg-card shadow-sm">
+                  <div className="flex items-center justify-between px-5 py-4 bg-primary/5 border-b border-border">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 text-primary bg-primary/10 rounded-lg">
+                        <Building2 className="size-5" />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="text-sm font-bold text-foreground">Active Tanzania Tax Policy</h3>
+                        <p className="text-[11px] text-muted-foreground">Currently used by the payroll calculations</p>
+                      </div>
+                    </div>
+                    <Button 
+                      onClick={() => openTzPolicyModal('create')} 
+                      className="bg-primary hover:bg-primary/90 text-white h-9 px-4 text-xs font-semibold gap-1.5 cursor-pointer shadow-sm rounded-lg"
+                    >
+                      <Plus className="size-4" /> Create New Version
+                    </Button>
+                  </div>
+                  
+                  <div className="p-5 text-left">
+                    {activePolicy ? (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Info details */}
+                        <div className="space-y-4">
+                          <div>
+                            <span className="text-xs text-muted-foreground">Policy Version</span>
+                            <div className="text-lg font-bold text-foreground mt-0.5">Version {activePolicy.version}</div>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground">Effective Date</span>
+                            <div className="text-sm font-semibold text-foreground mt-0.5">
+                              {new Date(activePolicy.effective_date).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground">Employee NSSF Contribution</span>
+                            <div className="text-sm font-semibold text-foreground mt-0.5">
+                              {(parseFloat(activePolicy.employee_nssf_rate) * 100).toFixed(1)}%
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground">Employer NSSF Contribution</span>
+                            <div className="text-sm font-semibold text-foreground mt-0.5">
+                              {(parseFloat(activePolicy.employer_nssf_rate) * 100).toFixed(1)}%
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground">Employer SDL Contribution</span>
+                            <div className="text-sm font-semibold text-foreground mt-0.5">
+                              {(parseFloat(activePolicy.sdl_rate || '0.035') * 100).toFixed(1)}% (Threshold: {activePolicy.sdl_threshold || 10} employees)
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground">Employer WCF Contribution</span>
+                            <div className="text-sm font-semibold text-foreground mt-0.5">
+                              {(parseFloat(activePolicy.wcf_rate || '0.005') * 100).toFixed(1)}%
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground">HESLB Loan Repayment Rate</span>
+                            <div className="text-sm font-semibold text-foreground mt-0.5">
+                              {(parseFloat(activePolicy.heslb_rate || '0.15') * 100).toFixed(1)}%
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground">Personal Relief (Annual)</span>
+                            <div className="text-sm font-semibold text-foreground mt-0.5">
+                              TZS {(parseFloat(activePolicy.personal_relief_annual || '270000')).toLocaleString()}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground">Disability Relief (Annual)</span>
+                            <div className="text-sm font-semibold text-foreground mt-0.5">
+                              TZS {(parseFloat(activePolicy.disability_relief_annual || '270000')).toLocaleString()}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* PAYE Slabs Table */}
+                        <div className="md:col-span-2 border border-border rounded-lg overflow-hidden">
+                          <Table>
+                            <TableHeader className="bg-muted border-b border-border">
+                              <TableRow>
+                                <TableHead className="text-xs font-bold text-muted-foreground px-4 py-2">Lower Limit (TZS)</TableHead>
+                                <TableHead className="text-xs font-bold text-muted-foreground px-4 py-2">Upper Limit (TZS)</TableHead>
+                                <TableHead className="text-xs font-bold text-muted-foreground px-4 py-2">Rate (%)</TableHead>
+                                <TableHead className="text-xs font-bold text-muted-foreground px-4 py-2">Fixed Tax (TZS)</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {(activePolicy.paye_slabs as any[]).map((slab, i) => (
+                                <TableRow key={i} className="hover:bg-muted/5 border-b border-border last:border-0">
+                                  <TableCell className="text-xs font-medium text-foreground px-4 py-2">
+                                    {slab.lowerLimit?.toLocaleString()}
+                                  </TableCell>
+                                  <TableCell className="text-xs font-medium text-foreground px-4 py-2">
+                                    {slab.upperLimit ? slab.upperLimit.toLocaleString() : 'Above / Open-ended'}
+                                  </TableCell>
+                                  <TableCell className="text-xs font-semibold text-emerald-700 px-4 py-2">
+                                    {slab.rate}%
+                                  </TableCell>
+                                  <TableCell className="text-xs font-medium text-foreground px-4 py-2">
+                                    {slab.fixedAmount?.toLocaleString()}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <p className="text-sm text-muted-foreground font-medium">No active Tanzania tax policy found.</p>
+                        <p className="text-xs text-muted-foreground/80 mt-1">Please create a new policy version to begin calculating Tanzanian payroll.</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-foreground">National Social Security Fund (NSSF)</h3>
-                  <p className="text-[11px] text-muted-foreground">Tanzania statutory parameters</p>
-                </div>
+
+                {/* Policy History Card */}
+                <Card className="border-border shadow-sm overflow-hidden">
+                  <CardHeader className="py-4 border-b border-border text-left">
+                    <CardTitle className="text-sm font-bold text-foreground">Tax Policy History</CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground">All versions and status lifecycle of Tanzania configurations</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader className="bg-muted border-b border-border">
+                          <TableRow>
+                            <TableHead className="text-xs font-semibold px-4 py-3">Version</TableHead>
+                            <TableHead className="text-xs font-semibold px-4 py-3">Status</TableHead>
+                            <TableHead className="text-xs font-semibold px-4 py-3">Effective Date</TableHead>
+                            <TableHead className="text-xs font-semibold px-4 py-3">Employee NSSF</TableHead>
+                            <TableHead className="text-xs font-semibold px-4 py-3">Employer NSSF</TableHead>
+                            <TableHead className="text-xs font-semibold px-4 py-3">SDL</TableHead>
+                            <TableHead className="text-xs font-semibold px-4 py-3">WCF</TableHead>
+                            <TableHead className="text-xs font-semibold px-4 py-3">HESLB</TableHead>
+                            <TableHead className="text-xs font-semibold px-4 py-3">Created At</TableHead>
+                            <TableHead className="text-right text-xs font-semibold px-4 py-3">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {tzPolicies.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={10} className="text-center py-8 text-sm text-muted-foreground">
+                                No tax policy history found.
+                              </TableCell>
+                            </TableRow>
+                          ) : tzPolicies.map((policy) => (
+                            <TableRow key={policy.id} className="hover:bg-muted/5 border-b border-border last:border-0">
+                              <TableCell className="font-bold px-4 py-3 text-foreground text-left">v{policy.version}</TableCell>
+                              <TableCell className="px-4 py-3 text-left">
+                                <Badge className={
+                                  policy.status === 'active' 
+                                    ? 'bg-emerald-100 text-emerald-800 border-emerald-200' 
+                                    : policy.status === 'draft'
+                                    ? 'bg-amber-100 text-amber-800 border-amber-200'
+                                    : 'bg-muted text-muted-foreground border-border'
+                                }>
+                                  {policy.status.toUpperCase()}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-xs text-foreground px-4 py-3 text-left">
+                                {new Date(policy.effective_date).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell className="text-xs text-foreground px-4 py-3 text-left">
+                                {(parseFloat(policy.employee_nssf_rate) * 100).toFixed(1)}%
+                              </TableCell>
+                              <TableCell className="text-xs text-foreground px-4 py-3 text-left">
+                                {(parseFloat(policy.employer_nssf_rate) * 100).toFixed(1)}%
+                              </TableCell>
+                              <TableCell className="text-xs text-foreground px-4 py-3 text-left">
+                                {(parseFloat(policy.sdl_rate || '0.035') * 100).toFixed(1)}%
+                              </TableCell>
+                              <TableCell className="text-xs text-foreground px-4 py-3 text-left">
+                                {(parseFloat(policy.wcf_rate || '0.005') * 100).toFixed(1)}%
+                              </TableCell>
+                              <TableCell className="text-xs text-foreground px-4 py-3 text-left">
+                                {(parseFloat(policy.heslb_rate || '0.15') * 100).toFixed(1)}%
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground px-4 py-3 text-left">
+                                {new Date(policy.created_at).toLocaleString()}
+                              </TableCell>
+                              <TableCell className="text-right px-4 py-3">
+                                <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-7 px-2 text-xs text-primary"
+                                    onClick={() => openTzPolicyModal('view', policy)}
+                                  >
+                                    View
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-7 px-2 text-xs text-amber-600 hover:text-amber-700"
+                                    onClick={() => openTzPolicyModal('edit', policy)}
+                                  >
+                                    Edit
+                                  </Button>
+                                  {policy.status === 'draft' && (
+                                    <Button 
+                                      size="sm" 
+                                      className="h-7 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded"
+                                      onClick={() => {
+                                        if (window.confirm('Activate this policy? Other active policies will remain active.')) {
+                                          handleTzPolicyStatus(policy.id, 'active');
+                                        }
+                                      }}
+                                    >
+                                      Activate
+                                    </Button>
+                                  )}
+                                  {policy.status === 'active' && (
+                                    <Button 
+                                      size="sm" 
+                                      className="h-7 px-2 text-xs bg-amber-600 hover:bg-amber-700 text-white rounded"
+                                      onClick={() => {
+                                        if (window.confirm('Deactivate this policy? Payroll will use the next most recent active policy.')) {
+                                          handleTzPolicyStatus(policy.id, 'inactive');
+                                        }
+                                      }}
+                                    >
+                                      Deactivate
+                                    </Button>
+                                  )}
+                                  {policy.status === 'inactive' && (
+                                    <Button 
+                                      size="sm" 
+                                      className="h-7 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded"
+                                      onClick={() => {
+                                        if (window.confirm('Activate this policy?')) {
+                                          handleTzPolicyStatus(policy.id, 'active');
+                                        }
+                                      }}
+                                    >
+                                      Activate
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Tanzania Statutory Compliance Exports Card */}
+                <Card className="border border-border rounded-xl bg-card shadow-sm mt-6">
+                  <CardHeader className="border-b border-border bg-slate-50/50 px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 text-blue-600 bg-blue-100 rounded-lg">
+                        <FileText className="size-5" />
+                      </div>
+                      <div className="text-left">
+                        <CardTitle className="text-sm font-bold text-foreground">Tanzania Statutory Compliance Exports</CardTitle>
+                        <CardDescription className="text-xs text-muted-foreground">Download TRA, NSSF, HESLB, and WCF Excel reports for finalized periods</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-5 space-y-6">
+                    <div className="flex flex-wrap items-end gap-6">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Payroll Year</Label>
+                        <select 
+                          value={exportYear}
+                          onChange={(e) => setExportYear(e.target.value)}
+                          className="w-28 px-3 py-1.5 border border-border rounded bg-card text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="2024">2024</option>
+                          <option value="2025">2025</option>
+                          <option value="2026">2026</option>
+                          <option value="2027">2027</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Payroll Month</Label>
+                        <select
+                          value={exportMonth}
+                          onChange={(e) => setExportMonth(e.target.value)}
+                          className="w-36 px-3 py-1.5 border border-border rounded bg-card text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="01">January</option>
+                          <option value="02">February</option>
+                          <option value="03">March</option>
+                          <option value="04">April</option>
+                          <option value="05">May</option>
+                          <option value="06">June</option>
+                          <option value="07">July</option>
+                          <option value="08">August</option>
+                          <option value="09">September</option>
+                          <option value="10">October</option>
+                          <option value="11">November</option>
+                          <option value="12">December</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center h-10 px-4 rounded-lg bg-muted/30 border border-border/60 text-xs">
+                        {checkingFinalized ? (
+                          <span className="flex items-center gap-1.5 text-muted-foreground font-medium">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" /> Checking period...
+                          </span>
+                        ) : finalizedPayrollExists ? (
+                          <span className="flex items-center gap-1.5 text-emerald-600 font-bold">
+                            <CheckCircle2 className="w-4 h-4" /> Finalized Payroll Available
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1.5 text-amber-600 font-bold">
+                            <AlertTriangle className="w-4 h-4" /> No Finalized Payroll
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pt-4 border-t border-border/60">
+                      {[
+                        { type: 'paye', label: 'TRA PAYE Report', desc: 'PAYE Tax, TIN & Basic' },
+                        { type: 'sdl', label: 'SDL Report', desc: 'Skills Development Levy' },
+                        { type: 'nssf', label: 'NSSF Return', desc: 'Social Security Pension' },
+                        { type: 'heslb', label: 'HESLB Return', desc: 'Student Loan Repayments' },
+                        { type: 'wcf', label: 'WCF Return', desc: 'Workers Compensation' }
+                      ].map((report) => {
+                        const isDownloading = downloadingReport === report.type;
+                        return (
+                          <div key={report.type} className="border border-border/80 rounded-xl p-4 bg-muted/10 hover:bg-muted/20 transition-all flex flex-col justify-between h-36">
+                            <div>
+                              <p className="text-xs font-bold text-foreground mb-1">{report.label}</p>
+                              <p className="text-[10px] text-muted-foreground">{report.desc}</p>
+                            </div>
+                            <Button
+                              onClick={() => handleDownloadTzReport(report.type as any)}
+                              disabled={!finalizedPayrollExists || downloadingReport !== null}
+                              className="w-full text-[11px] h-8 font-semibold bg-primary hover:bg-primary/90 text-white rounded gap-1.5 cursor-pointer"
+                            >
+                              {isDownloading ? (
+                                <>
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                  Downloading
+                                </>
+                              ) : (
+                                <>
+                                  <Download className="w-3.5 h-3.5" />
+                                  Download
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-              <div className="p-5">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <StatutoryInputField
-                    label="Employee Contribution (%)"
-                    value={parseFloat(statutorySettings.find(s => s.key === 'TZ_NSSF_EMPLOYEE_RATE')?.value || '0.10') * 100}
-                    onChange={(val) => handleSettingChange('TZ_NSSF_EMPLOYEE_RATE', String(parseFloat(val) / 100))}
-                    isLockedDefault={true}
-                    legalDefaultValue="10%"
-                    tooltipText="NSSF employee contribution"
-                    readOnly={!isEditingStatutory}
-                  />
-                  <StatutoryInputField
-                    label="Employer Contribution (%)"
-                    value={parseFloat(statutorySettings.find(s => s.key === 'TZ_NSSF_EMPLOYER_RATE')?.value || '0.10') * 100}
-                    onChange={(val) => handleSettingChange('TZ_NSSF_EMPLOYER_RATE', String(parseFloat(val) / 100))}
-                    isLockedDefault={true}
-                    legalDefaultValue="10%"
-                    tooltipText="NSSF employer contribution"
-                    readOnly={!isEditingStatutory}
-                  />
-                  <StatutoryInputField
-                    label="WCF Rate (%)"
-                    value={parseFloat(statutorySettings.find(s => s.key === 'TZ_WCF_RATE')?.value || '0.006') * 100}
-                    onChange={(val) => handleSettingChange('TZ_WCF_RATE', String(parseFloat(val) / 100))}
-                    isLockedDefault={true}
-                    legalDefaultValue="0.6%"
-                    tooltipText="Workers Compensation Fund"
-                    readOnly={!isEditingStatutory}
-                  />
-                  <StatutoryInputField
-                    label="SDL Rate (%)"
-                    value={parseFloat(statutorySettings.find(s => s.key === 'TZ_SDL_RATE')?.value || '0.04') * 100}
-                    onChange={(val) => handleSettingChange('TZ_SDL_RATE', String(parseFloat(val) / 100))}
-                    isLockedDefault={true}
-                    legalDefaultValue="4.0%"
-                    tooltipText="Skills Development Levy"
-                    readOnly={!isEditingStatutory}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {isUSA && (
             <div className="border border-border rounded-xl overflow-hidden bg-card shadow-sm">
@@ -3514,6 +4096,299 @@ export function PayrollSetup() {
               >
                 Close
               </Button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Tanzania Tax Policy Modal */}
+      {isTzModalOpen && createPortal(
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 select-none">
+          <div
+            className="absolute inset-0"
+            onClick={() => setIsTzModalOpen(false)}
+          />
+
+          <div className="relative w-full max-w-3xl bg-card border border-border rounded-xl shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-hidden">
+            {/* Header */}
+            <div className="p-6 border-b border-border flex items-center justify-between bg-muted/20 shrink-0 text-left">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">
+                  {tzModalMode === 'view' ? 'View Tax Policy' : tzModalMode === 'edit' ? 'Edit Tax Policy Draft' : 'Create New Tax Policy Version'}
+                </h2>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {tzModalMode === 'view' ? 'Read-only view of statutory and PAYE configuration' : 'Configure NSSF contribution rates and progressive PAYE slabs'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTzModalOpen(false)}
+                className="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer bg-transparent border-0"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 text-left">
+              {/* Statutory Rates Row 1 */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase block mb-1">Effective Date</label>
+                  <input
+                    type="date"
+                    value={tzEffectiveDate}
+                    onChange={(e) => setTzEffectiveDate(e.target.value)}
+                    disabled={tzModalMode === 'view'}
+                    className="w-full h-10 px-3 bg-muted/20 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase block mb-1">Employee NSSF Contribution</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max="10"
+                      step="0.01"
+                      value={tzEmpNssfRate}
+                      onChange={(e) => setTzEmpNssfRate(Number(e.target.value))}
+                      disabled={tzModalMode === 'view'}
+                      className={`w-full h-10 px-3 pr-7 bg-muted/20 border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60 ${tzEmpNssfRate > 10 ? 'border-red-500' : 'border-border'}`}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">%</span>
+                  </div>
+                  {tzEmpNssfRate > 10 && (
+                    <p className="text-xs text-red-500 mt-1">Maximum is 10%</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase block mb-1">Employer NSSF Contribution</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={tzEmpyrNssfRate}
+                      onChange={(e) => setTzEmpyrNssfRate(Number(e.target.value))}
+                      disabled={tzModalMode === 'view'}
+                      className="w-full h-10 px-3 pr-7 bg-muted/20 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Statutory Rates Row 2 */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase block mb-1">Employer SDL Rate</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={tzSdlRate}
+                      onChange={(e) => setTzSdlRate(Number(e.target.value))}
+                      disabled={tzModalMode === 'view'}
+                      className="w-full h-10 px-3 pr-7 bg-muted/20 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">%</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase block mb-1">Employer WCF Rate</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={tzWcfRate}
+                      onChange={(e) => setTzWcfRate(Number(e.target.value))}
+                      disabled={tzModalMode === 'view'}
+                      className="w-full h-10 px-3 pr-7 bg-muted/20 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">%</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase block mb-1">SDL Employee Threshold</label>
+                  <input
+                    type="number"
+                    value={tzSdlThreshold}
+                    onChange={(e) => setTzSdlThreshold(Number(e.target.value))}
+                    disabled={tzModalMode === 'view'}
+                    className="w-full h-10 px-3 bg-muted/20 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
+                  />
+                </div>
+              </div>
+
+              {/* Statutory Rates Row 3 */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase block mb-1">HESLB Loan Repayment Rate</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={tzHeslbRate}
+                      onChange={(e) => setTzHeslbRate(Number(e.target.value))}
+                      disabled={tzModalMode === 'view'}
+                      className="w-full h-10 px-3 pr-7 bg-muted/20 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">%</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase block mb-1">Personal Relief (TZS/year)</label>
+                  <input
+                    type="number"
+                    value={tzPersonalRelief}
+                    onChange={(e) => setTzPersonalRelief(Number(e.target.value))}
+                    disabled={tzModalMode === 'view'}
+                    className="w-full h-10 px-3 bg-muted/20 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase block mb-1">Disability Relief (TZS/year)</label>
+                  <input
+                    type="number"
+                    value={tzDisabilityRelief}
+                    onChange={(e) => setTzDisabilityRelief(Number(e.target.value))}
+                    disabled={tzModalMode === 'view'}
+                    className="w-full h-10 px-3 bg-muted/20 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
+                  />
+                </div>
+              </div>
+
+              {/* PAYE Slabs */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-foreground">PAYE Progressive Tax Slabs</h4>
+                  {tzModalMode !== 'view' && (
+                    <Button
+                      type="button"
+                      onClick={() => setTzPayeSlabs([...tzPayeSlabs, { lowerLimit: 0, upperLimit: null, rate: 0, fixedAmount: 0 }])}
+                      className="bg-primary/10 hover:bg-primary/20 text-primary h-8 px-3 text-xs font-semibold rounded-lg cursor-pointer"
+                    >
+                      <Plus className="size-3.5 mr-1" /> Add Slab
+                    </Button>
+                  )}
+                </div>
+
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-muted border-b border-border">
+                      <TableRow>
+                        <TableHead className="text-xs font-bold text-muted-foreground px-4 py-2 w-32">Lower Limit (TZS)</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground px-4 py-2 w-32">Upper Limit (TZS)</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground px-4 py-2 w-24">Rate (%)</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground px-4 py-2 w-28">Fixed Tax (TZS)</TableHead>
+                        {tzModalMode !== 'view' && <TableHead className="text-xs font-bold text-muted-foreground px-4 py-2 w-12 text-center">Action</TableHead>}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {tzPayeSlabs.map((slab, index) => (
+                        <TableRow key={index} className="hover:bg-muted/5 border-b border-border last:border-0">
+                          <TableCell className="px-3 py-2">
+                            <input
+                              type="number"
+                              value={slab.lowerLimit}
+                              onChange={(e) => {
+                                const copy = [...tzPayeSlabs];
+                                copy[index].lowerLimit = Number(e.target.value);
+                                setTzPayeSlabs(copy);
+                              }}
+                              disabled={tzModalMode === 'view'}
+                              className="w-full h-8 px-2 bg-muted/20 border border-border rounded text-xs text-foreground disabled:opacity-60"
+                            />
+                          </TableCell>
+                          <TableCell className="px-3 py-2">
+                            <input
+                              type="text"
+                              placeholder="Above"
+                              value={slab.upperLimit === null || slab.upperLimit === undefined ? '' : slab.upperLimit}
+                              onChange={(e) => {
+                                const copy = [...tzPayeSlabs];
+                                const val = e.target.value;
+                                copy[index].upperLimit = val === '' ? null : Number(val);
+                                setTzPayeSlabs(copy);
+                              }}
+                              disabled={tzModalMode === 'view'}
+                              className="w-full h-8 px-2 bg-muted/20 border border-border rounded text-xs text-foreground disabled:opacity-60"
+                            />
+                          </TableCell>
+                          <TableCell className="px-3 py-2">
+                            <div className="relative">
+                              <input
+                                type="number"
+                                value={slab.rate}
+                                onChange={(e) => {
+                                  const copy = [...tzPayeSlabs];
+                                  copy[index].rate = Number(e.target.value);
+                                  setTzPayeSlabs(copy);
+                                }}
+                                disabled={tzModalMode === 'view'}
+                                className="w-full h-8 px-2 pr-5 bg-muted/20 border border-border rounded text-xs text-foreground disabled:opacity-60"
+                              />
+                              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="px-3 py-2">
+                            <input
+                              type="number"
+                              value={slab.fixedAmount}
+                              onChange={(e) => {
+                                const copy = [...tzPayeSlabs];
+                                copy[index].fixedAmount = Number(e.target.value);
+                                setTzPayeSlabs(copy);
+                              }}
+                              disabled={tzModalMode === 'view'}
+                              className="w-full h-8 px-2 bg-muted/20 border border-border rounded text-xs text-foreground disabled:opacity-60"
+                            />
+                          </TableCell>
+                          {tzModalMode !== 'view' && (
+                            <TableCell className="px-3 py-2 text-center">
+                              <button
+                                type="button"
+                                onClick={() => setTzPayeSlabs(tzPayeSlabs.filter((_, i) => i !== index))}
+                                className="p-1 text-rose-500 hover:text-rose-700 bg-transparent rounded border-0 cursor-pointer"
+                              >
+                                <Trash2 className="size-4" />
+                              </button>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-border flex justify-end gap-3 bg-muted/20 shrink-0">
+              <Button
+                type="button"
+                onClick={() => setIsTzModalOpen(false)}
+                className="bg-transparent border border-border text-foreground hover:bg-muted px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer"
+              >
+                {tzModalMode === 'view' ? 'Close' : 'Cancel'}
+              </Button>
+              {tzModalMode !== 'view' && (
+                <>
+                  <Button
+                    type="button"
+                    disabled={isSavingTzPolicy}
+                    onClick={() => handleSaveTzPolicy('draft')}
+                    className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50 cursor-pointer"
+                  >
+                    Save as Draft
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={isSavingTzPolicy}
+                    onClick={() => handleSaveTzPolicy('active')}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50 cursor-pointer"
+                  >
+                    Save & Activate
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>,

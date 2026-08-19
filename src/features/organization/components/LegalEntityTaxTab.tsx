@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, MapPin, Receipt, Image as ImageIcon, ChevronRight, Search, CheckCircle2, Info, AlertTriangle, Trash2, Upload } from 'lucide-react';
+import { Building2, MapPin, Receipt, Image as ImageIcon, ChevronRight, Search, CheckCircle2, Info, AlertTriangle, Trash2, Upload, Landmark } from 'lucide-react';
 import Select from "@/shared/components/ui/Select";
 import SearchableSelect from "@/shared/components/ui/SearchableSelect";
 import { capitalizeFirstLetter } from '@/shared/utils/stringUtils';
@@ -599,6 +599,58 @@ export const LegalEntityTaxTab = ({
             </div>
           </div>
         </div>
+
+        {companyData.legalAddress.country === 'Tanzania' && (
+          <div id="sec-statutory" className="bg-[#FFFFFF] dark:bg-card border border-[#E6E8EE] dark:border-border rounded-[14px] overflow-visible shadow-[0_1px_2px_rgba(16,17,26,0.04)] hover:shadow-[0_4px_16px_rgba(16,17,26,0.06),_0_1px_2px_rgba(16,17,26,0.04)] transition-shadow duration-200 scroll-mt-[100px]">
+            <div className="flex items-center gap-[11px] p-[16px_22px] border-b border-[#E6E8EE] dark:border-border">
+              <Landmark className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0" />
+              <div>
+                <h2 className="font-['Space_Grotesk'] text-[14.5px] font-semibold m-0 tracking-[0.005em] text-[#12131A] dark:text-foreground">Employer Statutory Registration</h2>
+                <div className="text-[11.5px] text-[#9498A6] mt-[1px]">Required for TRA, NSSF, and WCF compliance reporting</div>
+              </div>
+            </div>
+            <div className="p-[22px_22px]">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="mb-0">
+                  <label className="flex items-center gap-[5px] text-[12.5px] font-medium text-[#5B5F6E] dark:text-muted-foreground mb-[7px] tracking-[0.01em]">
+                    TRA TIN
+                  </label>
+                  <input
+                    value={companyData.traTin}
+                    onChange={(e) => !isReadOnly && setCompanyData((prev: any) => ({ ...prev, traTin: e.target.value }))}
+                    readOnly={isReadOnly}
+                    className="w-full bg-[#FFFFFF] dark:bg-card border border-[#D6DAE3] dark:border-border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none hover:border-[#B9BFCC] focus:border-primary"
+                    placeholder="e.g. 123456789"
+                  />
+                </div>
+                <div className="mb-0">
+                  <label className="flex items-center gap-[5px] text-[12.5px] font-medium text-[#5B5F6E] dark:text-muted-foreground mb-[7px] tracking-[0.01em]">
+                    NSSF Employer Number
+                  </label>
+                  <input
+                    value={companyData.nssfEmployerNumber}
+                    onChange={(e) => !isReadOnly && setCompanyData((prev: any) => ({ ...prev, nssfEmployerNumber: e.target.value }))}
+                    readOnly={isReadOnly}
+                    className="w-full bg-[#FFFFFF] dark:bg-card border border-[#D6DAE3] dark:border-border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none hover:border-[#B9BFCC] focus:border-primary"
+                    placeholder="e.g. NSSF-001234"
+                  />
+                </div>
+                <div className="mb-0">
+                  <label className="flex items-center gap-[5px] text-[12.5px] font-medium text-[#5B5F6E] dark:text-muted-foreground mb-[7px] tracking-[0.01em]">
+                    WCF Employer Number
+                  </label>
+                  <input
+                    value={companyData.wcfEmployerNumber}
+                    onChange={(e) => !isReadOnly && setCompanyData((prev: any) => ({ ...prev, wcfEmployerNumber: e.target.value }))}
+                    readOnly={isReadOnly}
+                    className="w-full bg-[#FFFFFF] dark:bg-card border border-[#D6DAE3] dark:border-border rounded-[7px] text-[#12131A] dark:text-foreground text-[13.5px] p-[10px_12px] transition-all outline-none hover:border-[#B9BFCC] focus:border-primary"
+                    placeholder="e.g. WCF-001234"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Section Jump Rail */}
