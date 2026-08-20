@@ -138,10 +138,20 @@ export interface DocumentFormData {
   passportDoc: File | string | null;
   drivingLicenseDoc: File | string | null;
   aadhaarDoc: File | string | null;
+  nssfDoc: File | string | null;
   country?: string;
 }
 
 const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+
+export const getTaxDocLabel = (country?: string): string => {
+  const c = (country || '').toLowerCase();
+  if (c === 'tanzania') return 'TIN Document';
+  if (c === 'united states' || c === 'usa') return 'SSN Document';
+  if (c === 'united kingdom' || c === 'uk') return 'NINO Document';
+  if (c === 'india') return 'PAN Card Document';
+  return 'Tax ID Document';
+};
 
 export const getMissingDocumentFields = (data: Partial<DocumentFormData>): string[] => {
   const missing: string[] = [];
@@ -149,10 +159,16 @@ export const getMissingDocumentFields = (data: Partial<DocumentFormData>): strin
   // Resume / CV
   if (!data.resumeDoc) missing.push("Resume / CV");
 
-  // PAN Details
-  if (!data.panDoc) missing.push("PAN Card Document");
+  // Tax ID Document (PAN / TIN / SSN etc. based on country)
+  const taxDocLabel = getTaxDocLabel(data.country);
+  if (!data.panDoc) missing.push(taxDocLabel);
 
-  // Aadhaar Document
+  // NSSF Document (Tanzania only)
+  if (data.country?.toLowerCase() === 'tanzania' && !data.nssfDoc) {
+    missing.push("NSSF Number Document");
+  }
+
+  // Aadhaar Document (India only)
   if (data.country?.toLowerCase() === 'india' && !data.aadhaarDoc) {
     missing.push("Aadhaar Card Document");
   }
@@ -395,6 +411,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
   const [passportFile, setPassportFile] = useState<File | string | null>(null);
   const [panFile, setPanFile] = useState<File | string | null>(null);
   const [aadhaarFile, setAadhaarFile] = useState<File | string | null>(null);
+  const [nssfFile, setNssfFile] = useState<File | string | null>(null);
   const [dlFile, setDlFile] = useState<File | string | null>(null);
 
   // Additional Documents
@@ -564,10 +581,10 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
         const isIndia = formData?.primaryCountry === 'India';
         const isTanzania = orgIsTanzania;
         if (isTanzania) {
-          const hasNIDA = !!(formData.aadhaarNumber && aadhaarFile);
           const hasTIN = !!(formData.panNumber && panFile);
+          const hasNSSF = !!(formData.nssfNumber && nssfFile);
           const hasResume = !!resumeFile;
-          return hasNIDA && hasTIN && hasResume;
+          return hasTIN && hasNSSF && hasResume;
         }
         const hasPassport = !!(formData.passportNumber && formData.passportExpiry && passportFile);
         const hasLicense = !!(formData.drivingLicense && formData.licenseExpiry && dlFile);
@@ -579,7 +596,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
       default:
         return true;
     }
-  }, [activeSection, formData, compensationSplits, isCompensationMismatch, familyMembers, educationHistory, employmentHistory, passportFile, panFile, aadhaarFile, dlFile, resumeFile, certificateFiles, otherDocuments, id, duplicateFlags]);
+  }, [activeSection, formData, compensationSplits, isCompensationMismatch, familyMembers, educationHistory, employmentHistory, passportFile, panFile, aadhaarFile, nssfFile, dlFile, resumeFile, certificateFiles, otherDocuments, id, duplicateFlags]);
 
 
   // --- Initial Data Fetching ---
@@ -909,6 +926,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
       if (details.passport_doc) setPassportFile(getProfilePictureUrl(details.passport_doc));
       if (details.pan_doc) setPanFile(getProfilePictureUrl(details.pan_doc));
       if (details.aadhaar_doc) setAadhaarFile(getProfilePictureUrl(details.aadhaar_doc));
+      if (details.nssf_doc) setNssfFile(getProfilePictureUrl(details.nssf_doc));
       if (details.dl_doc) setDlFile(getProfilePictureUrl(details.dl_doc));
       if (details.resume) setResumeFile(getProfilePictureUrl(details.resume));
       if (details.certificate_files) setCertificateFiles(safeParse(details.certificate_files).map((f: string) => getProfilePictureUrl(f)));
@@ -1342,12 +1360,16 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
           passportDoc: passportFile,
           drivingLicenseDoc: dlFile,
           aadhaarDoc: aadhaarFile,
+          nssfDoc: nssfFile,
           country: formData.primaryCountry,
         };
         const missingFields = getMissingDocumentFields(docFormData);
         
         if (missingFields.includes("Resume / CV")) errors.resumeDoc = "Resume / CV is required";
-        if (missingFields.includes("PAN Card Document")) errors.panDoc = "PAN Card Document is required";
+        if (missingFields.some(f => f.includes('Document') && !f.includes('Aadhaar') && !f.includes('Resume') && !f.includes('NSSF') && !f.includes('NIDA'))) {
+          errors.panDoc = `${getTaxDocLabel(formData.primaryCountry)} is required`;
+        }
+        if (missingFields.includes("NSSF Number Document")) errors.nssfDoc = "NSSF Number Document is required";
         if (missingFields.includes("Aadhaar Card Document")) errors.aadhaarDoc = "Aadhaar Card Document is required";
         break;
       }
@@ -1520,6 +1542,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
           passportDoc: passportFile,
           drivingLicenseDoc: dlFile,
           aadhaarDoc: aadhaarFile,
+          nssfDoc: nssfFile,
           country: formData.primaryCountry,
         };
         const missingFields = getMissingDocumentFields(docFormData);
@@ -1529,7 +1552,6 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
 
       case "compensation":
         if (!formData.baseSalary) missing.push("Base Salary");
-        else if (Number(formData.baseSalary) < 699000) missing.push("Base salary must be at least TZS 699,000");
         if (compensationSplits.length === 0) missing.push("Salary Components");
         if (!formData.bankName) missing.push("Bank Name");
         if (!formData.branchName) missing.push("Bank Branch Name");
@@ -2289,6 +2311,9 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
     if (aadhaarFile instanceof File) {
       data.append('aadhaar_doc', aadhaarFile);
     }
+    if (nssfFile instanceof File) {
+      data.append('nssf_doc', nssfFile);
+    }
     if (resumeFile instanceof File) {
       data.append('resume', resumeFile);
     }
@@ -2484,6 +2509,12 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
       setShowWarningBanner(true);
       scrollToWarningBanner();
       toast.error("Please fill all required fields correctly.");
+      return;
+    }
+
+    const basicSplit = compensationSplits.find((s: any) => (s.componentType || '').toLowerCase().includes('basic'));
+    if (basicSplit && parseFloat(basicSplit.amount) > 0 && parseFloat(basicSplit.amount) < 699000) {
+      toast.error("Basic salary must be at least TZS 699,000");
       return;
     }
 
@@ -3892,6 +3923,8 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
                     setPanFile={setPanFile}
                     aadhaarFile={aadhaarFile}
                     setAadhaarFile={setAadhaarFile}
+                    nssfFile={nssfFile}
+                    setNssfFile={setNssfFile}
                     resumeFile={resumeFile}
                     setResumeFile={setResumeFile}
                     certificateFiles={certificateFiles}
@@ -4043,20 +4076,6 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
                           <h3 className="text-lg font-bold text-slate-900 dark:text-foreground tracking-tight">Tanzania Statutory Details</h3>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                          <div>
-                            <label className="block text-[12px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider mb-2">
-                              NSSF Number
-                            </label>
-                            <input
-                              type="text"
-                              name="nssfNumber"
-                              value={formData.nssfNumber}
-                              onChange={handleInputChange}
-                              disabled={lockJobAndPayroll && !canEditBank}
-                              className="w-full px-3 py-2 border rounded bg-card focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 border-border"
-                              placeholder="e.g. 1234567890"
-                            />
-                          </div>
                           <div className="flex items-center gap-3 h-full pt-6">
                             <input
                               type="checkbox"

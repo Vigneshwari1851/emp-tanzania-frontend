@@ -93,7 +93,8 @@ const CompensationSection: React.FC<CompensationSectionProps> = ({
 
     const empNssfRate = activePolicy ? parseFloat(activePolicy.employee_nssf_rate?.toString() || '0.10') : 0.10;
     const personalReliefMonthly = activePolicy ? Math.round(parseFloat(activePolicy.personal_relief_annual?.toString() || '270000') / 12) : Math.round(270000 / 12);
-    const disabilityReliefMonthly = formData.isDisabled ? personalReliefMonthly : 0;
+    const disabilityReliefAnnual = activePolicy ? parseFloat(activePolicy.disability_relief_annual?.toString() || '270000') : 270000;
+    const disabilityReliefMonthly = formData.isDisabled ? Math.round(disabilityReliefAnnual / 12) : 0;
     const employeeNSSF = Math.round(gross * empNssfRate);
     const taxableIncome = Math.max(0, gross - employeeNSSF);
 
@@ -162,7 +163,8 @@ const CompensationSection: React.FC<CompensationSectionProps> = ({
     const wcfRate = activePolicy ? parseFloat(activePolicy.wcf_rate?.toString() || '0.005') : 0.005;
     const heslbRate = activePolicy ? parseFloat(activePolicy.heslb_rate?.toString() || '0.15') : 0.15;
     const personalReliefMonthly = activePolicy ? Math.round(parseFloat(activePolicy.personal_relief_annual?.toString() || '270000') / 12) : Math.round(270000 / 12);
-    const disabilityReliefMonthly = formData.isDisabled ? personalReliefMonthly : 0;
+    const disabilityReliefAnnual = activePolicy ? parseFloat(activePolicy.disability_relief_annual?.toString() || '270000') : 270000;
+    const disabilityReliefMonthly = formData.isDisabled ? Math.round(disabilityReliefAnnual / 12) : 0;
 
     const payeSlabs = activePolicy?.paye_slabs || [
       { lowerLimit: 0, upperLimit: 270000, rate: 0, fixedAmount: 0 },
@@ -252,18 +254,24 @@ const CompensationSection: React.FC<CompensationSectionProps> = ({
               <div className="space-y-1.5">
                 {effectiveCompensationSplits
                   .filter((s: CompensationSplit) => s.type === 'earning' && parseFloat(s.amount) > 0)
-                  .map((item: CompensationSplit, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between px-4 py-3 bg-[#f0fdf4] dark:bg-emerald-950/30 rounded group transition-all hover:bg-[#e6fcf0] dark:hover:bg-emerald-950/50">
+                  .map((item: CompensationSplit, idx: number) => {
+                    const isBasic = item.componentType.toLowerCase().includes('basic');
+                    const basicAmount = isBasic ? parseFloat(item.amount) : 0;
+                    const isBasicLow = isBasic && basicAmount > 0 && basicAmount < 699000;
+                    return (
+                    <div key={idx} className={`flex items-center justify-between px-4 py-3 rounded group transition-all ${isBasicLow ? 'bg-red-50 dark:bg-red-950/30 hover:bg-red-100' : 'bg-[#f0fdf4] dark:bg-emerald-950/30 hover:bg-[#e6fcf0] dark:hover:bg-emerald-950/50'}`}>
                       <div className="flex items-center gap-3">
-                        <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full" />
+                        <div className={`w-2.5 h-2.5 rounded-full ${isBasicLow ? 'bg-red-500' : 'bg-emerald-500'}`} />
                         <div>
                           <p className="text-[13px] font-medium text-foreground leading-tight">{item.componentType}</p>
                           <p className="text-[11px] text-muted-foreground font-medium">Monthly Earning</p>
+                          {isBasicLow && <p className="text-[11px] text-red-500 mt-0.5">Minimum basic salary is TZS 699,000</p>}
                         </div>
                       </div>
-                      <span className="text-[14px] font-medium text-emerald-700 dark:text-emerald-400">{currentSymbol} {parseFloat(item.amount).toLocaleString()}</span>
+                      <span className={`text-[14px] font-medium ${isBasicLow ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'}`}>{currentSymbol} {parseFloat(item.amount).toLocaleString()}</span>
                     </div>
-                  ))}
+                    );
+                  })}
                 {effectiveCompensationSplits.filter((s: CompensationSplit) => s.type === 'earning').length === 0 && (
                    <p className="text-[11px] text-muted-foreground text-center py-4 italic">No earning components found</p>
                 )}
@@ -341,7 +349,7 @@ const CompensationSection: React.FC<CompensationSectionProps> = ({
 
           <div className="max-w-md">
             <label className="block text-[13px] font-bold text-foreground mb-2">
-              {orgIsTanzania ? 'Gross Salary (Base)' : 'CTC (Cost to Company)'} <span className="text-red-500">*</span>
+              {orgIsTanzania ? 'Gross Salary' : 'CTC (Cost to Company)'} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">{currentSymbol}</span>
@@ -350,18 +358,9 @@ const CompensationSection: React.FC<CompensationSectionProps> = ({
                 name="baseSalary"
                 value={formData.baseSalary}
                 onChange={handleInputChange}
-                onBlur={() => {
-                  const val = parseFloat(formData.baseSalary);
-                  if (formData.baseSalary && val < 699000) {
-                    setFormErrors(prev => ({ ...prev, baseSalary: 'Base salary must be at least TZS 699,000' }));
-                  } else {
-                    setFormErrors(prev => { const { baseSalary, ...rest } = prev; return rest; });
-                  }
-                }}
                 readOnly={readOnly}
-                min="699000"
                 className={`w-full ${ctcPaddingClass} pr-4 py-2.5 bg-card border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold transition-all ${formErrors.baseSalary ? 'border-red-400' : 'border-border'} ${readOnly ? 'cursor-default opacity-90' : ''}`}
-                placeholder={orgIsTanzania ? "Min TZS 699,000" : "Enter CTC"}
+                placeholder={orgIsTanzania ? "Enter Gross Salary" : "Enter CTC"}
               />
             </div>
             {formErrors.baseSalary && <p className="text-xs text-red-500 mt-1">{formErrors.baseSalary}</p>}
@@ -386,11 +385,13 @@ const CompensationSection: React.FC<CompensationSectionProps> = ({
                   {effectiveCompensationSplits
                     .filter((s: CompensationSplit) => s.type === 'earning')
                     .map((split: CompensationSplit, idx: number) => {
-                      // Find actual index in original array for potential updates
                       const originalIndex = compensationSplits.findIndex(s => s === split);
+                      const isBasic = split.componentType.toLowerCase().includes('basic');
+                      const basicAmount = isBasic ? parseFloat(split.amount) : 0;
+                      const isBasicLow = isBasic && basicAmount > 0 && basicAmount < 699000;
                       return (
-                        <div key={idx} className="flex items-center gap-3 p-3 bg-emerald-50/40 rounded border border-emerald-100/50 group transition-all hover:bg-emerald-50/60">
-                          <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shrink-0" />
+                        <div key={idx} className={`flex items-center gap-3 p-3 rounded border group transition-all ${isBasicLow ? 'bg-red-50/40 border-red-200/60 hover:bg-red-50/60' : 'bg-emerald-50/40 border-emerald-100/50 hover:bg-emerald-50/60'}`}>
+                          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isBasicLow ? 'bg-red-500' : 'bg-emerald-500'}`} />
                           <div className="flex-1">
                             <input
                               type="text"
@@ -400,6 +401,7 @@ const CompensationSection: React.FC<CompensationSectionProps> = ({
                               placeholder="Component Name"
                             />
                             <p className="text-[10px] text-emerald-600/70 font-medium px-0.5 mt-0.5">Salary Earning</p>
+                            {isBasicLow && <p className="text-[11px] text-red-500 px-0.5 mt-0.5">Minimum basic salary is TZS 699,000</p>}
                           </div>
                           <div className="w-44 relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-500 text-xs font-bold">{currentSymbol}</span>
@@ -407,7 +409,7 @@ const CompensationSection: React.FC<CompensationSectionProps> = ({
                               type="number"
                               value={split.amount}
                               readOnly
-                              className={`w-full ${splitPaddingClass} pr-3 py-2 bg-emerald-50/50 border border-emerald-100/60 rounded text-sm text-right font-black text-emerald-700 cursor-default`}
+                              className={`w-full ${splitPaddingClass} pr-3 py-2 border rounded text-sm text-right font-black cursor-default ${isBasicLow ? 'bg-red-50/50 border-red-100/60 text-red-700' : 'bg-emerald-50/50 border-emerald-100/60 text-emerald-700'}`}
                               placeholder="0"
                             />
                           </div>
@@ -507,8 +509,8 @@ const CompensationSection: React.FC<CompensationSectionProps> = ({
                       </div>
                       {formData.isDisabled && tzTaxPreview.disabilityReliefMonthly > 0 && (
                         <div className="flex justify-between items-center px-3 py-2 bg-blue-50/40 rounded border border-blue-100/50">
-                          <span className="text-[11px] font-medium text-blue-600">↳ Disability Relief</span>
-                          <span className="text-[12px] font-bold text-blue-600">-{currentSymbol} {tzTaxPreview.disabilityReliefMonthly.toLocaleString()}</span>
+                          <span className="text-[12px] font-medium text-foreground">Disability Relief</span>
+                          <span className="text-[12px] font-bold text-emerald-700">{currentSymbol} {tzTaxPreview.disabilityReliefMonthly.toLocaleString()}</span>
                         </div>
                       )}
                       {tzTaxPreview.heslb > 0 && (

@@ -26,6 +26,7 @@ import { getEmployee, type Employee } from '@/features/employees/services/employ
 import CompensationSection from '../components/CompensationSection';
 import { ChangeRequestHub } from '@/features/change-requests/pages/ChangeRequestHub';
 import type { CompensationSplit } from './AddEmployee';
+import { getTaxDocLabel } from './AddEmployee';
 import axiosInstance from '@/shared/services/axiosInstance';
 import { toast } from "sonner";
 import { RoleGate } from '@/features/auth/components/RoleGate';
@@ -79,7 +80,7 @@ interface EmploymentRecord {
 
 export function UserProfile() {
   const { user: authUser } = useAuth();
-  const { currencySymbol } = useCurrency();
+  const { currencySymbol, isTanzania } = useCurrency();
   const navigate = useOrgNavigate();
   const { id } = useParams();
   const location = useLocation();
@@ -284,7 +285,7 @@ export function UserProfile() {
     if (det.pan_doc) {
       unifiedList.push({
         id: "pan-doc",
-        name: "PAN Card Document",
+        name: getTaxDocLabel(isTanzania ? 'Tanzania' : 'India'),
         category: "Identity Proof",
         url: det.pan_doc,
         uploadedAt: "Uploaded",
@@ -297,6 +298,16 @@ export function UserProfile() {
         name: "Aadhaar Card Document",
         category: "Identity Proof",
         url: det.aadhaar_doc,
+        uploadedAt: "Uploaded",
+      });
+    }
+
+    if (det.nssf_doc) {
+      unifiedList.push({
+        id: "nssf-doc",
+        name: "NSSF Number Document",
+        category: "Identity Proof",
+        url: det.nssf_doc,
         uploadedAt: "Uploaded",
       });
     }
@@ -1064,6 +1075,37 @@ export function UserProfile() {
                         </div>
                       </div>
                     </div>
+
+                    {isTanzania && (
+                      <div>
+                        <div className="mb-6 border-b border-border pb-3 flex items-center gap-2">
+                          <Banknote className="w-5 h-5 text-primary" />
+                          <h3 className="text-xl font-bold text-foreground tracking-tight">Tanzania Statutory Details</h3>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                          <div className="flex items-center gap-3">
+                            <span className={`inline-block w-3 h-3 rounded-full ${details?.is_heslb_beneficiary ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                            <div>
+                              <label className="block text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">HESLB Loan Beneficiary</label>
+                              <p className="text-sm font-semibold text-foreground py-1">{details?.is_heslb_beneficiary ? "Yes" : "No"}</p>
+                            </div>
+                          </div>
+                          {details?.is_heslb_beneficiary && details?.heslb_index_number && (
+                            <div>
+                              <label className="block text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">HESLB Index Number</label>
+                              <p className="text-sm font-semibold text-foreground py-1">{details.heslb_index_number}</p>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-3">
+                            <span className={`inline-block w-3 h-3 rounded-full ${details?.is_disabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                            <div>
+                              <label className="block text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Person with Disability (PwD)</label>
+                              <p className="text-sm font-semibold text-foreground py-1">{details?.is_disabled ? "Yes — Disability Relief Applicable" : "No"}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
