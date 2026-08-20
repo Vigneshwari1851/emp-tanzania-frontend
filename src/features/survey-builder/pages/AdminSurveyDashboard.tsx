@@ -124,10 +124,11 @@ export default function AdminSurveyDashboard() {
       if (appliedFilters.status === "Active" && !survey.is_active) return false;
       if (appliedFilters.status === "Closed" && survey.is_active) return false;
       if (appliedFilters.department && appliedFilters.department !== "All Departments") {
-        const hasResponse = survey.responses?.some(
-          (resp: any) => resp.user?.details?.department?.department_name === appliedFilters.department
-        );
-        if (!hasResponse) return false;
+        const targetDept = survey.target_department || "All Departments";
+        const targetedDepts = targetDept.split(",").map((d: any) => d.trim().toLowerCase());
+        if (!targetedDepts.includes(appliedFilters.department.toLowerCase()) && targetDept.toLowerCase() !== "all departments") {
+          return false;
+        }
       }
       if (appliedFilters.startDate) {
         const start = new Date(appliedFilters.startDate);

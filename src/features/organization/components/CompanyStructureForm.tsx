@@ -290,6 +290,8 @@ export const CompanyStructureForm: React.FC<CompanyStructureFormProps> = ({
   handleCancel,
   editMode,
   setEditMode,
+  errors,
+  setErrors,
 }) => {
   const navigate = useOrgNavigate();
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = React.useState(false);
@@ -307,6 +309,7 @@ export const CompanyStructureForm: React.FC<CompanyStructureFormProps> = ({
   const [activeLocationCountryDropdown, setActiveLocationCountryDropdown] = React.useState<string | null>(null);
   const [locCountrySearch, setLocCountrySearch] = React.useState("");
   const [deleteCostCenterTarget, setDeleteCostCenterTarget] = React.useState<{ index: number; name: string } | null>(null);
+  const [editingCostCenters, setEditingCostCenters] = React.useState<Record<number, boolean>>({});
 
   const getTaxLabelAndPlaceholder = (countryName: string) => {
     const country = (countryName || "").trim().toLowerCase();
@@ -895,6 +898,7 @@ export const CompanyStructureForm: React.FC<CompanyStructureFormProps> = ({
         dropdownRef={dropdownRef}
         getCompanyTypesByCountry={getCompanyTypesByCountry}
         getTaxFieldsForCompanyType={getTaxFieldsForCompanyType}
+        errors={errors}
       />
     );
   }
@@ -999,7 +1003,9 @@ export const CompanyStructureForm: React.FC<CompanyStructureFormProps> = ({
                   type="button"
                   onClick={() => {
                     const existing = companyData.costCenters || [];
+                    const newIndex = existing.length;
                     setCompanyData({ ...companyData, costCenters: [...existing, ""] });
+                    setEditingCostCenters(prev => ({ ...prev, [newIndex]: true }));
                   }}
                   className="flex items-center gap-1 px-3 py-1.5 bg-primary/10 dark:bg-primary-900/30 text-primary dark:text-primary-300 border border-primary-200 dark:border-primary-800 rounded-lg text-[11px] font-bold hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-all active:scale-95"
                 >
@@ -1027,7 +1033,10 @@ export const CompanyStructureForm: React.FC<CompanyStructureFormProps> = ({
                 {!isReadOnly && (
                   <Button
                     variant="outline"
-                    onClick={() => setCompanyData({ ...companyData, costCenters: [""] })}
+                    onClick={() => {
+                      setCompanyData({ ...companyData, costCenters: [""] });
+                      setEditingCostCenters({ 0: true });
+                    }}
                     className="h-8 px-4 text-[12px] font-bold gap-1.5 mt-2"
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -1044,36 +1053,73 @@ export const CompanyStructureForm: React.FC<CompanyStructureFormProps> = ({
                   <span className="w-7" />
                 </div>
 
-                {companyData.costCenters?.map((cc: string, index: number) => (
-                  <div key={index} className="grid grid-cols-[40px_1fr_auto] gap-2 items-center group">
-                    <span className="text-[12px] font-bold text-muted-foreground bg-muted/50 rounded h-9 flex items-center justify-center">
-                      {index + 1}
-                    </span>
-                    <input
-                      type="text"
-                      value={cc}
-                      onChange={(e) => {
-                        if (isReadOnly) return;
-                        const updated = [...(companyData.costCenters || [])];
-                        updated[index] = e.target.value;
-                        setCompanyData({ ...companyData, costCenters: updated });
-                      }}
-                      readOnly={isReadOnly}
-                      placeholder="e.g., CC-100 - Engineering"
-                      className={`h-9 px-3 text-[13px] border border-border rounded-[7px] focus:ring-2 focus:ring-primary/30 focus:border-primary hover:border-primary-300 transition-all outline-none ${isReadOnly ? "bg-muted text-muted-foreground" : "bg-card"}`}
-                    />
-                    {!isReadOnly && (
-                      <button
-                        type="button"
-                        onClick={() => setDeleteCostCenterTarget({ index, name: cc.trim() || `Cost Centre #${index + 1}` })}
-                        className="w-7 h-7 flex items-center justify-center rounded-md text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 border-none bg-transparent"
-                        title="Remove"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                ))}
+                {companyData.costCenters?.map((cc: string, index: number) => {
+                  const isCCEditable = !isReadOnly && (cc === "" || !!editingCostCenters[index]);
+                  return (
+                    <div key={index} className="grid grid-cols-[40px_1fr_auto] gap-2 items-center group">
+                      <span className="text-[12px] font-bold text-muted-foreground bg-muted/50 rounded h-9 flex items-center justify-center">
+                        {index + 1}
+                      </span>
+                      <input
+                        type="text"
+                        value={cc}
+                        onChange={(e) => {
+                          if (isReadOnly) return;
+                          const updated = [...(companyData.costCenters || [])];
+                          updated[index] = e.target.value;
+                          setCompanyData({ ...companyData, costCenters: updated });
+                        }}
+                        readOnly={isReadOnly || !isCCEditable}
+                        placeholder="e.g., CC-100 - Engineering"
+                        className={`h-9 px-3 text-[13px] border border-border rounded-[7px] focus:ring-2 focus:ring-primary/30 focus:border-primary hover:border-primary-300 transition-all outline-none ${(isReadOnly || !isCCEditable) ? "bg-muted text-muted-foreground" : "bg-card"}`}
+                      />
+                      {!isReadOnly && (
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                          {isCCEditable ? (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (!cc.trim()) {
+                                  toast.error("Cost Centre name/code cannot be empty");
+                                  return;
+                                }
+                                if (handleSave) {
+                                  const success = await handleSave(false);
+                                  if (success) {
+                                    setEditingCostCenters(prev => ({ ...prev, [index]: false }));
+                                  }
+                                }
+                              }}
+                              className="w-7 h-7 flex items-center justify-center rounded-md text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors border-none bg-transparent cursor-pointer"
+                              title="Save Cost Centre"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingCostCenters(prev => ({ ...prev, [index]: true }));
+                              }}
+                              className="w-7 h-7 flex items-center justify-center rounded-md text-blue-500 hover:text-blue-700 hover:bg-blue-50 transition-colors border-none bg-transparent cursor-pointer"
+                              title="Edit Cost Centre"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setDeleteCostCenterTarget({ index, name: cc.trim() || `Cost Centre #${index + 1}` })}
+                            className="w-7 h-7 flex items-center justify-center rounded-md text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors border-none bg-transparent cursor-pointer"
+                            title="Remove"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
 
                 {/* Budget note */}
                 <div className="flex items-start gap-2 mt-3 pt-3 border-t border-border">

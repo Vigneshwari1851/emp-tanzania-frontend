@@ -216,11 +216,8 @@ export function LoansAdvancesPortal({ userId, refresh }: LoansAdvancesPortalProp
                                     <Label className="text-sm font-semibold text-foreground">Select Policy *</Label>
                                     <Select value={selectedPolicyId} onValueChange={(val) => {
                                         setSelectedPolicyId(val);
-                                        const policy = policies.find(p => String(p.id) === val);
-                                        if (policy) {
-                                            setPrincipal(String(policy.maxAmount));
-                                            setDuration(String(policy.maxTenure));
-                                        }
+                                        setPrincipal('');
+                                        setDuration('');
                                     }}>
                                         <SelectTrigger className="rounded-xl border-border bg-card text-foreground"><SelectValue placeholder="Select Loan / Advance Policy" /></SelectTrigger>
                                         <SelectContent className="rounded-xl border-border bg-card text-foreground max-h-64 overflow-y-auto">

@@ -240,7 +240,7 @@ export function AddDepartment() {
       setIsSaving(true);
       await deleteDepartment(parseInt(id, 10));
       toast.success("Department deleted successfully");
-      navigate("/org-setup/settings");
+      navigate("/org-setup/settings?tab=organizational");
     } catch (error: any) {
       console.error("Failed to delete department", error);
       toast.error(error.response?.data?.message || error.message || "Failed to delete department");
@@ -600,15 +600,8 @@ export function AddDepartment() {
         handleCloseTeamPage();
       }
     } else {
-      if (isEditMode) {
-        // Return to department view mode
-        setIsDeptView(true);
-        const params = new URLSearchParams(location.search);
-        params.set("view", "true");
-        navigate(`${location.pathname}?${params.toString()}`, { replace: true });
-      } else {
-        navigate("/org-setup/settings");
-      }
+      const returnTo = (location.state as any)?.from || "/org-setup/settings?tab=organizational";
+      navigate(returnTo);
     }
   };
 

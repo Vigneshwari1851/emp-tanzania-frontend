@@ -5,7 +5,7 @@ import { type Notification as DropdownNotification } from './types';
 import { Bell, X, CheckCheck } from "lucide-react";
 import { useNotifications } from '@/shared/context/NotificationContext';
 import { useAuth } from '@/shared/context/AuthContext';
-import { getNotificationTargetUrl } from '@/features/notifications/utils/notificationTarget';
+import { getNotificationTargetUrl, handleNotificationNavigation } from '@/features/notifications/utils/notificationTarget';
 
 interface NotificationDropdownProps {
   onClose: () => void;
@@ -22,12 +22,16 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ onCl
     refreshNotifications();
   }, [refreshNotifications]);
 
-  // Take top 5 most recent notifications
-  const recentNotifications = [...notifications]
+  // Filter by activeTab first, sort by date, then take the top 5 most recent
+  const filteredRawNotifications = notifications
+    .filter(n => {
+      if (activeTab === "unread") return !n.is_read;
+      return true;
+    })
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5);
 
-  const formattedNotifications = recentNotifications.map((n) => {
+  const filteredNotifications = filteredRawNotifications.map((n) => {
     let timestampStr = "Just now";
     try {
       const createdDate = new Date(n.created_at);
@@ -63,11 +67,6 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ onCl
       isRead: n.is_read,
       createdAt: n.created_at
     } as DropdownNotification & { createdAt: string };
-  });
-
-  const filteredNotifications = formattedNotifications.filter(n => {
-    if (activeTab === "unread") return !n.isRead;
-    return true;
   });
 
   const totalCount = notifications.length;
@@ -141,7 +140,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ onCl
                   onMarkRead={(id) => {
                     markAsRead(Number(id));
                     const raw = notifications.find(n => n.id === Number(id));
-                    navigate(getNotificationTargetUrl(raw || {}, user));
+                    handleNotificationNavigation(navigate, raw || {}, user);
                     onClose();
                   }}
                 />
@@ -159,19 +158,17 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ onCl
         </div>
 
         {/* Footer */}
-        {totalCount > 5 && (
-          <div className="p-4 bg-muted/50 border-t border-border">
-            <button
-              onClick={() => {
-                navigate("/notifications");
-                onClose();
-              }}
-              className="w-full py-2.5 bg-card border border-border rounded-sm text-sm font-semibold text-foreground hover:bg-muted hover:text-primary hover:border-primary-100 dark:hover:border-primary-800 transition-all shadow-sm"
-            >
-              View All Notifications
-            </button>
-          </div>
-        )}
+        <div className="p-4 bg-muted/50 border-t border-border">
+          <button
+            onClick={() => {
+              navigate("/notifications");
+              onClose();
+            }}
+            className="w-full py-2.5 bg-card border border-border rounded-sm text-sm font-semibold text-foreground hover:bg-muted hover:text-primary hover:border-primary-100 dark:hover:border-primary-800 transition-all shadow-sm"
+          >
+            View All Notifications
+          </button>
+        </div>
       </div>
     </>
   );

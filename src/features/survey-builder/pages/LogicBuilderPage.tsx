@@ -482,9 +482,32 @@ export default function LogicBuilderPage() {
       toast.success("Survey saved!");
       setSaveStatus("saved");
       console.log('[LogicBuilder] save completed successfully');
-    } catch (err) {
+    } catch (err: any) {
       console.error('[LogicBuilder] save failed:', err);
-      toast.error("Failed to save survey");
+      const backendMessage = err.response?.data?.message;
+      const backendErrors = err.response?.data?.errors;
+      if (Array.isArray(backendErrors) && backendErrors.length > 0) {
+        const friendlyErrors = backendErrors.map(e => {
+          let field = e.field || "";
+          field = field.replace("body.", "");
+          const match = field.match(/questions\.(\d+)\.(.+)/);
+          if (match) {
+            const idx = parseInt(match[1]) + 1;
+            const subfield = match[2];
+            if (subfield === "type") {
+              return `Question ${idx}: The selected question type is not supported.`;
+            }
+            if (subfield === "label") {
+              return `Question ${idx}: Question text/label is required.`;
+            }
+            return `Question ${idx} ${subfield} is invalid: ${e.message}`;
+          }
+          return `${field}: ${e.message}`;
+        }).join(" | ");
+        toast.error(friendlyErrors);
+      } else {
+        toast.error(backendMessage || "Failed to save survey");
+      }
       setSaveStatus("saved");
     }
   }

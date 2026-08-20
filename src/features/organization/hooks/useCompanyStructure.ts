@@ -89,7 +89,12 @@ function mapDepartments(deptData: any[]): DepartmentNode[] {
       id: t.id,
       name: t.team_name ?? t.name,
       description: t.description,
-      lead: t.team_lead?.username ?? t.team_lead ?? t.lead ?? "Unassigned",
+      lead: (t.team_lead && typeof t.team_lead === 'object'
+        ? (t.team_lead.full_name || t.team_lead.username || t.team_lead.name || (t.team_lead.first_name ? `${t.team_lead.first_name} ${t.team_lead.last_name || ''}`.trim() : ''))
+        : (typeof t.team_lead === 'string' ? t.team_lead : '')) || 
+        (t.lead && typeof t.lead === 'object'
+        ? (t.lead.full_name || t.lead.username || t.lead.name)
+        : (typeof t.lead === 'string' ? t.lead : '')) || "Unassigned",
       members: Array.isArray(t.members) ? t.members : (Array.isArray(t.team_members) ? t.team_members : []),
       avatars: (t.members || t.team_members || [])
         .map((m: any) => m.profile_picture || (m.first_name?.[0] || m.username?.[0] || "?").toUpperCase())
@@ -125,6 +130,25 @@ function mapOrganization(org: Organization): MappedOrganization {
     ein: org.ein,
     siret: org.siret,
     otherTaxId: org.other_tax_id,
+    taxRegistrationNumbers: (() => {
+      const base = {
+        pan: org.pan || "",
+        tin: org.tin || "",
+        sin: org.sin || "",
+        ein: org.ein || "",
+        siret: org.siret || "",
+        other: "",
+      };
+      try {
+        if (org.other_tax_id && org.other_tax_id.startsWith("{")) {
+          const extra = JSON.parse(org.other_tax_id);
+          return { ...base, ...extra };
+        }
+      } catch (e) {
+        // Keep default fallback
+      }
+      return { ...base, other: org.other_tax_id || "" };
+    })(),
     businessUnit: org.business_unit,
     costCenter: org.cost_center,
     payrollStatutoryUnit: org.payroll_statutory_unit,
@@ -139,12 +163,17 @@ function mapOrganization(org: Organization): MappedOrganization {
       flexRequiredHours: org.flex_required_hours || 8,
       flexCoreStartTime: org.flex_core_start_time || "11:00",
       flexCoreEndTime: org.flex_core_end_time || "16:00",
-    },
+      enableShifts: org.enable_shifts || false,
+      shifts: org.shifts || [],
+      publicHolidays: org.public_holidays || [],
+    } as any,
     locations: (org.branches ?? org.branch ?? []).map((b: any) => ({
       id: b.id,
       locationName: b.location_name ?? b.branch_name,
       locationCode: b.location_code ?? b.branch_code,
       timeZone: b.time_zone || b.timeZone,
+      taxLocation: b.tax_location || "",
+      gst: b.gst || "",
       branch_employee_count: b.branch_employee_count,
       address: {
         city: b.city,

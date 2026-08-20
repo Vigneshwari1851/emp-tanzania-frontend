@@ -111,6 +111,7 @@ export default function CreateSurveyPage() {
   const [endDate, setEndDate] = useState("");
   const [templateQuestions, setTemplateQuestions] = useState<TemplateQuestion[] | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const todayStr = new Date().toISOString().split('T')[0];
 
   const createSurveyMutation = useCreateSurvey();
   const updateSurveyMutation = useUpdateSurvey();
@@ -138,6 +139,19 @@ export default function CreateSurveyPage() {
   async function handleStartBuilding() {
     if (!title.trim()) {
       toast.error("Please enter a survey title.");
+      return;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (startDate && new Date(startDate) < today) {
+      toast.error("Start date must be in the future (today or later).");
+      return;
+    }
+
+    if (endDate && new Date(endDate) < today) {
+      toast.error("End date must be in the future (today or later).");
       return;
     }
 
@@ -195,7 +209,30 @@ export default function CreateSurveyPage() {
         navigate(mode === "logic" ? `/surveys/admin/logic-builder/${surveyId}` : `/surveys/admin/linear-builder/${surveyId}`);
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Something went wrong.");
+      const backendMessage = err.response?.data?.message;
+      const backendErrors = err.response?.data?.errors;
+      if (Array.isArray(backendErrors) && backendErrors.length > 0) {
+        const friendlyErrors = backendErrors.map(e => {
+          let field = e.field || "";
+          field = field.replace("body.", "");
+          const match = field.match(/questions\.(\d+)\.(.+)/);
+          if (match) {
+            const idx = parseInt(match[1]) + 1;
+            const subfield = match[2];
+            if (subfield === "type") {
+              return `Question ${idx}: The selected question type is not supported.`;
+            }
+            if (subfield === "label") {
+              return `Question ${idx}: Question text/label is required.`;
+            }
+            return `Question ${idx} ${subfield} is invalid: ${e.message}`;
+          }
+          return `${field}: ${e.message}`;
+        }).join(" | ");
+        toast.error(friendlyErrors);
+      } else {
+        toast.error(backendMessage || "Something went wrong.");
+      }
     }
   }
 
@@ -318,6 +355,7 @@ export default function CreateSurveyPage() {
                     value={startDate}
                     onChange={(date) => setStartDate(date)}
                     placeholder="Select start date"
+                    minDate={todayStr}
                     maxDate={endDate || undefined}
                   />
                 </div>
@@ -327,7 +365,7 @@ export default function CreateSurveyPage() {
                     value={endDate}
                     onChange={(date) => setEndDate(date)}
                     placeholder="Select end date"
-                    minDate={startDate || undefined}
+                    minDate={startDate || todayStr}
                   />
                 </div>
               </div>

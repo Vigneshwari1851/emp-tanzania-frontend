@@ -435,12 +435,12 @@ export const TimeAttendance: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>DATE</TableHead>
-                    <TableHead>CHECK IN</TableHead>
-                    <TableHead>CHECK OUT</TableHead>
-                    <TableHead>WORK HOURS</TableHead>
-                    <TableHead>STATUS</TableHead>
-                    <TableHead>LOCATION</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Check In</TableHead>
+                    <TableHead>Check Out</TableHead>
+                    <TableHead>Work Hours</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Location</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -724,13 +724,13 @@ export const TimeAttendance: React.FC = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>EMPLOYEE</TableHead>
-                      <TableHead>DATE</TableHead>
-                      <TableHead>CHECK IN</TableHead>
-                      <TableHead>CHECK OUT</TableHead>
-                      <TableHead>WORK HOURS</TableHead>
-                      <TableHead>STATUS</TableHead>
-                      <TableHead>LOCATION</TableHead>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Check In</TableHead>
+                      <TableHead>Check Out</TableHead>
+                      <TableHead>Work Hours</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Location</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

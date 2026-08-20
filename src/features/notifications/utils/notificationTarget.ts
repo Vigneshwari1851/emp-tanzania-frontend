@@ -47,3 +47,64 @@ export const getNotificationTargetUrl = (notif: NotificationLike, user?: TargetU
   }
   return `/${notif.related_module || 'dashboard'}`;
 };
+
+export const handleNotificationNavigation = (
+  navigate: (to: string) => void,
+  notif: any,
+  user: any
+) => {
+  const targetUrl = getNotificationTargetUrl(notif, user);
+  const currentMode = localStorage.getItem('sidebar_view_mode') || 'role';
+  
+  let targetMode: 'self' | 'role' = 'role';
+  
+  const mod = (notif.related_module || notif.type || '').toLowerCase();
+  const title = (notif.title || '').toLowerCase();
+  const msg = (notif.message || notif.description || '').toLowerCase();
+  
+  if (
+    targetUrl.startsWith('/employee/') || 
+    targetUrl.startsWith('/my-') || 
+    targetUrl === '/surveys'
+  ) {
+    targetMode = 'self';
+  } else if (
+    targetUrl === '/leave-management' || 
+    targetUrl === '/reimbursements' || 
+    targetUrl.startsWith('/loans-advances')
+  ) {
+    if (
+      title.includes('your') || 
+      title.includes('you ') ||
+      msg.includes('your') || 
+      msg.includes('you ')
+    ) {
+      targetMode = 'self';
+    } else {
+      targetMode = 'role';
+    }
+  } else {
+    targetMode = currentMode as 'self' | 'role';
+  }
+
+  let rawRole = Array.isArray(user?.role) ? (user?.role[0] || '') : (user?.role || '');
+  if (typeof rawRole === 'object' && rawRole !== null) {
+    rawRole = rawRole.name || rawRole.code || rawRole.id || '';
+  }
+  const normalizedRole = rawRole.toString().toUpperCase().replace(/[\s_]+/g, '');
+  const isStrictEmployee = normalizedRole === 'EMPLOYEE' || normalizedRole === 'USER';
+  
+  if (isStrictEmployee) {
+    targetMode = 'self';
+  }
+
+  if (currentMode !== targetMode) {
+    localStorage.setItem('sidebar_view_mode', targetMode);
+    navigate(targetUrl);
+    setTimeout(() => {
+      window.location.reload();
+    }, 50);
+  } else {
+    navigate(targetUrl);
+  }
+};

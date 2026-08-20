@@ -146,7 +146,7 @@ export function UserProfile() {
     { id: "documents", label: "Documents", description: "Identity documentation", icon: FileText },
     { id: "compensation", label: "Payroll", description: "Salary and bank details", icon: Banknote },
     ...(isOwnProfile ? [
-      { id: "exit", label: "Exit Options", description: "Offboarding and resignation", icon: LogOut },
+      // { id: "exit", label: "Exit Options", description: "Offboarding and resignation", icon: LogOut },
       { id: "requests", label: "Profile Requests", description: "Track profile change requests", icon: ShieldAlert }
     ] : []),
   ];
@@ -1109,7 +1109,7 @@ export function UserProfile() {
                   </div>
                 )}
 
-                {activeSection === "exit" && isOwnProfile && (
+                {/* {activeSection === "exit" && isOwnProfile && (
                   <div className="animate-in fade-in slide-in-from-left-2 duration-300 space-y-6">
                     <div className="mb-6 border-b border-border flex items-center gap-3 pb-3">
                       <LogOut className="w-5 h-5 text-red-600" />
@@ -1149,7 +1149,7 @@ export function UserProfile() {
                       )}
                     </div>
                   </div>
-                )}
+                )} */}
 
                 {activeSection === "requests" && (
                   <div className="space-y-6 animate-in fade-in duration-300">

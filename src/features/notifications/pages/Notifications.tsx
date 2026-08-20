@@ -24,7 +24,7 @@ import RejectReasonDialog from '@/shared/components/ui/RejectReasonDialog';
 import { useAuth } from '@/shared/context/AuthContext';
 import { useOrgNavigate } from '@/shared/hooks/useOrgNavigate';
 import { handleLeaveAction } from '@/features/leaves/services/leaves';
-import { getNotificationTargetUrl } from '@/features/notifications/utils/notificationTarget';
+import { getNotificationTargetUrl, handleNotificationNavigation } from '@/features/notifications/utils/notificationTarget';
 import { toast } from "sonner";
 
 interface Notification {
@@ -467,7 +467,7 @@ export function Notifications() {
                 {(selectedNotification.related_module || selectedNotification.type === 'leave') && (
                   <div className="mt-8 border-t border-gray-100 dark:border-gray-700">
                     <button
-                      onClick={() => navigate(getNotificationTargetUrl(selectedNotification, user))}
+                      onClick={() => handleNotificationNavigation(navigate, selectedNotification, user)}
                       className="w-full flex items-center justify-between p-4 bg-primary-50/50 dark:bg-primary-950/20 hover:bg-primary-50 dark:hover:bg-primary-950/30 border border-primary-100 dark:border-primary-800 rounded-md transition-all group text-left"
                     >
                       <div className="flex items-center gap-3">

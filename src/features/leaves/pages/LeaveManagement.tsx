@@ -155,6 +155,33 @@ export function LeaveManagement() {
   const [policyFormFields, setPolicyFormFields] = useState({ is_paid: "Paid", color: "primary", document_url: "" });
   const [dragActive, setDragActive] = useState(false);
   const policyFileInputRef = useRef<HTMLInputElement>(null);
+  const [downloadingPolicyId, setDownloadingPolicyId] = useState<number | null>(null);
+
+  const handleDownloadPolicy = async (policy: any) => {
+    if (!policy.document_url) {
+      toast.error("No file available for download");
+      return;
+    }
+    setDownloadingPolicyId(policy.id);
+    try {
+      const response = await fetch(`${window.location.origin}${policy.document_url}`);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const filename = policy.document_url.split('/').pop() || `${policy.policy_name.replace(/\s+/g, '_')}_Policy`;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Failed to download file:', err);
+      window.open(`${window.location.origin}${policy.document_url}`, '_blank');
+    } finally {
+      setDownloadingPolicyId(null);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -701,8 +728,9 @@ export function LeaveManagement() {
       setEditingPolicy(null);
       setPolicyFormFields({ is_paid: "Paid", color: "primary", document_url: "" });
       fetchData();
-    } catch (error) {
-      toast.error("Failed to save leave policy");
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || "Failed to save leave policy";
+      toast.error(errorMsg);
     }
   };
 
@@ -2683,15 +2711,18 @@ export function LeaveManagement() {
 
                   <div className="flex gap-1 -mt-1 -mr-1">
                     {policy.document_url && (
-                      <a
-                        href={policy.document_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1.5 hover:bg-muted rounded-lg transition-colors group/btn flex items-center justify-center"
+                      <button
+                        onClick={() => handleDownloadPolicy(policy)}
+                        disabled={downloadingPolicyId === policy.id}
+                        className="p-1.5 hover:bg-muted rounded-lg transition-colors group/btn flex items-center justify-center border-none bg-transparent cursor-pointer"
                         title="Download Official Policy Document"
                       >
-                        <Download className="w-4 h-4 text-muted-foreground group-hover/btn:text-primary transition-colors" />
-                      </a>
+                        {downloadingPolicyId === policy.id ? (
+                          <span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin inline-block"></span>
+                        ) : (
+                          <Download className="w-4 h-4 text-muted-foreground group-hover/btn:text-primary transition-colors" />
+                        )}
+                      </button>
                     )}
                     <button
                       onClick={() => navigate(`/leave-management/policy/${policy.id}`)}

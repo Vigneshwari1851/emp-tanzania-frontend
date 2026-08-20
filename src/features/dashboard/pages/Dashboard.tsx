@@ -558,7 +558,11 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Main Navigation Tabs — only for regular employees */}
+      <PortalSetupPlaceholder />
+
+      {false && (
+        <>
+          {/* Main Navigation Tabs — only for regular employees */}
       {(() => {
         const tn = ((user as any)?.user_type_name || '').toUpperCase().replace(/\s+/g, '_');
         const rn = (user?.role || '').toUpperCase().replace(/\s+/g, '_');
@@ -1179,6 +1183,8 @@ export function Dashboard() {
             </div>
           )}
         </div>
+      )}
+        </>
       )}
 
       <ConfirmDialog
