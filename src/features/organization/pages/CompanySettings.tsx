@@ -70,6 +70,11 @@ interface CompanyData {
   legalEmployer: string;
   legislativeDataGroup: string;
   payFrequency: string;
+
+  // Tanzania Employer Statutory Registration
+  traTin: string;
+  nssfEmployerNumber: string;
+  wcfEmployerNumber: string;
   workingCalendar: {
     standardHours: number;
     fixedStartTime: string;
@@ -129,6 +134,9 @@ const initialCompanyData: CompanyData = {
   legalEmployer: "",
   legislativeDataGroup: "",
   payFrequency: "Monthly",
+  traTin: "",
+  nssfEmployerNumber: "",
+  wcfEmployerNumber: "",
   workingCalendar: {
     standardHours: 40,
     fixedStartTime: "09:30",
@@ -395,6 +403,9 @@ export function CompanySettings() {
           legalEmployer: capitalizeFirstLetter(organization.legal_employer || ""),
           legislativeDataGroup: capitalizeFirstLetter(organization.legislative_data_group || ""),
           payFrequency: organization.pay_frequency || "Monthly",
+          traTin: organization.tra_tin || "",
+          nssfEmployerNumber: organization.nssf_employer_number || "",
+          wcfEmployerNumber: organization.wcf_employer_number || "",
           workingCalendar: {
             standardHours: organization.standard_working_hours_per_week || 40,
             fixedStartTime: organization.fixed_start_time || "09:30",
@@ -676,6 +687,9 @@ export function CompanySettings() {
       legal_employer: capitalizeFirstLetter(companyData.legalEmployer),
       legislative_data_group: capitalizeFirstLetter(companyData.legislativeDataGroup),
       pay_frequency: companyData.payFrequency,
+      tra_tin: companyData.traTin.trim(),
+      nssf_employer_number: companyData.nssfEmployerNumber.trim(),
+      wcf_employer_number: companyData.wcfEmployerNumber.trim(),
       standard_working_hours_per_week: companyData.workingCalendar.standardHours,
       fixed_start_time: companyData.workingCalendar.fixedStartTime,
       fixed_end_time: companyData.workingCalendar.fixedEndTime,

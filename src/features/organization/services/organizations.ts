@@ -39,6 +39,9 @@ export interface Organization {
   ein?: string;
   siret?: string;
   other_tax_id?: string;
+  tra_tin?: string;
+  nssf_employer_number?: string;
+  wcf_employer_number?: string;
   address?: string;
   legal_address?: string; // Corrected column name per user request
   city?: string;

@@ -8,6 +8,7 @@ import { getDepartments, getDepartmentManager } from '@/features/organization/se
 import { getDesignations } from '@/features/organization/services/designations';
 import { createEmployee, getEmployee, updateEmployee, generateEmployeeId, checkDuplicate } from '@/features/employees/services/employees';
 import { submitChangeRequest } from '@/features/change-requests/services/changeRequests';
+import { useCurrency } from '@/shared/hooks/useCurrency';
 import { getRoles } from '@/features/rbac/services/roles';
 import type { Role } from '@/features/rbac/services/roles';
 import { getTeamsByDepartment } from '@/features/organization/services/teams';
@@ -137,10 +138,20 @@ export interface DocumentFormData {
   passportDoc: File | string | null;
   drivingLicenseDoc: File | string | null;
   aadhaarDoc: File | string | null;
+  nssfDoc: File | string | null;
   country?: string;
 }
 
 const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+
+export const getTaxDocLabel = (country?: string): string => {
+  const c = (country || '').toLowerCase();
+  if (c === 'tanzania') return 'TIN Document';
+  if (c === 'united states' || c === 'usa') return 'SSN Document';
+  if (c === 'united kingdom' || c === 'uk') return 'NINO Document';
+  if (c === 'india') return 'PAN Card Document';
+  return 'Tax ID Document';
+};
 
 export const getMissingDocumentFields = (data: Partial<DocumentFormData>): string[] => {
   const missing: string[] = [];
@@ -148,10 +159,16 @@ export const getMissingDocumentFields = (data: Partial<DocumentFormData>): strin
   // Resume / CV
   if (!data.resumeDoc) missing.push("Resume / CV");
 
-  // PAN Details
-  if (!data.panDoc) missing.push("PAN Card Document");
+  // Tax ID Document (PAN / TIN / SSN etc. based on country)
+  const taxDocLabel = getTaxDocLabel(data.country);
+  if (!data.panDoc) missing.push(taxDocLabel);
 
-  // Aadhaar Document
+  // NSSF Document (Tanzania only)
+  if (data.country?.toLowerCase() === 'tanzania' && !data.nssfDoc) {
+    missing.push("NSSF Number Document");
+  }
+
+  // Aadhaar Document (India only)
   if (data.country?.toLowerCase() === 'india' && !data.aadhaarDoc) {
     missing.push("Aadhaar Card Document");
   }
@@ -243,8 +260,10 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
   const isSelfEdit = isEdit && !!user?.id && user.id.toString() === id?.toString() && !isSuperAdmin;
   const { can } = usePermissions();
   const canManagePayroll = can(Permission.MANAGE_PAYROLL);
+  const { isTanzania: orgIsTanzania } = useCurrency();
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isDraft, setIsDraft] = useState(true);
+  const [orgCurrencyCode, setOrgCurrencyCode] = useState("USD");
   const isFieldRestricted = !isSuperAdmin && isEdit && !isDraft && user?.id?.toString() !== id;
   const shouldRestrictFields = !isSuperAdmin && user?.id?.toString() === id;
   const isHR = user?.role === UserRole.HR;
@@ -330,6 +349,10 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
     aadhaarNumber: "",
     certificateCourseName: "",
     certificateIssuedBy: "",
+    isHeslbBeneficiary: false,
+    heslbIndexNumber: "",
+    isDisabled: false,
+    nssfNumber: "",
 
     bankName: "",
     branchName: "",
@@ -388,6 +411,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
   const [passportFile, setPassportFile] = useState<File | string | null>(null);
   const [panFile, setPanFile] = useState<File | string | null>(null);
   const [aadhaarFile, setAadhaarFile] = useState<File | string | null>(null);
+  const [nssfFile, setNssfFile] = useState<File | string | null>(null);
   const [dlFile, setDlFile] = useState<File | string | null>(null);
 
   // Additional Documents
@@ -529,7 +553,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
         const isEmergencyValid = !!(formData.emergencyContactName && formData.emergencyContactRelationship && formData.emergencyContactPhone);
         return isBasicValid && isContactValid && isEmergencyValid;
       case "compensation": {
-        const isTanzania = formData?.primaryCountry === 'Tanzania';
+        const isTanzania = orgIsTanzania;
         const isCompValid = !!(formData.baseSalary && compensationSplits.length > 0);
         const isBankValid = isTanzania
           ? !!(formData.bankName && formData.branchName && formData.accountHolderName && formData.accountNumber)
@@ -555,12 +579,12 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
         return employmentHistory.every(emp => !!(emp.company && emp.position && emp.startDate && (emp.currentlyWorking || (emp.endDate && emp.reasonForLeaving)) && (emp.file || emp.fileUrl)));
       case "documents": {
         const isIndia = formData?.primaryCountry === 'India';
-        const isTanzania = formData?.primaryCountry === 'Tanzania';
+        const isTanzania = orgIsTanzania;
         if (isTanzania) {
-          const hasNIDA = !!(formData.aadhaarNumber && aadhaarFile);
           const hasTIN = !!(formData.panNumber && panFile);
+          const hasNSSF = !!(formData.nssfNumber && nssfFile);
           const hasResume = !!resumeFile;
-          return hasNIDA && hasTIN && hasResume;
+          return hasTIN && hasNSSF && hasResume;
         }
         const hasPassport = !!(formData.passportNumber && formData.passportExpiry && passportFile);
         const hasLicense = !!(formData.drivingLicense && formData.licenseExpiry && dlFile);
@@ -572,7 +596,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
       default:
         return true;
     }
-  }, [activeSection, formData, compensationSplits, isCompensationMismatch, familyMembers, educationHistory, employmentHistory, passportFile, panFile, aadhaarFile, dlFile, resumeFile, certificateFiles, otherDocuments, id, duplicateFlags]);
+  }, [activeSection, formData, compensationSplits, isCompensationMismatch, familyMembers, educationHistory, employmentHistory, passportFile, panFile, aadhaarFile, nssfFile, dlFile, resumeFile, certificateFiles, otherDocuments, id, duplicateFlags]);
 
 
   // --- Initial Data Fetching ---
@@ -641,14 +665,16 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
       const normalizedOrgs = Array.isArray(orgs) ? orgs : (orgs ? [orgs] : []);
 
       const activeOrg = normalizedOrgs[0];
-      if (activeOrg && !id) {
-        const orgCountry = activeOrg.country || "";
+      if (activeOrg) {
         const rawCurrency = activeOrg.currency || "";
         const orgCurrency = rawCurrency.match(/^[A-Z]{3}/i)?.[0]?.toUpperCase() || rawCurrency.toUpperCase() || "USD";
-        setFormData(prev => ({
-          ...prev,
-          currency: prev.currency || orgCurrency
-        }));
+        setOrgCurrencyCode(orgCurrency);
+        if (!id) {
+          setFormData(prev => ({
+            ...prev,
+            currency: prev.currency || orgCurrency
+          }));
+        }
       }
 
       normalizedOrgs.forEach((org: any) => {
@@ -748,7 +774,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
         manager: details.reporting_manager_id?.toString() || "",
         probationPeriod: details.probation_period?.toString() || "",
         baseSalary: details.base_salary?.toString() || "",
-        currency: details.currency || "USD",
+        currency: details.currency || orgCurrencyCode,
         payFrequency: details.salary_frequency || "Monthly",
         passportNumber: details.passport_number || "",
         passportIssuedDate: details.passport_issued_date?.split('T')[0] || "",
@@ -759,6 +785,10 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
         aadhaarNumber: details.aadhaar_number || "",
         certificateCourseName: details.certificate_course_name || "",
         certificateIssuedBy: details.certificate_issued_by || "",
+        isHeslbBeneficiary: details.is_heslb_beneficiary ?? false,
+        heslbIndexNumber: details.heslb_index_number || "",
+        isDisabled: details.is_disabled ?? false,
+        nssfNumber: details.nssf_number || "",
         bankName: details.bank_name || "",
         branchName: details.branch_name || "",
         accountHolderName: details.account_holder_name || "",
@@ -896,6 +926,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
       if (details.passport_doc) setPassportFile(getProfilePictureUrl(details.passport_doc));
       if (details.pan_doc) setPanFile(getProfilePictureUrl(details.pan_doc));
       if (details.aadhaar_doc) setAadhaarFile(getProfilePictureUrl(details.aadhaar_doc));
+      if (details.nssf_doc) setNssfFile(getProfilePictureUrl(details.nssf_doc));
       if (details.dl_doc) setDlFile(getProfilePictureUrl(details.dl_doc));
       if (details.resume) setResumeFile(getProfilePictureUrl(details.resume));
       if (details.certificate_files) setCertificateFiles(safeParse(details.certificate_files).map((f: string) => getProfilePictureUrl(f)));
@@ -1277,7 +1308,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
         if (!formData.branchName) errors.branchName = "This field is required";
         if (!formData.accountHolderName) errors.accountHolderName = "This field is required";
         if (!formData.accountNumber) errors.accountNumber = "This field is required";
-        if (formData?.primaryCountry !== 'Tanzania') {
+        if (!orgIsTanzania) {
           if (!formData.ifscCode) errors.ifscCode = "This field is required";
         }
         break;
@@ -1329,12 +1360,16 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
           passportDoc: passportFile,
           drivingLicenseDoc: dlFile,
           aadhaarDoc: aadhaarFile,
+          nssfDoc: nssfFile,
           country: formData.primaryCountry,
         };
         const missingFields = getMissingDocumentFields(docFormData);
         
         if (missingFields.includes("Resume / CV")) errors.resumeDoc = "Resume / CV is required";
-        if (missingFields.includes("PAN Card Document")) errors.panDoc = "PAN Card Document is required";
+        if (missingFields.some(f => f.includes('Document') && !f.includes('Aadhaar') && !f.includes('Resume') && !f.includes('NSSF') && !f.includes('NIDA'))) {
+          errors.panDoc = `${getTaxDocLabel(formData.primaryCountry)} is required`;
+        }
+        if (missingFields.includes("NSSF Number Document")) errors.nssfDoc = "NSSF Number Document is required";
         if (missingFields.includes("Aadhaar Card Document")) errors.aadhaarDoc = "Aadhaar Card Document is required";
         break;
       }
@@ -1507,6 +1542,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
           passportDoc: passportFile,
           drivingLicenseDoc: dlFile,
           aadhaarDoc: aadhaarFile,
+          nssfDoc: nssfFile,
           country: formData.primaryCountry,
         };
         const missingFields = getMissingDocumentFields(docFormData);
@@ -1736,7 +1772,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
       }
     }
     if (name === "aadhaarNumber" && typeof value === 'string' && value) {
-      const isTanzania = formData?.primaryCountry === 'Tanzania';
+      const isTanzania = orgIsTanzania;
       if (/[^0-9\s]/.test(value)) {
         return isTanzania ? "Special characters are not allowed in NIDA / NIN." : "Special characters are not allowed in Aadhaar number.";
       }
@@ -1795,7 +1831,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
       }
 
       if (name === "aadhaarNumber" && value) {
-        const isTanzania = formData?.primaryCountry === 'Tanzania';
+        const isTanzania = orgIsTanzania;
         if (/[^0-9\s]/.test(value)) {
           return isTanzania ? "Special characters are not allowed in NIDA / NIN." : "Special characters are not allowed in Aadhaar number.";
         }
@@ -2127,7 +2163,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
       branch_name: formData.branchName || null,
       account_holder_name: formData.accountHolderName || null,
       account_number: formData.accountNumber || null,
-      ifsc_code: formData?.primaryCountry === 'Tanzania'
+      ifsc_code: orgIsTanzania
         ? (`${formData.bankBranchCode || ''} | ${formData.swiftCode || ''}`)
         : (formData.ifscCode || null),
       
@@ -2140,6 +2176,10 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
       aadhaar_number: formData.aadhaarNumber || null,
       certificate_course_name: formData.certificateCourseName || null,
       certificate_issued_by: formData.certificateIssuedBy || null,
+      is_heslb_beneficiary: formData.isHeslbBeneficiary ?? false,
+      heslb_index_number: formData.heslbIndexNumber || null,
+      is_disabled: formData.isDisabled ?? false,
+      nssf_number: formData.nssfNumber || null,
     };
 
     // Password for creation
@@ -2271,6 +2311,9 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
     if (aadhaarFile instanceof File) {
       data.append('aadhaar_doc', aadhaarFile);
     }
+    if (nssfFile instanceof File) {
+      data.append('nssf_doc', nssfFile);
+    }
     if (resumeFile instanceof File) {
       data.append('resume', resumeFile);
     }
@@ -2326,11 +2369,15 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
       license_expiry_date: formData.licenseExpiry || null,
       pan_number: formData.panNumber || null,
       aadhaar_number: formData.aadhaarNumber || null,
+      is_heslb_beneficiary: formData.isHeslbBeneficiary ?? false,
+      heslb_index_number: formData.heslbIndexNumber || null,
+      is_disabled: formData.isDisabled ?? false,
+      nssf_number: formData.nssfNumber || null,
       bank_name: formData.bankName || null,
       branch_name: formData.branchName || null,
       account_holder_name: formData.accountHolderName || null,
       account_number: formData.accountNumber || null,
-      ifsc_code: formData?.primaryCountry === 'Tanzania'
+      ifsc_code: orgIsTanzania
         ? (`${formData.bankBranchCode || ''} | ${formData.swiftCode || ''}`)
         : (formData.ifscCode || null),
     };
@@ -2462,6 +2509,12 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
       setShowWarningBanner(true);
       scrollToWarningBanner();
       toast.error("Please fill all required fields correctly.");
+      return;
+    }
+
+    const basicSplit = compensationSplits.find((s: any) => (s.componentType || '').toLowerCase().includes('basic'));
+    if (basicSplit && parseFloat(basicSplit.amount) > 0 && parseFloat(basicSplit.amount) < 699000) {
+      toast.error("Basic salary must be at least TZS 699,000");
       return;
     }
 
@@ -2919,7 +2972,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
                               disabled={(isFieldRestricted && !canEditPersonal) || !formData.primaryCountry}
                               options={usStates.map(state => ({ value: state, label: state }))}
                             />
-                          ) : formData.primaryCountry === 'Tanzania' ? (
+                          ) : orgIsTanzania ? (
                             <SearchableSelect
                               value={formData.primaryState}
                               onChange={(val: string) => {
@@ -3870,6 +3923,8 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
                     setPanFile={setPanFile}
                     aadhaarFile={aadhaarFile}
                     setAadhaarFile={setAadhaarFile}
+                    nssfFile={nssfFile}
+                    setNssfFile={setNssfFile}
                     resumeFile={resumeFile}
                     setResumeFile={setResumeFile}
                     certificateFiles={certificateFiles}
@@ -3960,7 +4015,7 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
                         />
                         {formErrors.accountNumber && <p className="text-xs text-red-500 mt-1">{formErrors.accountNumber}</p>}
                       </div>
-                      {formData?.primaryCountry === 'Tanzania' ? (
+                      {orgIsTanzania ? (
                         <>
                           <div>
                             <label className="block text-[12px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider mb-2">
@@ -4014,6 +4069,60 @@ export function AddEmployee({ drawerId, onClose, defaultSection = "personal" }: 
                         </div>
                       )}
                     </div>
+                    {orgIsTanzania && (
+                      <div className="pt-6 mt-6 border-t border-border">
+                        <div className="mb-4 flex items-center gap-2">
+                          <Banknote className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                          <h3 className="text-lg font-bold text-slate-900 dark:text-foreground tracking-tight">Tanzania Statutory Details</h3>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                          <div className="flex items-center gap-3 h-full pt-6">
+                            <input
+                              type="checkbox"
+                              id="isHeslbBeneficiary"
+                              name="isHeslbBeneficiary"
+                              checked={formData.isHeslbBeneficiary}
+                              onChange={(e) => setFormData(prev => ({ ...prev, isHeslbBeneficiary: e.target.checked }))}
+                              disabled={lockJobAndPayroll && !canEditBank}
+                              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <label htmlFor="isHeslbBeneficiary" className="text-sm font-semibold text-slate-700 dark:text-foreground">
+                              HESLB Loan Beneficiary
+                            </label>
+                          </div>
+                          {formData.isHeslbBeneficiary && (
+                            <div>
+                              <label className="block text-[12px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider mb-2">
+                                HESLB Index Number
+                              </label>
+                              <input
+                                type="text"
+                                name="heslbIndexNumber"
+                                value={formData.heslbIndexNumber}
+                                onChange={handleInputChange}
+                                disabled={lockJobAndPayroll && !canEditBank}
+                                className="w-full px-3 py-2 border rounded bg-card focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 border-border"
+                                placeholder="e.g. HESLB-12345"
+                              />
+                            </div>
+                          )}
+                          <div className="flex items-center gap-3 h-full pt-2">
+                            <input
+                              type="checkbox"
+                              id="isDisabled"
+                              name="isDisabled"
+                              checked={formData.isDisabled}
+                              onChange={(e) => setFormData(prev => ({ ...prev, isDisabled: e.target.checked }))}
+                              disabled={lockJobAndPayroll && !canEditBank}
+                              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <label htmlFor="isDisabled" className="text-sm font-semibold text-slate-700 dark:text-foreground">
+                              Person with Disability (PwD) — Extra Tax Relief
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

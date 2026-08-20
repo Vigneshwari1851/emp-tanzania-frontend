@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { FileText, PlusCircle, Eye, Download, ExternalLink, Edit, ChevronDown, Check, CreditCard, Globe, Car, Fingerprint, Award, Files, Search } from "lucide-react";
 import { Button } from '@/shared/components/ui/button';
 import FileUpload from '@/shared/components/ui/FileUpload';
@@ -17,6 +16,8 @@ interface DocumentSectionProps {
   setPanFile: (file: any) => void;
   aadhaarFile: any;
   setAadhaarFile: (file: any) => void;
+  nssfFile: any;
+  setNssfFile: (file: any) => void;
   resumeFile: any;
   setResumeFile: (file: any) => void;
   certificateFiles: any[];
@@ -89,57 +90,27 @@ const DocumentCategoryDropdown: React.FC<DocumentCategoryDropdownProps> = ({
   country = ""
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   const documentCategories = [
     { value: "resume", label: "Resume / CV" },
     { value: "pan", label: country === 'India' ? 'PAN Card' : country === 'United States' || country === 'USA' ? 'SSN Document' : country === 'Tanzania' ? 'TIN Document' : country === 'United Kingdom' ? 'NINO Document' : 'Tax ID Document' },
     { value: "passport", label: "Passport Copy" },
     { value: "driving_license", label: "Driving License" },
-    ...(country === 'India' ? [{ value: "aadhaar", label: "Aadhaar Card" }] : country === 'Tanzania' ? [{ value: "aadhaar", label: "NIDA / NIN Document" }] : []),
+    ...(country === 'India' ? [{ value: "aadhaar", label: "Aadhaar Card" }] : country === 'Tanzania' ? [{ value: "aadhaar", label: "NIDA / NIN Document" }, { value: "nssf", label: "NSSF Number Document" }] : []),
     { value: "certificates", label: "Educational Certificates" },
     { value: "other", label: "Other: General Document" },
   ];
 
   useEffect(() => {
-    const updateCoords = () => {
-      if (isOpen && buttonRef.current) {
-        const rect = buttonRef.current.getBoundingClientRect();
-        setCoords({
-          top: rect.bottom + window.scrollY,
-          left: rect.left + window.scrollX,
-          width: rect.width
-        });
+    if (!isOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
       }
     };
-
-    if (isOpen) {
-      updateCoords();
-      window.addEventListener('scroll', updateCoords, true);
-      window.addEventListener('resize', updateCoords);
-    }
-    return () => {
-      window.removeEventListener('scroll', updateCoords, true);
-      window.removeEventListener('resize', updateCoords);
-    };
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (isOpen && buttonRef.current) {
-      setTimeout(() => {
-        if (buttonRef.current) {
-          const rect = buttonRef.current.getBoundingClientRect();
-          const spaceBelow = window.innerHeight - rect.bottom;
-          if (spaceBelow < 260) {
-            window.scrollBy({
-              top: 260 - spaceBelow,
-              behavior: 'smooth'
-            });
-          }
-        }
-      }, 50);
-    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
 
@@ -149,42 +120,25 @@ const DocumentCategoryDropdown: React.FC<DocumentCategoryDropdownProps> = ({
         Choose Document Category <span className="text-red-500">*</span>
       </label>
 
-      {/* Dropdown Trigger Button */}
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="flex w-full h-10 items-center justify-between rounded-lg border border-gray-300 bg-white dark:bg-gray-800 px-3 py-2.5 text-left text-sm font-medium text-gray-900 shadow-2xs hover:bg-gray-50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-gray-700 dark:text-gray-100 transition-all"
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
-      >
-        <span className="truncate">
-          {selectedCategory
-            ? documentCategories.find((c) => c.value === selectedCategory)?.label
-            : "Select a document category..."}
-        </span>
-        <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
-      </button>
+      <div ref={wrapperRef} className="relative">
+        <button
+          type="button"
+          onClick={() => setIsOpen((prev) => !prev)}
+          className="flex w-full h-10 items-center justify-between rounded-lg border border-gray-300 bg-white dark:bg-gray-800 px-3 py-2.5 text-left text-sm font-medium text-gray-900 shadow-2xs hover:bg-gray-50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-gray-700 dark:text-gray-100 transition-all"
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
+        >
+          <span className="truncate">
+            {selectedCategory
+              ? documentCategories.find((c) => c.value === selectedCategory)?.label
+              : "Select a document category..."}
+          </span>
+          <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+        </button>
 
-      {/* Overlay Dropdown Menu rendered via Portal to prevent overflow clipping */}
-      {isOpen && createPortal(
-        <>
-          {/* Backdrop click handler to close menu */}
-          <div 
-            className="fixed inset-0 z-[9998] bg-transparent cursor-default" 
-            onClick={() => setIsOpen(false)} 
-          />
-
+        {isOpen && (
           <ul
-            style={{
-              position: 'absolute',
-              top: `${coords.top}px`,
-              left: `${coords.left}px`,
-              width: `${coords.width}px`,
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none'
-            }}
-            className="z-[9999] mt-1 max-h-60 overflow-y-auto rounded-xl border border-gray-200 bg-white dark:bg-gray-800 p-1.5 shadow-xl ring-1 ring-black/5 dark:border-gray-700 [&::-webkit-scrollbar]:hidden space-y-0.5"
+            className="absolute z-[9999] mt-1 w-full max-h-60 overflow-y-auto rounded-xl border border-gray-200 bg-white dark:bg-gray-800 p-1.5 shadow-xl ring-1 ring-black/5 dark:border-gray-700 [&::-webkit-scrollbar]:hidden space-y-0.5"
             role="listbox"
           >
             {documentCategories.map((category) => {
@@ -219,9 +173,8 @@ const DocumentCategoryDropdown: React.FC<DocumentCategoryDropdownProps> = ({
               );
             })}
           </ul>
-        </>,
-        document.body
-      )}
+        )}
+      </div>
     </div>
   );
 };
@@ -235,6 +188,8 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
   setPanFile,
   aadhaarFile,
   setAadhaarFile,
+  nssfFile,
+  setNssfFile,
   resumeFile,
   setResumeFile,
   certificateFiles,
@@ -259,6 +214,7 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
     licenseExpiry: "",
     panNumber: "",
     aadhaarNumber: "",
+    nssfNumber: "",
     certificateCourseName: "",
     certificateIssuedBy: ""
   });
@@ -267,6 +223,7 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
   const [localDlFile, setLocalDlFile] = useState<any>(null);
   const [localPanFile, setLocalPanFile] = useState<any>(null);
   const [localAadhaarFile, setLocalAadhaarFile] = useState<any>(null);
+  const [localNssfFile, setLocalNssfFile] = useState<any>(null);
   const [localResumeFile, setLocalResumeFile] = useState<any>(null);
   const [localCertificateFiles, setLocalCertificateFiles] = useState<any[]>([]);
 
@@ -278,8 +235,9 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
     ...(dlFile ? ["driving_license"] : []),
     ...(panFile ? ["pan"] : []),
     ...(aadhaarFile ? ["aadhaar"] : []),
+    ...(nssfFile ? ["nssf"] : []),
     ...(resumeFile ? ["resume"] : []),
-  ], [passportFile, dlFile, panFile, aadhaarFile, resumeFile]);
+  ], [passportFile, dlFile, panFile, aadhaarFile, nssfFile, resumeFile]);
 
   const handleEditDocType = (type: string) => {
     setIsAddingDoc(true);
@@ -294,6 +252,7 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
       licenseExpiry: formData.licenseExpiry || "",
       panNumber: formData.panNumber || "",
       aadhaarNumber: formData.aadhaarNumber || "",
+      nssfNumber: formData.nssfNumber || "",
       certificateCourseName: formData.certificateCourseName || "",
       certificateIssuedBy: formData.certificateIssuedBy || ""
     });
@@ -301,6 +260,7 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
     setLocalDlFile(dlFile);
     setLocalPanFile(panFile);
     setLocalAadhaarFile(aadhaarFile);
+    setLocalNssfFile(nssfFile);
     setLocalResumeFile(resumeFile);
     setLocalCertificateFiles(certificateFiles);
   };
@@ -318,6 +278,7 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
       licenseExpiry: "",
       panNumber: "",
       aadhaarNumber: "",
+      nssfNumber: "",
       certificateCourseName: "",
       certificateIssuedBy: ""
     });
@@ -325,6 +286,7 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
     setLocalDlFile(null);
     setLocalPanFile(null);
     setLocalAadhaarFile(null);
+    setLocalNssfFile(null);
     setLocalResumeFile(null);
     setLocalCertificateFiles([]);
 
@@ -408,6 +370,11 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
       if (!localAadhaarFile) errors.aadhaarFile = isTanzania ? "NIDA / NIN Document Copy is required" : "Aadhaar Copy is required";
     }
 
+    if (selectedDocType === 'nssf') {
+      if (!localFormData.nssfNumber) errors.nssfNumber = "NSSF Number is required";
+      if (!localNssfFile) errors.nssfFile = "NSSF Document Copy is required";
+    }
+
     if (selectedDocType === 'resume') {
       if (!localResumeFile) errors.resumeFile = "Resume Copy is required";
     }
@@ -431,6 +398,8 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
       updatedFields.panNumber = localFormData.panNumber;
     } else if (selectedDocType === 'aadhaar') {
       updatedFields.aadhaarNumber = localFormData.aadhaarNumber;
+    } else if (selectedDocType === 'nssf') {
+      updatedFields.nssfNumber = localFormData.nssfNumber;
     } else if (selectedDocType === 'certificates') {
       updatedFields.certificateCourseName = localFormData.certificateCourseName;
       updatedFields.certificateIssuedBy = localFormData.certificateIssuedBy;
@@ -446,6 +415,7 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
     if (selectedDocType === 'driving_license') setDlFile(localDlFile);
     if (selectedDocType === 'pan') setPanFile(localPanFile);
     if (selectedDocType === 'aadhaar') setAadhaarFile(localAadhaarFile);
+    if (selectedDocType === 'nssf') setNssfFile(localNssfFile);
     if (selectedDocType === 'resume') setResumeFile(localResumeFile);
     if (selectedDocType === 'certificates') setCertificateFiles(localCertificateFiles);
 
@@ -467,8 +437,8 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
   };
 
   const hasDocuments = useMemo(() => {
-    return [passportFile, panFile, aadhaarFile, dlFile, resumeFile, ...certificateFiles, ...otherDocuments].some(f => f);
-  }, [passportFile, panFile, aadhaarFile, dlFile, resumeFile, certificateFiles, otherDocuments]);
+    return [passportFile, panFile, aadhaarFile, nssfFile, dlFile, resumeFile, ...certificateFiles, ...otherDocuments].some(f => f);
+  }, [passportFile, panFile, aadhaarFile, nssfFile, dlFile, resumeFile, certificateFiles, otherDocuments]);
 
   return (
     <div id="documents" className={`animate-in fade-in slide-in-from-left-2 duration-300 space-y-8 scroll-mt-24`}>
@@ -480,7 +450,7 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
               { label: 'Passport', file: passportFile, type: 'passport' },
               { label: 'Driving License', file: dlFile, type: 'driving_license' },
               { label: formData?.primaryCountry === 'India' ? 'PAN Card' : formData?.primaryCountry === 'United States' || formData?.primaryCountry === 'USA' ? 'SSN Document' : formData?.primaryCountry === 'Tanzania' ? 'TIN Document' : formData?.primaryCountry === 'United Kingdom' ? 'NINO Document' : 'Tax ID Copy', file: panFile, type: 'pan' },
-              ...(formData?.primaryCountry === 'India' ? [{ label: 'Aadhaar Card', file: aadhaarFile, type: 'aadhaar' }] : formData?.primaryCountry === 'Tanzania' ? [{ label: 'NIDA / NIN', file: aadhaarFile, type: 'aadhaar' }] : []),
+              ...(formData?.primaryCountry === 'India' ? [{ label: 'Aadhaar Card', file: aadhaarFile, type: 'aadhaar' }] : formData?.primaryCountry === 'Tanzania' ? [{ label: 'NIDA / NIN', file: aadhaarFile, type: 'aadhaar' }, { label: 'NSSF Document', file: nssfFile, type: 'nssf' }] : []),
               { label: 'Resume', file: resumeFile, type: 'resume' },
               ...certificateFiles.map((f, i) => ({ label: `Certificate ${i+1}`, file: f, type: 'certificate' })),
               ...otherDocuments.map((f, i) => ({ label: `Other Doc ${i+1}`, file: f, type: 'other' }))
@@ -781,6 +751,36 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
                   </>
                 );
               })()}
+
+              {selectedDocType === 'nssf' && formData?.primaryCountry === 'Tanzania' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">NSSF Number <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      name="nssfNumber"
+                      value={localFormData.nssfNumber}
+                      onChange={(e) => setLocalFormData(prev => ({ ...prev, nssfNumber: e.target.value }))}
+                      className={`w-full h-10 px-3 bg-card border rounded text-[12px] focus:outline-none focus:ring-2 transition-all ${localErrors.nssfNumber ? 'border-red-500 focus:ring-red-400/20' : 'border-gray-300 focus:ring-blue-500'}`}
+                      placeholder="Enter NSSF Number"
+                    />
+                    {localErrors.nssfNumber && <p className="text-xs text-red-500 mt-1">{localErrors.nssfNumber}</p>}
+                  </div>
+                  <div className="col-span-full">
+                    <FileUpload
+                      id="nssfFile"
+                      label="NSSF Document Copy"
+                      required
+                      files={localNssfFile ? [localNssfFile] : []}
+                      onFilesChange={(files) => setLocalNssfFile(files[0] || null)}
+                      allowedFormats={['PDF', 'JPG', 'PNG', 'JPEG']}
+                      onPreview={handlePreview}
+                      showViewEdit={true}
+                    />
+                    {localErrors.nssfFile && <p className="text-xs text-red-500 mt-1">{localErrors.nssfFile}</p>}
+                  </div>
+                </>
+              )}
 
               {selectedDocType === 'resume' && (
                 <>

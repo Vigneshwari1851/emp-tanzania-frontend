@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/shared/context/AuthContext';
 import { usePayroll } from '../context/PayrollContext';
+import { getActiveTzTaxPolicy } from '@/features/payroll/services/payroll';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/payroll-lib/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/payroll-lib/tabs';
 import { Input } from '@/shared/components/ui/payroll-lib/input';
@@ -17,7 +18,7 @@ import {
   CheckCircle2, Clock, XCircle, Trash2, FileText,
   Home, AlertCircle, ChevronDown,
   ChevronUp, Plus, Eye, X as XIcon,
-  DollarSign, TrendingUp, TrendingDown, FileCheck, History
+  DollarSign, TrendingUp, TrendingDown, FileCheck, History, Shield
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { toast } from 'sonner';
@@ -177,6 +178,7 @@ interface PayslipData {
   net: number;
   earnings: { label: string; value: number }[];
   deductionDetails: { label: string; value: number }[];
+  employerContributions?: { label: string; value: number }[];
   attendance?: { workingDays: number; lopDays: number; paidLeaves: number };
 }
 
@@ -278,6 +280,128 @@ function SkeletonTable({ rows = 5 }: { rows?: number }) {
           <div className="h-4 bg-muted rounded-lg w-20" />
         </div>
       ))}
+    </div>
+  );
+}
+
+function StatutoryDetailsTab({ employeeDetails }: { employeeDetails?: any }) {
+  const { currencySymbol } = useCurrency();
+  const detail = employeeDetails || {};
+  const [activePolicy, setActivePolicy] = useState<any>(null);
+
+  useEffect(() => {
+    getActiveTzTaxPolicy().then(p => { if (p) setActivePolicy(p); }).catch(() => {});
+  }, []);
+
+  const personalReliefAnnual = activePolicy ? parseFloat(activePolicy.personal_relief_annual?.toString() || '270000') : 270000;
+  const disabilityReliefAnnual = activePolicy ? parseFloat(activePolicy.disability_relief_annual?.toString() || '270000') : 270000;
+  const empNssfRate = activePolicy ? (parseFloat(activePolicy.employee_nssf_rate?.toString() || '0.10') * 100) : 10;
+  const empyrNssfRate = activePolicy ? (parseFloat(activePolicy.employer_nssf_rate?.toString() || '0.10') * 100) : 10;
+  const sdlRate = activePolicy ? (parseFloat(activePolicy.sdl_rate?.toString() || '0.035') * 100) : 3.5;
+  const wcfRate = activePolicy ? (parseFloat(activePolicy.wcf_rate?.toString() || '0.005') * 100) : 0.5;
+  const heslbRate = activePolicy ? (parseFloat(activePolicy.heslb_rate?.toString() || '0.15') * 100) : 15;
+
+  return (
+    <div className="space-y-6">
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Shield className="w-5 h-5 text-blue-600" />
+            Tanzania Statutory Details
+          </CardTitle>
+          <CardDescription>Your statutory registration and relief information</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">NSSF Number</label>
+              <p className="text-sm font-semibold text-foreground py-2 px-3 bg-muted/50 rounded border border-border">
+                {detail.nssf_number || "—"}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">HESLB Loan Beneficiary</label>
+              <p className="text-sm font-semibold text-foreground py-2 px-3 bg-muted/50 rounded border border-border">
+                {detail.is_heslb_beneficiary ? "Yes" : "No"}
+              </p>
+            </div>
+            {detail.is_heslb_beneficiary && (
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">HESLB Index Number</label>
+                <p className="text-sm font-semibold text-foreground py-2 px-3 bg-muted/50 rounded border border-border">
+                  {detail.heslb_index_number || "—"}
+                </p>
+              </div>
+            )}
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Disability Status</label>
+              <p className="text-sm font-semibold text-foreground py-2 px-3 bg-muted/50 rounded border border-border">
+                {detail.is_disabled ? "Yes — Disability Relief Applicable" : "No"}
+              </p>
+            </div>
+          </div>
+
+          <div className="border-t border-border pt-5">
+            <h4 className="text-[12px] font-bold text-foreground mb-3">Tax Reliefs (Applied Automatically)</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="bg-emerald-50/50 dark:bg-emerald-950/20 rounded-lg p-4 border border-emerald-100 dark:border-emerald-900/50">
+                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Personal Relief</p>
+                <p className="text-xl font-black text-emerald-700 dark:text-emerald-400">{currencySymbol} {personalReliefAnnual.toLocaleString()}<span className="text-[11px] font-medium">/year</span></p>
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-500 mt-1">Automatic for all employees — reduces your PAYE tax</p>
+              </div>
+              <div className={`rounded-lg p-4 border ${detail.is_disabled ? 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/50' : 'bg-muted/30 border-border'}`}>
+                <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Disability Relief</p>
+                {detail.is_disabled ? (
+                  <>
+                    <p className="text-xl font-black text-blue-700 dark:text-blue-400">{currencySymbol} {disabilityReliefAnnual.toLocaleString()}<span className="text-[11px] font-medium">/year</span></p>
+                    <p className="text-[11px] text-blue-600 dark:text-blue-500 mt-1">Applied — additional relief on top of personal relief</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xl font-black text-muted-foreground/50">—</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">Not applicable — contact HR if you have a disability</p>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-border pt-5">
+            <h4 className="text-[12px] font-bold text-foreground mb-3">Statutory Deductions (Auto-Calculated)</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-emerald-50/50 dark:bg-emerald-950/20 rounded-lg p-4 border border-emerald-100 dark:border-emerald-900/50">
+                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Employee NSSF</p>
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">{empNssfRate}% of Gross Salary</p>
+              </div>
+              <div className="bg-blue-50/50 dark:bg-blue-950/20 rounded-lg p-4 border border-blue-100 dark:border-blue-900/50">
+                <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">PAYE Tax</p>
+                <p className="text-[11px] text-blue-700 dark:text-blue-400 font-medium">Progressive slabs (0-30%)</p>
+              </div>
+              <div className="bg-violet-50/50 dark:bg-violet-950/20 rounded-lg p-4 border border-violet-100 dark:border-violet-900/50">
+                <p className="text-[10px] font-bold text-violet-600 uppercase tracking-wider mb-1">Employer Contributions</p>
+                <p className="text-[11px] text-violet-700 dark:text-violet-400 font-medium">NSSF {empyrNssfRate}% + SDL {sdlRate}% + WCF {wcfRate}%</p>
+              </div>
+            </div>
+          </div>
+
+          {detail.is_heslb_beneficiary && (
+            <div className="border-t border-border pt-5">
+              <h4 className="text-[12px] font-bold text-foreground mb-3">HESLB Repayment</h4>
+              <div className="bg-amber-50/50 dark:bg-amber-950/20 rounded-lg p-4 border border-amber-100 dark:border-amber-900/50">
+                <p className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                  {heslbRate}% of Gross Salary is deducted monthly for your HESLB loan repayment ({currencySymbol} {((parseFloat(detail.nssf_number) || 0) * heslbRate / 100).toFixed(0)} estimated).
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-amber-50/50 dark:bg-amber-950/20 rounded-lg p-4 border border-amber-100 dark:border-amber-900/50">
+            <p className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
+              All statutory deductions and reliefs are automatically calculated based on your gross salary and the organization's active tax policy. No manual declaration required. For disability relief, please contact HR.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -1660,6 +1784,7 @@ export function EmployeePortal() {
           net: parseFloat(s.net_amount),
           earnings: normalize(s.breakdown?.earnings || ctx?.computedPayslip?.earnings),
           deductionDetails: normalize(s.breakdown?.deductions || ctx?.computedPayslip?.deductions),
+          employerContributions: normalize(s.breakdown?.employerContributions || ctx?.computedPayslip?.employerContributions),
           attendance: s.breakdown?.attendance || { workingDays: 30, lopDays: 0, paidLeaves: 0 }
         }));
         setPayslips(mapped);
@@ -1678,6 +1803,7 @@ export function EmployeePortal() {
           net: ctx.computedPayslip.netSalary,
           earnings: normalize(ctx.computedPayslip.earnings),
           deductionDetails: normalize(ctx.computedPayslip.deductions),
+          employerContributions: normalize((ctx.computedPayslip as any).employerContributions),
           attendance: { workingDays: 30, lopDays: 0, paidLeaves: 0 }
         };
         setPayslips([computed]);
@@ -1887,6 +2013,7 @@ export function EmployeePortal() {
       let y = startY + 16;
       const earns = slip.earnings || [];
       const deds = slip.deductionDetails || [];
+      const employerContribs = slip.employerContributions || [];
 
       const maxRows = Math.max(earns.length, deds.length);
 
@@ -1922,6 +2049,25 @@ export function EmployeePortal() {
 
       doc.text('Total Deductions', 112, totalY + 6.5);
       doc.text(`${currencySymbol} ${slip.deductions.toLocaleString(config?.locale || 'en-US')}`, 192, totalY + 6.5, { align: 'right' });
+
+      if (employerContribs.length > 0) {
+        let ecY = totalY + 14;
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(textLight[0], textLight[1], textLight[2]);
+        doc.text('EMPLOYER CONTRIBUTIONS', 18, ecY);
+        ecY += 6;
+        doc.setFontSize(9);
+        for (const ec of employerContribs) {
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+          doc.text(ec.label, 18, ecY);
+          doc.setFont('helvetica', 'bold');
+          doc.text(`${currencySymbol} ${ec.value.toLocaleString(config?.locale || 'en-US')}`, 98, ecY, { align: 'right' });
+          ecY += 6;
+        }
+        totalY = ecY + 4;
+      }
 
       const netVal = Math.round(slip.net);
       const words = numberToWords(netVal);
@@ -2018,10 +2164,18 @@ export function EmployeePortal() {
             <Receipt className="w-4 h-4" />
             <span>Payslips</span>
           </TabsTrigger>
-          <TabsTrigger value="declarations" className="px-1 py-3 whitespace-nowrap text-xs sm:text-sm font-semibold transition-all bg-transparent data-[state=active]:bg-transparent data-[state=active]:text-primary dark:data-[state=active]:bg-transparent dark:data-[state=active]:text-primary-foreground border-b-2 border-transparent data-[state=active]:border-primary after:hidden shadow-none text-muted-foreground hover:text-foreground flex items-center gap-2">
-            <FileCheck className="w-4 h-4" />
-            <span>Tax Declarations</span>
-          </TabsTrigger>
+          {!isTanzania && (
+            <TabsTrigger value="declarations" className="px-1 py-3 whitespace-nowrap text-xs sm:text-sm font-semibold transition-all bg-transparent data-[state=active]:bg-transparent data-[state=active]:text-primary dark:data-[state=active]:bg-transparent dark:data-[state=active]:text-primary-foreground border-b-2 border-transparent data-[state=active]:border-primary after:hidden shadow-none text-muted-foreground hover:text-foreground flex items-center gap-2">
+              <FileCheck className="w-4 h-4" />
+              <span>Tax Declarations</span>
+            </TabsTrigger>
+          )}
+          {isTanzania && (
+            <TabsTrigger value="statutory" className="px-1 py-3 whitespace-nowrap text-xs sm:text-sm font-semibold transition-all bg-transparent data-[state=active]:bg-transparent data-[state=active]:text-primary dark:data-[state=active]:bg-transparent dark:data-[state=active]:text-primary-foreground border-b-2 border-transparent data-[state=active]:border-primary after:hidden shadow-none text-muted-foreground hover:text-foreground flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              <span>Statutory Details</span>
+            </TabsTrigger>
+          )}
           {/* HIDDEN — Previous Income (Form 12B) — re-enable when ready
           <TabsTrigger value="form12b" className="px-1 py-3 whitespace-nowrap text-xs sm:text-sm font-semibold transition-all bg-transparent data-[state=active]:bg-transparent data-[state=active]:text-primary dark:data-[state=active]:bg-transparent dark:data-[state=active]:text-primary-foreground border-b-2 border-transparent data-[state=active]:border-primary after:hidden shadow-none text-muted-foreground hover:text-foreground flex items-center gap-2">
             <History className="w-4 h-4" />
@@ -2156,6 +2310,22 @@ export function EmployeePortal() {
                           </div>
                         </div>
                       </div>
+                      {selectedSlip.employerContributions && selectedSlip.employerContributions.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Employer Contributions</p>
+                          <div className="bg-blue-50/50 dark:bg-blue-950/30 rounded-xl p-4 border border-blue-100 dark:border-blue-900/50 space-y-2">
+                            {selectedSlip.employerContributions.map((item, id) => (
+                              <div key={id} className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">{item.label}</span>
+                                <span className="font-bold text-blue-600 dark:text-blue-400">{currencySymbol}{item.value.toLocaleString()}</span>
+                              </div>
+                            ))}
+                            <div className="flex justify-between pt-2.5 border-t border-blue-200 dark:border-blue-800/60 font-bold text-blue-600 dark:text-blue-400 text-sm">
+                              <span>Total</span><span>{currencySymbol}{selectedSlip.employerContributions.reduce((sum, c) => sum + c.value, 0).toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl p-5 text-center border border-primary/10">
                         <p className="text-[10px] font-bold text-primary/50 uppercase tracking-widest mb-1">Net Salary</p>
                         <p className="text-3xl font-black text-primary">{currencySymbol}{selectedSlip.net.toLocaleString()}</p>
@@ -2181,9 +2351,17 @@ export function EmployeePortal() {
           )}
         </TabsContent>
 
-        <TabsContent value="declarations" className="mt-2">
-          <TaxDeclarationsTab taxSections={portalCtx?.taxSections || []} savedRegime={(portalCtx as any)?.employeeDetails?.tax_regime} regimeChangedAt={(portalCtx as any)?.employeeDetails?.tax_regime_changed_at} />
-        </TabsContent>
+        {!isTanzania && (
+          <TabsContent value="declarations" className="mt-2">
+            <TaxDeclarationsTab taxSections={portalCtx?.taxSections || []} savedRegime={(portalCtx as any)?.employeeDetails?.tax_regime} regimeChangedAt={(portalCtx as any)?.employeeDetails?.tax_regime_changed_at} />
+          </TabsContent>
+        )}
+
+        {isTanzania && (
+          <TabsContent value="statutory" className="mt-2">
+            <StatutoryDetailsTab employeeDetails={(portalCtx as any)?.employeeDetails} />
+          </TabsContent>
+        )}
 
         {/* HIDDEN — Previous Income (Form 12B) — re-enable when ready
         <TabsContent value="form12b" className="mt-2">
